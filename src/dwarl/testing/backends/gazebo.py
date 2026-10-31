@@ -41,8 +41,11 @@ def stop_owned(process):
 
 
 class GazeboBackend:
-    def __init__(self, contract, bundle, workload, directory, request):
+    def __init__(self, contract, bundle, workload, directory, request, controller="dwarl"):
         prerequisites()
+        package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core"}.get(controller)
+        if package and subprocess.run(["ros2", "pkg", "prefix", package], capture_output=True).returncode:
+            raise ValueError(f"ROS package {package} unavailable; install the selected Nav2 controller")
         from dwarl.runs.store import sha256
 
         adapter = contract.robot.ros.get("sim_launch")
@@ -58,6 +61,7 @@ class GazeboBackend:
         source = Path(contract.robot.profile_source)
         write_json(directory / "gazebo_stack.json", {
             "adapter": str(launch.resolve()), "adapter_sha256": sha256(launch),
+            "observer_sha256": sha256(Path(__file__).with_name("ros_worker.py")),
             "ros_distro": os.environ.get("ROS_DISTRO"),
             "source_profile": str(source), "source_available": source.is_file(),
             "source_changed": sha256(source) != contract.robot.profile_sha256 if source.is_file() else None,
@@ -65,6 +69,7 @@ class GazeboBackend:
         })
         print(f"Gazebo adapter: {launch.resolve()}")
         self.contract, self.bundle, self.directory, self.request = contract, bundle, directory, request
+        self.controller = controller
         self.process = None
         self.lease = None
         # Shared per-user leases coordinate DWARL consumers, including separate workspaces.
@@ -86,10 +91,10 @@ class GazeboBackend:
         from dwarl.datasets.generation.mapdata import MapData
         from dwarl.testing.scenarios import export_gazebo
 
-        out = self.directory / "gazebo" / case["id"]
+        out = self.directory / "gazebo" / self.controller / case["id"]
         out.mkdir(parents=True)
         export_gazebo(MapData.load(self.directory / case["map_file"]), out, "world")
-        write_json(out / "input.json", {"case": case, "bundle": str(self.bundle),
+        write_json(out / "input.json", {"case": case, "bundle": str(self.bundle), "controller": self.controller,
                    "request": OmegaConf.to_container(self.request),
                    "robot": OmegaConf.to_container(self.contract.robot, resolve=True)})
         environment = dict(os.environ, ROS_DOMAIN_ID=str(self.domain), GZ_PARTITION=uuid4().hex,

@@ -79,6 +79,10 @@ private:
     double dt{0.0}, scan_age{0.0};
   };
   bool debug_{false}, stop_logged_{false};
+  bool profile_compute_{false};
+  double min_linear_velocity_{0.0};
+  bool reverse_limited_{false};
+  size_t recorded_observations_{0};
   DebugStep dbg_;
   std::deque<std::pair<geometry_msgs::msg::Point, bool>> events_;  // (position, is safety stop)
   rclcpp_lifecycle::LifecyclePublisher<visualization_msgs::msg::MarkerArray>::SharedPtr debug_pub_;

@@ -1,0 +1,12 @@
+{
+  "skill_name": "dwarl-robot-setup",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a new differential-drive robot under /robots/rover. The lidar is mounted upside down 0.3 m ahead of base_link, covers only the front, and cmd_vel expects TwistStamped. Can I just use another robot's policy and run a three-controller MuJoCo comparison? Give the correct setup/check sequence without modifying files or launching anything.",
+      "expected_output": "Inspect robot-specific geometry, full lidar transform and stamped interface; do not silently reuse incompatible policy/dataset; start bounded robot-specific workflow; MPPI/DWB require Gazebo; rear safety polygons do not add sensor visibility.",
+      "files": [],
+      "assertions": ["Checks full lidar transform and TwistStamped interface", "Rejects blind reuse of another robot's policy", "States MPPI/DWB comparison requires Gazebo", "Identifies rear visibility limitation"]
+    }
+  ]
+}

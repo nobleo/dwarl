@@ -8,7 +8,7 @@ from omegaconf import OmegaConf
 
 from .schema import Config
 
-PATHS = ("robot", "train.resume", "train.data.path", "test.run", "test.dataset", "deploy.run")
+PATHS = ("robot", "train.resume", "train.data.path", "test.run", "test.dataset", "test.controller_params", "deploy.run")
 
 
 def _paths(cfg, base):
@@ -86,6 +86,17 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None):
     validate_training(cfg.train)
     if cfg.test.sim not in ("mujoco", "gazebo", "both"):
         raise ValueError("test.sim must be mujoco, gazebo or both")
+    controllers = list(cfg.test.controllers)
+    if not controllers or len(set(controllers)) != len(controllers) or any(
+        c not in ("dwarl", "mppi", "dwb") for c in controllers
+    ):
+        raise ValueError("test.controllers must contain unique choices: dwarl, mppi, dwb")
+    if controllers != ["dwarl"] and cfg.test.sim != "gazebo":
+        raise ValueError("MPPI/DWB comparisons require --sim gazebo")
+    if cfg.test.profile_compute and cfg.test.sim != "gazebo":
+        raise ValueError("compute profiling requires --sim gazebo")
+    if cfg.test.controller_params and cfg.test.sim != "gazebo":
+        raise ValueError("controller tuning requires --sim gazebo")
     if cfg.test.suite not in ("benchmark", "validation", "test"):
         raise ValueError("test.suite must be benchmark, validation or test")
     for key in ("recipe.env.control_dt", "recipe.env.episodes_per_map", "recipe.sim.timestep",

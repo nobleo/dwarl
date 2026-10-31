@@ -41,12 +41,19 @@ void DwarlController::configure(
   declare_parameter_if_not_declared(node, name + ".safety_state_topic", rclcpp::ParameterValue(""));
   declare_parameter_if_not_declared(node, name + ".safety_grace", rclcpp::ParameterValue(0.3));
   declare_parameter_if_not_declared(node, name + ".debug", rclcpp::ParameterValue(false));
+  declare_parameter_if_not_declared(node, name + ".profile_compute", rclcpp::ParameterValue(false));
+  profile_compute_ = node->get_parameter(name + ".profile_compute").as_bool();
   // refuse a bundle trained for another robot ("" = accept any)
   declare_parameter_if_not_declared(node, name + ".expected_robot_id", rclcpp::ParameterValue(""));
 
   const auto dir = node->get_parameter(name + ".model_dir").as_string();
   if (dir.empty()) {throw nav2_core::ControllerException("model_dir must name an explicit policy bundle");}
   spec_ = DeploySpec::load(dir);
+  declare_parameter_if_not_declared(node, name + ".min_linear_velocity", rclcpp::ParameterValue(spec_.v_min));
+  min_linear_velocity_ = node->get_parameter(name + ".min_linear_velocity").as_double();
+  if (!std::isfinite(min_linear_velocity_) || min_linear_velocity_ < spec_.v_min || min_linear_velocity_ > 0.0) {
+    throw nav2_core::ControllerException("min_linear_velocity must be between the trained minimum and zero");
+  }
   const auto expected = node->get_parameter(name + ".expected_robot_id").as_string();
   if (!expected.empty() && expected != spec_.robot_id) {
     throw nav2_core::ControllerException(
@@ -172,6 +179,7 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
   nav2_core::GoalChecker *)
 {
   const auto cycle_start = std::chrono::steady_clock::now();
+  reverse_limited_ = false;
   const auto elapsed = [&]() {
       return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - cycle_start).count();
     };
@@ -247,6 +255,7 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
       scan->range_max, spec_.max_range, scan->range_max);
   }
 
+  const auto observation_start = std::chrono::steady_clock::now();
   Scan s;
   s.angle_min = scan->angle_min;
   s.angle_increment = scan->angle_increment;
@@ -277,6 +286,8 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
   }
 
   const auto inference_start = std::chrono::steady_clock::now();
+  const double observation_ms = std::chrono::duration<double, std::milli>(
+    inference_start - observation_start).count();
   std::array<double, 2> a = (*policy_)(state, lidar);
   const double inference_ms = std::chrono::duration<double, std::milli>(
     std::chrono::steady_clock::now() - inference_start).count();
@@ -287,6 +298,8 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
   }
   a = {std::clamp(a[0], -1.0, 1.0), std::clamp(a[1], -1.0, 1.0)};
   cmd_ = commandFromAction(spec_, a, cmd_);
+  reverse_limited_ = cmd_[0] < min_linear_velocity_;
+  cmd_[0] = std::max(cmd_[0], min_linear_velocity_);
   last_action_ = a;
   const bool speed_limited = speed_limit_ > 0. && std::abs(cmd_[0]) > speed_limit_;
 
@@ -323,6 +336,25 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
   out.twist.linear.x = speed_limit_ > 0.0 ? std::clamp(cmd_[0], -speed_limit_, speed_limit_) : cmd_[0];
   out.twist.angular.z = cmd_[1];
   publishMetrics(elapsed(), inference_ms, speed_limited, "running");
+  if (profile_compute_) {
+    diagnostic_msgs::msg::DiagnosticArray message;
+    message.header.stamp = clock_->now();
+    diagnostic_msgs::msg::DiagnosticStatus status;
+    status.name = "dwarl_observation";
+    diagnostic_msgs::msg::KeyValue value;
+    value.key = "observation_ms"; value.value = std::to_string(observation_ms); status.values.push_back(value);
+    if (recorded_observations_++ < 128) {
+      auto encode = [](const std::vector<float> & input) {
+        std::string text;
+        for (const auto v : input) {text += std::to_string(v) + ",";}
+        return text;
+      };
+      value.key = "state"; value.value = encode(state); status.values.push_back(value);
+      value.key = "lidar"; value.value = encode(lidar); status.values.push_back(value);
+    }
+    message.status.push_back(status);
+    metrics_pub_->publish(message);
+  }
   return out;
 }
 
@@ -346,6 +378,7 @@ void DwarlController::publishMetrics(
   add("cycle_ms_excluding_metrics_publish", std::to_string(cycle_ms));
   add("inference_ms", std::to_string(inference_ms));
   add("speed_limit_intervention", speed_limited ? "1" : "0");
+  add("reverse_limit_intervention", reverse_limited_ ? "1" : "0");
   add("safety_stop", status == "safety_stop" ? "1" : "0");
   add("fallback_active", "0");  // plugin itself never invokes a classical fallback
   add("command_v", std::to_string(cmd_[0]));

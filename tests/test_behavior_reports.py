@@ -80,6 +80,9 @@ def test_report_separate_images_and_readable_json(tmp_path, case):
     row = score(case, success=False, collision=True, timeout=False, travelled=1, elapsed=.1, clearance=0,
                 trajectory=[[0, 0], [1, 0]], safety_stops=1)
     row["_trace"] = trace.data
+    from dwarl.testing.compute import ComputeProfile
+
+    row["compute"] = ComputeProfile(0, .1).result(.1)
     persist_episode(tmp_path, "gazebo", case, row, "exact-hash")
     failed = persist_episode(tmp_path, "mujoco", case,
                              {"status": "infrastructure_failure", "case_id": case["id"], "error": "no sensor"},
@@ -89,6 +92,8 @@ def test_report_separate_images_and_readable_json(tmp_path, case):
     folder = (tmp_path / row["episode_file"]).parent
     assert (folder / "trajectory.png").stat().st_size > 1000
     assert (folder / "motion.png").stat().st_size > 1000
+    assert (folder / "compute.png").stat().st_size > 1000
+    assert (folder / "compute.json").is_file()
     text = (tmp_path / "report/README.md").read_text()
     assert "post-safety test command" in text
     assert "No trajectory measurements available" in text

@@ -15,7 +15,7 @@ import os
 import tempfile
 
 from ament_index_python.packages import get_package_share_directory
-from dwarl_bringup.nav import load_deploy, render_nav2_params, resolve_bundle, write_params
+from dwarl_bringup.nav import load_deploy, render_nav2_params, render_recovery, resolve_bundle, write_params
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, LogInfo, OpaqueFunction
 from launch.substitutions import LaunchConfiguration as LC
@@ -30,8 +30,9 @@ def _setup(context):
     safety = get("safety") == "true"
     ros = deploy.get("ros") or {}
     params = write_params(
-        render_nav2_params(os.path.join(here, "config", "nav2_params.yaml"), bundle, safety, get("controller")),
-        tempfile.NamedTemporaryFile("w", prefix="dwarl_nav2_", suffix=".yaml", delete=False).name,
+        render_nav2_params(os.path.join(here, "config", "nav2_params.yaml"), bundle, safety, get("controller"),
+                           get("profile_compute") == "true", get("controller_params") or None),
+        get("params_output") or tempfile.NamedTemporaryFile("w", prefix="dwarl_nav2_", suffix=".yaml", delete=False).name,
     )
     cmd_vel = get("cmd_vel_topic") or ros.get("cmd_vel_topic", "cmd_vel")
     stamped = ros.get("cmd_vel_stamped", False) if get("cmd_vel_stamped") == "" else get("cmd_vel_stamped") == "true"
@@ -44,6 +45,9 @@ def _setup(context):
             "navigate_to_pose_w_replanning_and_recovery.xml",
         )
     )
+    recovery_monitor = False
+    if safety and get("controller_params"):
+        bt, recovery_monitor = render_recovery(bt, params + ".bt.xml", get("controller_params"))
     planner = os.path.join(here, "config", f"planner_{get('planner')}.yaml")
     args = ["--ros-args", "--log-level", get("log_level")]
     nodes = ["controller_server", "planner_server", "behavior_server", "bt_navigator"] + (
@@ -73,7 +77,7 @@ def _setup(context):
             output="screen",
             arguments=args,
             parameters=[params],
-            remappings=[("cmd_vel", cmd_vel)],
+            remappings=[("cmd_vel", "cmd_vel_raw" if safety and recovery_monitor else cmd_vel)],
         ),
         Node(
             package="nav2_bt_navigator",
@@ -116,7 +120,10 @@ def generate_launch_description():
         ("use_sim_time", "false", ""),
         ("safety", "true", "collision_monitor stop + back-up-and-retry behavior tree"),
         ("planner", "navfn", "global planner: navfn | smac2d"),
-        ("controller", "rl", "local controller: rl | dwb (matched bundle limits)"),
+        ("controller", "rl", "local controller: dwarl | mppi | dwb (matched bundle limits)"),
+        ("profile_compute", "false", "publish wall-clock controller call timings"),
+        ("controller_params", "", "optional controller tuning YAML"),
+        ("params_output", "", "optional rendered parameter snapshot path"),
         ("cmd_vel_topic", "", "override the bundle's ros.cmd_vel_topic"),
         ("cmd_vel_stamped", "", "override the bundle's ros.cmd_vel_stamped (true|false)"),
         ("log_level", "info", ""),

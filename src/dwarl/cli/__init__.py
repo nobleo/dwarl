@@ -36,6 +36,9 @@ def parser():
             p.add_argument("--suite", choices=("benchmark", "validation", "test"))
             p.add_argument("--case")
             p.add_argument("--repeats", type=int)
+            p.add_argument("--controllers", type=lambda value: value.split(","),
+                           help="Gazebo controllers: dwarl,mppi,dwb (default: dwarl)")
+            p.add_argument("--profile-compute", action="store_true", default=None)
         if name in ("train", "test"):
             p.add_argument("--show", action="store_true", default=None)
     p = commands.add_parser("runs", help="list local runs")
@@ -47,6 +50,13 @@ def parser():
     p.add_argument("robot")
     p = commands.add_parser("stop", help="interrupt an owned training process")
     p.add_argument("run")
+    p = commands.add_parser("model-benchmark", help="replay recorded ONNX inputs without ROS/Gazebo")
+    p.add_argument("bundle")
+    p.add_argument("observations", help="observations.npz from a profiled DWARL Gazebo episode")
+    p.add_argument("--output", default="model-benchmark.json")
+    p.add_argument("--threads", type=int, default=1)
+    p.add_argument("--iterations", type=int, default=1000)
+    p.add_argument("--warmup", type=int, default=100)
     return root
 
 
@@ -112,7 +122,11 @@ def dispatch(args):
 
 
 def utility(args):
-    if args.command == "runs":
+    if args.command == "model-benchmark":
+        from dwarl.testing.model_benchmark import execute
+
+        execute(args.bundle, args.observations, args.output, args.threads, args.iterations, args.warmup)
+    elif args.command == "runs":
         for path in sorted(Path("runs").glob("*/status.json")):
             print(f"{path.parent}: {json.loads(path.read_text())['state']}")
     elif args.command == "doctor":

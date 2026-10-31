@@ -75,6 +75,11 @@ def persist_episode(directory, simulator, case, row, checkpoint):
     trace = row.pop("_trace", None)
     label = re.sub(r"[^a-zA-Z0-9_-]", "_", case["name"])[:80]
     target = Path("episodes") / f"{label}-{case['id'][:16]}" / simulator
+    compute = row.get("compute")
+    if compute is not None:
+        row["compute_file"] = str(target / "compute.json")
+        write_json(directory / row["compute_file"], compute)
+        row["compute"] = {k: v for k, v in compute.items() if k not in ("timings", "process_samples")}
     row.update(schema="dwarl_episode/1", simulator=simulator, checkpoint=checkpoint,
                case_name=case["name"], repeat=case["repeat"], map_file=case["map_file"],
                start=case["start"], goal=case["goal"], reference_path=case["reference_path"],

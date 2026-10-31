@@ -40,8 +40,16 @@ def execute(directory):
     show = str(request["show"]).lower()
     command = ["ros2", "launch", "dwarl_bringup", "bench.launch.py", f"model_dir:={data['bundle']}",
                f"world:={directory / 'world.sdf'}", f"map:={directory / 'world.yaml'}",
-               f"x:={x}", f"y:={y}", f"yaw:={yaw}", f"gui:={show}", f"rviz:={show}", "safety:=true"]
+               f"x:={x}", f"y:={y}", f"yaw:={yaw}", f"gui:={show}", f"rviz:={show}", "safety:=true",
+               f"controller:={data.get('controller', 'dwarl')}",
+               f"params_output:={directory / 'nav2_params.yaml'}",
+               f"profile_compute:={str(request.get('profile_compute', False)).lower()}"]
     processes = []
+    if request.get("controller_params"):
+        import shutil
+
+        shutil.copyfile(request["controller_params"], directory / "controller_overrides.yaml")
+        command.append(f"controller_params:={directory / 'controller_overrides.yaml'}")
     rclpy.init()
     node = rclpy.create_node("dwarl_case_observer")
     tf = Buffer()
@@ -50,6 +58,16 @@ def execute(directory):
              "plan": [], "clock_wall": time.monotonic(), "pose_wall": time.monotonic(), "seen_frames": set(),
              "stopping": False, "velocity": None, "command": None}
     trace, start_time, partial = None, None, None
+    compute = None
+    if request.get("profile_compute"):
+        from diagnostic_msgs.msg import DiagnosticArray
+
+        def metrics(msg):
+            if compute is not None:
+                compute.timing(msg, state["clock"] - start_time)
+
+        node.create_subscription(DiagnosticArray, "FollowPath/compute_metrics", metrics, 100)
+        node.create_subscription(DiagnosticArray, "FollowPath/metrics", metrics, 100)
     model_name = ros.get("gazebo_model", "robot")
 
     def clock(msg):
@@ -149,8 +167,16 @@ def execute(directory):
             raise RuntimeError("active Nav2 rejected the case goal")
         result = handle.get_result_async()
         start_time, wall_start = state["clock"], time.monotonic()
+        if request.get("profile_compute"):
+            import yaml
+
+            from dwarl.testing.compute import ComputeProfile
+
+            deploy = yaml.safe_load((Path(data["bundle"]) / "deploy.yaml").read_text())
+            compute = ComputeProfile(processes[0].pid, float(deploy["control"]["dt"]))
+            compute.sample()
         trajectory, travelled, clearance, collision = [state["pose"][:2]], 0., float("inf"), False
-        md = MapData.load(directory.parents[1] / case["map_file"])
+        md = MapData.load(directory.parents[2] / case["map_file"])
         footprint = np.asarray(robot["footprint"]) if robot.get("footprint") else None
         trace = BehaviorTrace(case, pose_source="Gazebo ground truth in canonical map coordinates",
                               velocity_source=f"{ros['odom_topic']} odometry twist in its child frame",
@@ -178,6 +204,8 @@ def execute(directory):
             if any(p.poll() is not None for p in processes):
                 raise RuntimeError("ROS/Gazebo exited during the episode")
             now = time.monotonic()
+            if compute is not None:
+                compute.sample()
             if now - min(state["clock_wall"], state["pose_wall"]) > request["stall_timeout"]:
                 raise TimeoutError("simulation clock or ground-truth pose stalled")
             if now - wall_start > case["time_budget"] * 10 + request["stall_timeout"]:
@@ -201,28 +229,66 @@ def execute(directory):
             if now - last_snapshot >= .5:
                 write_json(directory / "partial.json", partial)
                 last_snapshot = now
-        timed_out = state["clock"] - start_time >= case["time_budget"]
+        # Gazebo Transport updates pose on another thread. Freeze the terminal
+        # measurement so scoring, the final trace and diagnostics describe one pose.
+        final_pose, final_time = list(state["pose"]), state["clock"]
+        travelled += math.dist(trajectory[-1], final_pose[:2])
+        trajectory.append(final_pose[:2])
+        final_clearance = float(footprint_clearance(np.asarray(final_pose[:2]), final_pose[2],
+                                                  robot["footprint_radius"], footprint, md.primitives))
+        clearance = min(clearance, final_clearance)
+        collision |= final_clearance <= 0.
+        trace.sample(final_time - start_time, final_pose, command=fresh("command"),
+                     velocity=fresh("velocity"), clearance=final_clearance)
+        timed_out = final_time - start_time >= case["time_budget"]
         succeeded = result.done() and result.result().status == GoalStatus.STATUS_SUCCEEDED
         reason = ("nav2_succeeded" if succeeded else "nav2_aborted"
                   if result.done() and result.result().status == GoalStatus.STATUS_ABORTED else
                   "nav2_canceled" if result.done() else "collision" if collision else "time_budget")
-        if succeeded and math.dist(state["pose"][:2], case["goal"]) > case["tolerance"]:
+        if succeeded and math.dist(final_pose[:2], case["goal"]) > case["tolerance"]:
             reason = "nav2_succeeded_outside_goal_tolerance"
         if not result.done():
             handle.cancel_goal_async()
-        row = score(case, success=succeeded and math.dist(state["pose"][:2], case["goal"]) <= case["tolerance"],
+        row = score(case, success=succeeded and math.dist(final_pose[:2], case["goal"]) <= case["tolerance"],
                     collision=collision, timeout=timed_out, travelled=travelled,
-                    elapsed=state["clock"]-start_time, clearance=clearance if math.isfinite(clearance) else None,
+                    elapsed=final_time-start_time, clearance=clearance if math.isfinite(clearance) else None,
                      trajectory=trajectory, safety_stops=state["stops"], recoveries=state["recoveries"],
                      termination_reason=reason)
         row["_trace"] = trace.data
+        if compute is not None:
+            row["compute"] = compute.result(state["clock"] - start_time)
         row["diagnostics"] = {"localization": "spawn_transform_sim_odometry", "planner": "navfn",
                               "safety": True, "global_plans": state["plan"],
                               "collision_measurement": "ground_truth_2d_footprint_geometry",
                               "limitation": "sampled poses; not continuous contact reporting"}
+        try:
+            transform = tf.lookup_transform(ros["map_frame"], ros["base_frame"], rclpy.time.Time())
+            position = transform.transform.translation
+            orientation = transform.transform.rotation
+            row["diagnostics"]["final_pose_comparison"] = {
+                "nav2_xy_m": [position.x, position.y], "ground_truth_pose": final_pose,
+                "nav2_yaw_rad": math.atan2(2*(orientation.w*orientation.z + orientation.x*orientation.y),
+                                           1-2*(orientation.y**2 + orientation.z**2)),
+                "frames": [ros["map_frame"], ros["base_frame"]],
+                "nav2_goal_distance_m": math.dist([position.x, position.y], case["goal"]),
+                "ground_truth_goal_distance_m": math.dist(final_pose[:2], case["goal"]),
+                "localization_difference_m": math.dist([position.x, position.y], final_pose[:2]),
+                "tf_stamp_s": transform.header.stamp.sec + transform.header.stamp.nanosec * 1e-9,
+                "simulation_time_s": final_time,
+            }
+        except Exception as exc:
+            row["diagnostics"]["final_pose_comparison_error"] = str(exc)
         write_json(directory / "result.json", row)
     finally:
         if partial is not None:
+            if compute is not None:
+                partial["compute"] = compute.result(state["clock"] - start_time)
+                if compute.observations:
+                    from dwarl.runs.store import sha256
+
+                    np.savez_compressed(directory / "observations.npz",
+                                        model_sha256=sha256(Path(data["bundle"]) / "policy.onnx"), **{
+                        k: np.stack([r[k] for r in compute.observations]) for k in ("state", "lidar")})
             write_json(directory / "partial.json", partial)
         truth_node.unsubscribe("/world/default/dynamic_pose/info")
         for process in processes:

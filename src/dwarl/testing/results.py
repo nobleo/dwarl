@@ -111,6 +111,32 @@ def motion_plot(plt, row, trace, destination):
     plt.close(fig)
 
 
+def compute_plot(plt, compute, destination):
+    fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True, layout="constrained")
+    for key, label in (("controller_ms", "Controller call"), ("inference_ms", "ONNX inference"),
+                       ("observation_ms", "Observation building")):
+        points = [(r["wall_time_s"], r[key]) for r in compute["timings"] if key in r]
+        if points:
+            axes[0].plot(*zip(*points, strict=True), label=label, lw=1)
+    axes[0].axhline(compute["control_budget_ms"], color="red", linestyle="--", label="Control budget")
+    axes[0].set_ylabel("Wall-clock duration (ms)")
+    for group in ("controller_server", "gazebo", "other_stack"):
+        samples = {}
+        for row in compute["process_samples"]:
+            if row["group"] == group and row["cpu_percent"] is not None:
+                t = row["wall_time_s"]
+                samples[t] = samples.get(t, 0.) + row["cpu_percent"]
+        if samples:
+            axes[1].plot(list(samples), list(samples.values()), label=group)
+    axes[1].set(xlabel="Elapsed wall-clock time (s)", ylabel="CPU (% of one core)")
+    for ax in axes:
+        ax.grid(alpha=.2)
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(fontsize=8)
+    fig.savefig(destination, dpi=150)
+    plt.close(fig)
+
+
 def write_report(directory, workload, rows, summary):
     import matplotlib
 
@@ -121,6 +147,16 @@ def write_report(directory, workload, rows, summary):
 
     report = directory / "report"
     report.mkdir(exist_ok=True)
+    comparison = ["## Controller comparison", "",
+                  "Time and distance averages below include successful episodes only.", "",
+                  "| Backend/controller | Completed | Success | Collision | Success time (s) | Success distance (m) |",
+                  "|---|---|---|---|---|---|"]
+    for name, stats in summary.get("simulators", {}).items():
+        comparison.append(f"| {name} | {stats['completed']}/{stats['expected']} | "
+                          f"{number(stats.get('success_rate'))} | {number(stats.get('collision_rate'))} | "
+                          f"{number(stats.get('successful_mean_time_s'))} | "
+                          f"{number(stats.get('successful_mean_distance_m'))} |")
+    comparison.append("")
     lines = ["# Navigation test", "", f"Checkpoint: `{summary['checkpoint']}`", "",
              f"Workload: `{summary['workload']}`", "", f"Status: **{summary['status']}**", "",
              "Each episode has its own images and JSON files. Missing measurements are null, not zero.",
@@ -142,6 +178,24 @@ def write_report(directory, workload, rows, summary):
             target = Path(row["episode_file"]).parent
             sections.extend(["", f"## {case['name']} · {simulator} · {case['id'][:8]}", "", caption(row), "",
                              f"[Episode JSON](../{row['episode_file']})", ""])
+            if row.get("compute_file"):
+                compute = row["compute"]
+                sections.extend([f"[Compute measurements JSON](../{row['compute_file']})", "",
+                                 "| Wall-clock metric | p50 | p95 | p99 | Max |",
+                                 "|---|---|---|---|---|"])
+                for key, label in (("controller_ms", "Controller call (ms)"),
+                                   ("inference_ms", "ONNX inference (ms)"),
+                                   ("observation_ms", "Observation building (ms)")):
+                    stats = compute.get(key) or {}
+                    sections.append(f"| {label} | " + " | ".join(number(stats.get(k))
+                                    for k in ("p50", "p95", "p99", "max")) + " |")
+                sections.extend(["", f"Calls exceeding control budget: {compute['calls_over_budget']}; "
+                                 f"real-time factor: {number(compute['real_time_factor'])}.", "",
+                                 "CPU usage (100% = one logical core) and RSS are in the compute JSON; "
+                                 "Gazebo is measured separately from controller_server.", ""])
+                raw_compute = json.loads((directory / row["compute_file"]).read_text())
+                compute_plot(plt, raw_compute, directory / target / "compute.png")
+                sections.extend([f"![{case['name']} {simulator} compute](../{target}/compute.png)", ""])
             trace = {"samples": [], "events": []}
             if row.get("trace_file"):
                 trace = json.loads((directory / row["trace_file"]).read_text())
@@ -160,4 +214,4 @@ def write_report(directory, workload, rows, summary):
             if trace["samples"]:
                 motion_plot(plt, row, trace, directory / target / "motion.png")
                 sections.extend([f"![{case['name']} {simulator} motion timeline](../{target}/motion.png)", ""])
-    (report / "README.md").write_text("\n".join(lines + sections) + "\n")
+    (report / "README.md").write_text("\n".join(lines[:2] + comparison + lines[2:] + sections) + "\n")

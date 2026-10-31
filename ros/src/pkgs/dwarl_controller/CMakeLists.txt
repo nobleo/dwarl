@@ -35,7 +35,7 @@ target_link_libraries(dwarl_policy_core PUBLIC onnxruntime::onnxruntime PRIVATE 
 set_target_properties(dwarl_policy_core PROPERTIES INSTALL_RPATH "$ORIGIN")
 
 # Nav2 controller plugin
-add_library(dwarl_controller SHARED src/controller.cpp)
+add_library(dwarl_controller SHARED src/controller.cpp src/profiled_controller.cpp)
 target_link_libraries(dwarl_controller PUBLIC dwarl_policy_core
   ${geometry_msgs_TARGETS} ${diagnostic_msgs_TARGETS} ${nav2_msgs_TARGETS} ${nav_msgs_TARGETS}
   ${sensor_msgs_TARGETS} ${visualization_msgs_TARGETS}

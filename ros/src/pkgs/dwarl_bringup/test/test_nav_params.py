@@ -77,3 +77,138 @@ def test_explicit_bundle_and_matched_dwb_limits(tmp_path):
     assert cs["FollowPath"]["acc_lim_theta"] == DEPLOY["action"]["rate_limit"]["alpha_max"]
     assert cs["goal_checker"]["plugin"] == "nav2_controller::SimpleGoalChecker"
     assert cs["goal_checker"]["stateful"] is True
+
+
+def test_mppi_limits_and_optional_profiling(tmp_path):
+    bundle = _bundle(tmp_path)
+    plain = render_nav2_params(BASE, bundle, controller="mppi")
+    cs = plain["controller_server"]["ros__parameters"]
+    mppi = cs["FollowPath"]
+    assert mppi["plugin"] == "nav2_mppi_controller::MPPIController"
+    assert mppi["motion_model"] == "DiffDrive"
+    assert mppi["vx_min"] == DEPLOY["action"]["v"]["min"]
+    assert mppi["ax_min"] == -DEPLOY["action"]["rate_limit"]["a_max"]
+    assert mppi["model_dt"] == 1 / cs["controller_frequency"]
+    for controller in ("dwarl", "dwb", "mppi"):
+        base = render_nav2_params(BASE, bundle, controller=controller)
+        profiled = render_nav2_params(BASE, bundle, controller=controller, profile_compute=True)
+        wrapped = profiled["controller_server"]["ros__parameters"]["FollowPath"]
+        assert wrapped["plugin"] == "dwarl_controller::ProfiledController"
+        assert wrapped["wrapped_plugin"] == base["controller_server"]["ros__parameters"]["FollowPath"]["plugin"]
+        assert base["local_costmap"] == profiled["local_costmap"]
+
+
+def test_tuning_snapshot_preserves_shared_stack(tmp_path):
+    bundle = _bundle(tmp_path)
+    tuning = tmp_path / "tuning.yaml"
+    tuning.write_text(yaml.safe_dump({"mppi": {"batch_size": 2000, "PathAlignCritic.cost_weight": 8.0}}))
+    baseline = render_nav2_params(BASE, bundle, controller="mppi")
+    tuned = render_nav2_params(BASE, bundle, controller="mppi", controller_params=tuning, profile_compute=True)
+    assert tuned["controller_server"]["ros__parameters"]["FollowPath"]["batch_size"] == 2000
+    for section in ("local_costmap", "global_costmap", "collision_monitor", "behavior_server"):
+        assert tuned[section] == baseline[section]
+    tuning.write_text("mppi:\n  plugin: other\n")
+    with pytest.raises(ValueError, match="cannot replace"):
+        render_nav2_params(BASE, bundle, controller="mppi", controller_params=tuning)
+
+
+def test_rotation_envelope_contains_braking_sweep():
+    import math
+
+    from dwarl_bringup.nav import _rotation_envelope
+
+    footprint = DEPLOY["robot"]["footprint"]
+    for omega in (-1., 1.):
+        polygon = _rotation_envelope(footprint, omega, 2., .15, .035)
+        # Independently sample intermediate stopping sweeps, including the maximum
+        # translational drift in either axis. Every physical corner must stay inside.
+        for index in range(1001):
+            theta = (omega * .15 + omega * abs(omega) / 4) * index / 1000
+            for x, y in footprint:
+                for dx, dy in ((-.0325, -.0325), (-.0325, .0325), (.0325, -.0325), (.0325, .0325)):
+                    px = math.cos(theta)*x - math.sin(theta)*y + dx
+                    py = math.sin(theta)*x + math.cos(theta)*y + dy
+                    for a, b in zip(polygon, polygon[1:] + polygon[:1]):
+                        assert (b[0]-a[0])*(py-a[1]) - (b[1]-a[1])*(px-a[0]) >= -1e-10
+
+
+def test_shared_safety_tuning_matches_all_controllers(tmp_path):
+    bundle = _bundle(tmp_path)
+    path = tmp_path / "safety.yaml"
+    path.write_text(yaml.safe_dump({"safety": {"rotation_sweep": True},
+                                   "progress_checker": {"movement_time_allowance": 8.0},
+                                   "dwarl": {"safety_grace": .4}}))
+    variants = [render_nav2_params(BASE, bundle, controller=c, controller_params=path)
+                for c in ("dwarl", "mppi", "dwb")]
+    assert all(v["collision_monitor"] == variants[0]["collision_monitor"] for v in variants)
+    assert all(v["controller_server"]["ros__parameters"]["progress_checker"]["movement_time_allowance"] == 8.
+               for v in variants)
+    assert variants[0]["controller_server"]["ros__parameters"]["FollowPath"]["safety_grace"] == .4
+
+
+def test_recovery_variant_requires_backup_and_replans(tmp_path):
+    import xml.etree.ElementTree as ET
+
+    from dwarl_bringup.nav import render_recovery
+
+    base = BASE.parent.parent / "behavior_trees/dwarl_safety_retry.xml"
+    tuning = tmp_path / "tuning.yaml"
+    tuning.write_text(yaml.safe_dump({"recovery": {"through_monitor": True, "retry_count": 1,
+                                                 "backup_required": True, "replan_after_backup": True}}))
+    output, monitor = render_recovery(base, tmp_path / "tree.xml", tuning)
+    tree = ET.parse(output)
+    assert monitor
+    assert tree.find(".//RecoveryNode[@name='SafetyRetry']").get("number_of_retries") == "1"
+    sequence = tree.find(".//Sequence[@name='BackUpAndRetry']")
+    assert sequence.find("ForceSuccess") is None
+    assert sequence.find("Sequence/BackUp") is not None
+    assert list(sequence)[-1].tag == "ComputePathToPose"
+    assert render_recovery(base, tmp_path / "unused.xml") == (str(base), False)
+
+
+def test_monitor_only_policy_keeps_external_collision_monitor(tmp_path):
+    bundle = _bundle(tmp_path)
+    tuning = tmp_path / "monitor_only.yaml"
+    tuning.write_text(yaml.safe_dump({"dwarl": {"safety_state_topic": ""}}))
+    baseline = render_nav2_params(BASE, bundle, controller="dwarl")
+    tuned = render_nav2_params(BASE, bundle, controller="dwarl", controller_params=tuning)
+    assert tuned["controller_server"]["ros__parameters"]["FollowPath"]["safety_state_topic"] == ""
+    assert tuned["collision_monitor"] == baseline["collision_monitor"]
+    assert tuned["collision_monitor"]["ros__parameters"]["SafetyStop"]["action_type"] == "stop"
+
+
+def test_shared_reverse_limit_cannot_expand_trained_limits(tmp_path):
+    bundle = _bundle(tmp_path)
+    tuning = tmp_path / "forward.yaml"
+    tuning.write_text("motion_limits:\n  min_linear_velocity: 0.0\n")
+    for controller, key in (("dwarl", "min_linear_velocity"), ("dwb", "min_vel_x"), ("mppi", "vx_min")):
+        params = render_nav2_params(BASE, bundle, controller=controller, controller_params=tuning)
+        assert params["controller_server"]["ros__parameters"]["FollowPath"][key] == 0.
+    tuning.write_text("motion_limits:\n  min_linear_velocity: -2.0\n")
+    with pytest.raises(ValueError, match="trained minimum"):
+        render_nav2_params(BASE, bundle, controller="dwarl", controller_params=tuning)
+
+
+def test_goal_margin_is_shared_and_cannot_relax_scoring(tmp_path):
+    bundle = _bundle(tmp_path)
+    tuning = tmp_path / "goal.yaml"
+    tuning.write_text("goal_checker:\n  xy_goal_tolerance: 0.25\n")
+    for controller in ("dwarl", "mppi", "dwb"):
+        params = render_nav2_params(BASE, bundle, controller=controller, controller_params=tuning)
+        assert params["controller_server"]["ros__parameters"]["goal_checker"]["xy_goal_tolerance"] == .25
+    tuning.write_text("goal_checker:\n  xy_goal_tolerance: 0.4\n")
+    with pytest.raises(ValueError, match="scored contract"):
+        render_nav2_params(BASE, bundle, controller="dwarl", controller_params=tuning)
+
+
+def test_predictive_approach_retains_stop_guard(tmp_path):
+    bundle = _bundle(tmp_path)
+    tuning = tmp_path / "approach.yaml"
+    tuning.write_text("safety:\n  approach_time: 1.2\n")
+    baseline = render_nav2_params(BASE, bundle, controller="dwarl")
+    tuned = render_nav2_params(BASE, bundle, controller="dwarl", controller_params=tuning)
+    cm = tuned["collision_monitor"]["ros__parameters"]
+    assert cm["SafetyStop"] == baseline["collision_monitor"]["ros__parameters"]["SafetyStop"]
+    assert cm["polygons"] == ["SafetyStop", "FootprintApproach"]
+    assert cm["FootprintApproach"]["action_type"] == "approach"
+    assert cm["FootprintApproach"]["time_before_collision"] == 1.2

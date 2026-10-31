@@ -20,7 +20,17 @@ def score(case, *, success, collision, timeout, travelled, elapsed, clearance,
 def summarize(rows, expected):
     completed = [r for r in rows if r["status"] == "completed"]
     count = len(completed)
+    def mean(key, selected):
+        values = [r[key] for r in selected if r.get(key) is not None]
+        return sum(values) / len(values) if values else None
+
+    successful = [r for r in completed if r["success"]]
     return {"expected": expected, "completed": count,
+            "successful_mean_time_s": mean("completion_time", successful),
+            "successful_mean_distance_m": mean("travelled_distance", successful),
+            "mean_min_clearance_m": mean("clearance", completed),
+            "mean_recovery_actions": mean("recovery_actions", completed),
+            "mean_safety_stops": mean("safety_stops", completed),
             "infrastructure_failures": sum(r["status"] == "infrastructure_failure" for r in rows),
             "interrupted": sum(r["status"] == "interrupted" for r in rows),
             "success_rate": sum(r["success"] for r in completed) / count if count else None,

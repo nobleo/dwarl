@@ -53,6 +53,10 @@ def execute(command, cfg):
         from dwarl.testing.backends.gazebo import prerequisites
 
         prerequisites()
+        for controller in cfg.test.controllers:
+            package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core"}.get(controller)
+            if package and subprocess.run(["ros2", "pkg", "prefix", package], capture_output=True).returncode:
+                raise ValueError(f"ROS package {package} unavailable")
         adapter = contract.robot.ros.get("sim_launch")
         if not adapter:
             raise ValueError("robot has no ros.sim_launch adapter")
@@ -60,3 +64,5 @@ def execute(command, cfg):
         if result.returncode:
             raise ValueError(f"robot ROS package {adapter.package} unavailable; source its built workspace")
     print(f"Prepare/reuse ONNX bundle; materialize {cfg.test.case or cfg.test.suite}; run {cfg.test.sim}")
+    print(f"Controllers: {', '.join(cfg.test.controllers)}; "
+          f"case cap per controller: {cfg.test.max_cases or 'all'}; compute profiling: {cfg.test.profile_compute}")

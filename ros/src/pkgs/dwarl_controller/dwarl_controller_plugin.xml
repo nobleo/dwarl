@@ -2,4 +2,7 @@
   <class type="dwarl_controller::DwarlController" base_class_type="nav2_core::Controller">
     <description>RL local planner trained with DWARL (lidar + lookahead goal -> cmd_vel)</description>
   </class>
+  <class type="dwarl_controller::ProfiledController" base_class_type="nav2_core::Controller">
+    <description>Optional wall-clock timing wrapper for benchmark controllers.</description>
+  </class>
 </library>
