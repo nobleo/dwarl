@@ -27,7 +27,7 @@ MANIFEST
 *.key
 .venv/
 venv/
-env/
+/env/
 ENV/
 .python-version
 
@@ -56,7 +56,7 @@ ros/.cache/
 
 # --- Project-specific ---
 data/
-runs/
+/runs/
 outputs/
 .dwarl/
 log/
