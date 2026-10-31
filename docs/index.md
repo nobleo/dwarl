@@ -1,0 +1,44 @@
+# DWARL
+
+Train a differential-drive neural local planner, evaluate exact checkpoints, and
+install them into a ROS 2/Nav2 robot integration.
+
+**Start with the [Cody walkthrough](cody.md)** for the complete first-time workflow.
+No pretrained navigation-quality policy is included.
+
+## What can I do?
+
+| Goal | Command / guide |
+| --- | --- |
+| Inspect robot geometry on a floor | `dwarl robot view <robot-repository>` |
+| Check model parameters | `dwarl robot check <robot-repository>` |
+| Check simulator installation | `dwarl doctor --sim mujoco` or `--sim gazebo` |
+| Generate robot-sized data and train | `dwarl train <robot-repository>` |
+| Watch training | Add `--show`; [monitor TensorBoard](cody.md#monitor-training) |
+| Run in the background | Add `--detached`; stop with `dwarl stop <run>` |
+| List and resume runs | `dwarl runs list`; `dwarl train --resume <run>` |
+| Evaluate canonical cases | `dwarl test --run <run> --suite benchmark` |
+| Evaluate validation / held-out data | `--suite validation` / `--suite test` |
+| Compare MuJoCo and Gazebo | `dwarl test --run <run> --sim both` |
+| Watch a case | `dwarl test --run <run> --case doorway --show` |
+| Install a checkpoint into a robot | `dwarl deploy <robot-repository> --run <run>` |
+| See all flags and settings | [Generated command reference](reference.md) |
+| Understand scores and output files | [Results](results.md) |
+
+Use `--help` on any command. Train, test and deploy also offer `--print-config`
+and `--dry-run`. [Configuration](configuration.md) explains overrides and selection.
+
+## Install
+
+Use Python 3.12 and [uv](https://docs.astral.sh/uv/):
+
+```bash
+git clone https://github.com/nobleo/dwarl.git
+cd dwarl
+uv sync --group dev
+source .venv/bin/activate
+dwarl --help
+```
+
+Repository access is required while the project is private. For Gazebo/Nav2,
+follow [ROS setup](ros.md) and build your robot workspace first.

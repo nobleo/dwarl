@@ -3,6 +3,12 @@
 Train a differential-drive local planner, test an exact checkpoint, and install it into a robot integration.
 The Python package and command are `dwarl`.
 
+**[First-time Cody walkthrough](docs/cody.md)** · **[Documentation overview](docs/index.md)**
+
+The searchable documentation site is generated on every main push; see
+[preview and Pages setup](docs/documentation.md). The walkthrough includes
+TensorBoard, resume, paired simulator testing and deployment.
+
 DWARL is experimental. No pretrained navigation policy is included; evaluate trained
 policies for your robot and operating environment before deployment.
 

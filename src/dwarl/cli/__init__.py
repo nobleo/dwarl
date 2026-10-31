@@ -136,8 +136,11 @@ def utility(args):
             import mujoco
             import mujoco.viewer
 
-            model = mujoco.MjModel.from_xml_string(xml)
-            mujoco.viewer.launch(model, mujoco.MjData(model))
+            from dwarl.robot.view import inspection_model
+
+            model, data = inspection_model(xml)
+            print("Robot inspection on a floor (simplified training geometry). Close the window to exit.", flush=True)
+            mujoco.viewer.launch(model, data)
     elif args.command == "stop":
         from dwarl.runs.process import stop
 

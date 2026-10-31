@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import multiprocessing as mp
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -180,12 +181,23 @@ def generate_dataset(
         gens: dict[str, int] = {}
         seed = base_seed + s_idx * 10_000_000
         attempts = 0
+        started = time.monotonic()
+        log(f"[datagen] {split}: starting {count} maps with {workers} worker(s)")
         with mp.get_context("spawn").Pool(workers) as pool:
             while len(maps) < count:
                 batch = [(cfg, seed + k) for k in range(max(workers * 2, count - len(maps)))]
                 seed += len(batch)
-                attempts += len(batch)
-                for md in pool.imap(_worker, batch):
+                results = pool.imap(_worker, batch)
+                remaining = len(batch)
+                while remaining:
+                    try:
+                        md = results.next(timeout=10)
+                    except mp.TimeoutError:
+                        log(f"[datagen] {split}: {len(maps)}/{count} maps, planning paths "
+                            f"({time.monotonic() - started:.0f}s elapsed)")
+                        continue
+                    remaining -= 1
+                    attempts += 1
                     if md is None or len(maps) >= count:
                         continue
                     fname = f"map_{len(maps):05d}.npz"
@@ -195,6 +207,8 @@ def generate_dataset(
                         save_preview(md, out / "previews" / f"{split}_{len(maps):05d}_{md.generator}.png")
                     maps.append(fname)
                     gens[md.generator] = gens.get(md.generator, 0) + 1
+                    log(f"[datagen] {split}: {len(maps)}/{count} maps "
+                        f"({attempts} attempts, {time.monotonic() - started:.0f}s elapsed)")
                 log(f"[datagen] {split}: {len(maps)}/{count} maps (attempts {attempts})")
                 if attempts > 50 * count + 100:
                     raise RuntimeError(f"too many rejected maps for split {split}; check datagen config")

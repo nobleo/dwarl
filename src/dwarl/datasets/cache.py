@@ -14,6 +14,7 @@ def prepare(public, profile, root):
     data = public.train.data
     if data.path:
         path = Path(data.path)
+        print(f"Dataset: checking supplied data at {path}", flush=True)
         index = json.loads((path / "index.json").read_text())
         radius = index.get("config", {}).get("robot_radius")
         if (radius is None or radius + 1e-3 < profile.footprint_radius) and not data.allow_custom:
@@ -30,15 +31,20 @@ def prepare(public, profile, root):
     key = identity({"version": GENERATOR_VERSION, "parameters": recipe})
     root = Path(root).resolve()
     path = root / key
+    print(f"Dataset: checking cache {path} (waiting if another process is generating it)", flush=True)
     with lock(root / f".{key}.lock"):
         if not path.exists():
+            print(f"Dataset: generating {dict(cfg.splits)} maps, {data.pairs_per_map} pairs/map; "
+                  f"workers={data.workers}. First-time generation can take several minutes.", flush=True)
             from dwarl.datasets.generation.pipeline import generate_dataset
 
             with tempfile.TemporaryDirectory(prefix=".dataset-", dir=root) as temp:
                 staged = Path(temp) / "data"
-                generate_dataset(recipe, staged, workers=data.workers)
+                generate_dataset(recipe, staged, workers=data.workers, log=lambda message: print(message, flush=True))
                 write_json(staged / "cache.json", {"identity": key, "recipe": recipe})
                 staged.rename(path)
+        else:
+            print("Dataset: reusing cached maps", flush=True)
         if json.loads((path / "cache.json").read_text())["identity"] != key:
             raise ValueError(f"dataset cache identity mismatch: {path}")
     return path, sha256(path / "index.json")

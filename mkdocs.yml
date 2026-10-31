@@ -1,0 +1,19 @@
+site_name: DWARL
+site_description: Train, test and deploy a neural local planner
+site_url: https://nobleo.github.io/dwarl/
+repo_url: https://github.com/nobleo/dwarl
+theme:
+  name: mkdocs
+nav:
+  - Start here: index.md
+  - Cody walkthrough: cody.md
+  - Configuration: configuration.md
+  - Results: results.md
+  - ROS setup: ros.md
+  - Command reference: reference.md
+  - Documentation maintenance: documentation.md
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - scripts/docs_reference.py

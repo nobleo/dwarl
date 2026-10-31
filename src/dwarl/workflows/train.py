@@ -13,6 +13,7 @@ from dwarl.runs.store import complete_checkpoint, lock, resolve_checkpoint, reso
 
 
 def execute(cfg, assignments=()):
+    print("Training: loading dependencies and preparing inputs…", flush=True)
     import torch
 
     from dwarl.artifacts.exporter import deploy_spec
@@ -50,6 +51,8 @@ def execute(cfg, assignments=()):
         run = Path("runs") / f"{time.strftime('%Y%m%d-%H%M%S')}_{name}_{uuid4().hex[:6]}"
         run = run.resolve()
         run.mkdir(parents=True)
+        print(f"Training run: {run}", flush=True)
+        print("Training: building and freezing robot assets…", flush=True)
         contract = build_contract(cfg)
         materialize(contract, run / "robot")
         dataset, dataset_id = prepare(cfg, profile, Path(".dwarl/datasets"))
@@ -77,6 +80,7 @@ def execute(cfg, assignments=()):
         try:
             from rsl_rl.runners import OnPolicyRunner
 
+            print(f"Training: creating {cfg.train.num_envs} environments on {contract.device}…", flush=True)
             env = NavVecEnv(contract)
             if cfg.train.deployment_ready:
                 deploy_spec(contract, env)  # fail before PPO starts
@@ -95,6 +99,7 @@ def execute(cfg, assignments=()):
                 if infos and "dwarl" in infos:
                     restore(env, infos["dwarl"])
             print(f"Training run: {run}", flush=True)
+            print(f"TensorBoard: tensorboard --logdir {run / 'checkpoints'}", flush=True)
             try:
                 runner.learn(max(0, cfg.train.max_iterations - runner.current_learning_iteration))
                 state = "finished"

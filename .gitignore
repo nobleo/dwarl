@@ -70,3 +70,5 @@ log/
 # --- OS ---
 .DS_Store
 Thumbs.db
+.docs-venv/
+site/
