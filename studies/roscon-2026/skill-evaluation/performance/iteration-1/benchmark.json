@@ -1,0 +1,210 @@
+{
+  "metadata": {
+    "skill_name": "dwarl-performance-loop",
+    "skill_path": ".agents/skills/dwarl-performance-loop",
+    "executor_model": null,
+    "analyzer_model": "openai/gpt-6-astra",
+    "timestamp": "2026-10-31T15:20:02.488571+00:00",
+    "evals_run": [
+      1,
+      2
+    ],
+    "runs_per_configuration": 1,
+    "aggregation": "Equal-weight case mean; sample standard deviation across cases only; missing metrics and undefined standard deviations are null."
+  },
+  "runs": [
+    {
+      "eval_id": 1,
+      "eval_name": "performance-1",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "pass_rate": 1.0,
+        "time_seconds": null,
+        "tokens": null,
+        "tool_calls": null,
+        "errors": null
+      },
+      "expectations": [
+        {
+          "text": "Rejects causal attribution to a limiter that never activated",
+          "passed": true,
+          "evidence": "outputs/output.md: 'zero recorded reverse-limit interventions means the regression cannot be attributed to reverse limiting'"
+        },
+        {
+          "text": "Proposes repeated matched validation before selection",
+          "passed": true,
+          "evidence": "outputs/output.md: 'two sequential matched on/off validation pairs on the same eight cases'"
+        },
+        {
+          "text": "Retains collision outcomes rather than loosening scoring",
+          "passed": true,
+          "evidence": "outputs/output.md: 'Require repeatable success improvement with no collision-rate increase or clearance degradation'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "performance-1",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "pass_rate": 1.0,
+        "time_seconds": null,
+        "tokens": null,
+        "tool_calls": null,
+        "errors": null
+      },
+      "expectations": [
+        {
+          "text": "Rejects causal attribution to a limiter that never activated",
+          "passed": true,
+          "evidence": "outputs/output.md: 'zero reverse-limit interventions means the degradation cannot be attributed to active limiting'"
+        },
+        {
+          "text": "Proposes repeated matched validation before selection",
+          "passed": true,
+          "evidence": "outputs/output.md: 'Repeat matched limiter-off/on validation runs with the same checkpoint, eight cases, seeds, stack settings and source revision'"
+        },
+        {
+          "text": "Retains collision outcomes rather than loosening scoring",
+          "passed": true,
+          "evidence": "outputs/output.md: 'compare success, collisions, clearance and recovery before deciding whether to retain it'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "performance-2",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "pass_rate": 1.0,
+        "time_seconds": null,
+        "tokens": null,
+        "tool_calls": null,
+        "errors": null
+      },
+      "expectations": [
+        {
+          "text": "Rejects direct comparison of different workloads",
+          "passed": true,
+          "evidence": "outputs/output.md: '40.6% on workload A and 81.3% on workload B are not a matched comparison'"
+        },
+        {
+          "text": "Honors the no-improvement stopping budget",
+          "passed": true,
+          "evidence": "outputs/output.md: 'Allow **zero additional training trials**'"
+        },
+        {
+          "text": "Keeps held-out test cases out of selection",
+          "passed": true,
+          "evidence": "outputs/output.md: 'Freeze the selected configuration before one final held-out test; keep held-out outcomes out of tuning'"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "performance-2",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "passed": 3,
+        "failed": 0,
+        "total": 3,
+        "pass_rate": 1.0,
+        "time_seconds": null,
+        "tokens": null,
+        "tool_calls": null,
+        "errors": null
+      },
+      "expectations": [
+        {
+          "text": "Rejects direct comparison of different workloads",
+          "passed": true,
+          "evidence": "outputs/output.md: '40.6% on workload A and 81.3% on workload B are not comparable'"
+        },
+        {
+          "text": "Honors the no-improvement stopping budget",
+          "passed": true,
+          "evidence": "outputs/output.md: 'Stop the current training sweep.'"
+        },
+        {
+          "text": "Keeps held-out test cases out of selection",
+          "passed": true,
+          "evidence": "outputs/output.md: 'Reserve held-out tests until selection is frozen.'"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": null,
+        "stddev": null,
+        "min": null,
+        "max": null
+      },
+      "tokens": {
+        "mean": null,
+        "stddev": null,
+        "min": null,
+        "max": null
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 1.0,
+        "stddev": 0.0,
+        "min": 1.0,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": null,
+        "stddev": null,
+        "min": null,
+        "max": null
+      },
+      "tokens": {
+        "mean": null,
+        "stddev": null,
+        "min": null,
+        "max": null
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.00",
+      "time_seconds": null,
+      "tokens": null
+    }
+  },
+  "notes": [
+    "Baseline agents inherited repository guidance; without_skill is not an instruction-free control.",
+    "Only one output per condition per case: three cases total (two performance, one setup); no repeatability estimate.",
+    "These are output-level reasoning checks, not measurements of robot, navigation, training or simulation performance.",
+    "No causal improvement claim is supported by this small, non-isolated comparison.",
+    "Executor token and elapsed-time metrics were unavailable and remain null; no efficiency comparison is possible.",
+    "Execution transcripts were not supplied; process claims and command execution cannot be independently verified.",
+    "All six performance assertions pass in both conditions; they do not discriminate skill value in these outputs.",
+    "Pass-rate standard deviation, where available, is across different cases, not repeated executions. With one case it is null."
+  ]
+}

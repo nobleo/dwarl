@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "eval_name": "performance-1",
+  "prompt": "We enabled a forward-only limiter. DWARL went from 5/8 successes with zero collisions to 4/8 with one collision. All eight new episodes recorded zero reverse-limit interventions. Can we say the limiter made DWARL worse? Give a short decision and the next experiment, without running anything.",
+  "assertions": [
+    "Rejects causal attribution to a limiter that never activated",
+    "Proposes repeated matched validation before selection",
+    "Retains collision outcomes rather than loosening scoring"
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "expectations": [
+    {
+      "text": "Rejects causal attribution to a limiter that never activated",
+      "passed": true,
+      "evidence": "outputs/output.md: 'zero recorded reverse-limit interventions means the regression cannot be attributed to reverse limiting'"
+    },
+    {
+      "text": "Proposes repeated matched validation before selection",
+      "passed": true,
+      "evidence": "outputs/output.md: 'two sequential matched on/off validation pairs on the same eight cases'"
+    },
+    {
+      "text": "Retains collision outcomes rather than loosening scoring",
+      "passed": true,
+      "evidence": "outputs/output.md: 'Require repeatable success improvement with no collision-rate increase or clearance degradation'"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 1101,
+    "transcript_chars": null,
+    "total_tool_calls": null,
+    "total_tokens": null
+  },
+  "timing": {
+    "executor_duration_seconds": null,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": null
+  },
+  "claims": [],
+  "user_notes_summary": {
+    "uncertainties": [
+      "No transcript or executor metrics supplied."
+    ],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "Assertions do not check command validity or whether stopping patience was predeclared; both conditions pass all reasoning assertions."
+      }
+    ],
+    "overall": "Output-only semantic grading; not an execution or robot-performance test."
+  }
+}

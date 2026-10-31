@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "eval_name": "performance-2",
+  "prompt": "The old policy scored 40.6% on workload A, while a new reward trial scored 81.3% on workload B. I want to call that an improvement and keep training until 95%. We have already had two comparable trials with no useful gain. Give a bounded evidence-based decision and commands for a proper next check; do not execute experiments.",
+  "assertions": [
+    "Rejects direct comparison of different workloads",
+    "Honors the no-improvement stopping budget",
+    "Keeps held-out test cases out of selection"
+  ]
+}

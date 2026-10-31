@@ -1,0 +1,52 @@
+{
+  "expectations": [
+    {
+      "text": "Rejects direct comparison of different workloads",
+      "passed": true,
+      "evidence": "outputs/output.md: '40.6% on workload A and 81.3% on workload B are not comparable'"
+    },
+    {
+      "text": "Honors the no-improvement stopping budget",
+      "passed": true,
+      "evidence": "outputs/output.md: 'Stop the current training sweep.'"
+    },
+    {
+      "text": "Keeps held-out test cases out of selection",
+      "passed": true,
+      "evidence": "outputs/output.md: 'Reserve held-out tests until selection is frozen.'"
+    }
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": 1.0
+  },
+  "execution_metrics": {
+    "output_chars": 3417,
+    "transcript_chars": null,
+    "total_tool_calls": null,
+    "total_tokens": null
+  },
+  "timing": {
+    "executor_duration_seconds": null,
+    "grader_duration_seconds": null,
+    "total_duration_seconds": null
+  },
+  "claims": [],
+  "user_notes_summary": {
+    "uncertainties": [
+      "No transcript or executor metrics supplied."
+    ],
+    "needs_review": [],
+    "workarounds": []
+  },
+  "eval_feedback": {
+    "suggestions": [
+      {
+        "reason": "Assertions do not check command validity or whether stopping patience was predeclared; both conditions pass all reasoning assertions."
+      }
+    ],
+    "overall": "Output-only semantic grading; not an execution or robot-performance test."
+  }
+}

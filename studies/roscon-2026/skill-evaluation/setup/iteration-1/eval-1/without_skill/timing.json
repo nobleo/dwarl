@@ -1,0 +1,6 @@
+{
+  "total_tokens": null,
+  "duration_ms": null,
+  "total_duration_seconds": null,
+  "note": "Harness did not expose timing/token metrics."
+}

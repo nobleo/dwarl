@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "setup-1",
+  "prompt": "I have a new differential-drive robot under /robots/rover. The lidar is mounted upside down 0.3 m ahead of base_link, covers only the front, and cmd_vel expects TwistStamped. Can I just use another robot's policy and run a three-controller MuJoCo comparison? Give the correct setup/check sequence without modifying files or launching anything.",
+  "assertions": [
+    "Checks full lidar transform and TwistStamped interface",
+    "Rejects blind reuse of another robot's policy",
+    "States MPPI/DWB comparison requires Gazebo",
+    "Identifies rear visibility limitation"
+  ]
+}
