@@ -2,12 +2,15 @@
 
 
 def score(case, *, success, collision, timeout, travelled, elapsed, clearance,
-          trajectory=None, safety_stops=None, recoveries=None):
+           trajectory=None, safety_stops=None, recoveries=None, stuck=None, termination_reason=None):
     import numpy as np
 
     reference = float(np.linalg.norm(np.diff(case["reference_path"], axis=0), axis=1).sum())
     success = bool(success and not collision)
+    outcome = ("collision" if collision else "success" if success else "stuck" if stuck else
+               "timeout" if timeout else "aborted" if termination_reason == "nav2_aborted" else "terminated")
     return {"case_id": case["id"], "status": "completed", "success": success,
+            "outcome": outcome, "stuck": stuck, "termination_reason": termination_reason,
             "collision": bool(collision), "timeout": bool(timeout), "travelled_distance": travelled,
             "reference_path_length": reference, "completion_time": elapsed,
             "clearance": clearance, "path_efficiency": min(1., reference / max(travelled, 1e-9)) if success else 0.,

@@ -7,6 +7,7 @@ from dwarl.artifacts.prepare import prepare_policy
 from dwarl.runs.store import resolve_checkpoint, resolve_run, write_json
 from dwarl.testing.cases import materialize
 from dwarl.testing.scoring import summarize
+from dwarl.testing.trace import persist_episode
 from dwarl.training.contract import load_contract
 
 
@@ -37,15 +38,15 @@ def execute(cfg, checkpoint=None):
                     backend = GazeboBackend(contract, bundle, workload, out, cfg.test)
                 for case in workload["cases"]:
                     try:
-                        rows[name].append(backend.execute_case(case))
+                        row = backend.execute_case(case)
                     except KeyboardInterrupt:
-                        rows[name].append({**getattr(backend, "partial", {}), "case_id": case["id"],
-                                           "status": "interrupted"})
+                        row = {**getattr(backend, "partial", {}), "case_id": case["id"], "status": "interrupted"}
+                        rows[name].append(persist_episode(out, name, case, row, checkpoint.sha256))
                         raise
                     except Exception as exc:
-                        rows[name].append({**getattr(backend, "partial", {}),
-                                           "case_id": case["id"], "status": "infrastructure_failure",
-                                           "error": str(exc)})
+                        row = {**getattr(backend, "partial", {}),
+                               "case_id": case["id"], "status": "infrastructure_failure", "error": str(exc)}
+                    rows[name].append(persist_episode(out, name, case, row, checkpoint.sha256))
                     write_json(out / "episodes.json", rows)
             finally:
                 if backend is not None:

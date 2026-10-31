@@ -13,11 +13,13 @@ from dwarl.datasets.generation.mapdata import MapData
 from dwarl.navigation.clearance import footprint_clearance
 from dwarl.runs.store import write_json
 from dwarl.testing.scoring import score
+from dwarl.testing.trace import BehaviorTrace
 
 
 def execute(directory):
     import rclpy
     from action_msgs.msg import GoalStatus
+    from geometry_msgs.msg import Twist, TwistStamped
     from gz.msgs10.pose_v_pb2 import Pose_V
     from gz.transport13 import Node as GzNode
     from lifecycle_msgs.srv import GetState
@@ -46,7 +48,8 @@ def execute(directory):
     node.tf_listener = TransformListener(tf, node)
     state = {"clock": None, "scan": None, "odom": False, "pose": None, "stops": 0, "recoveries": 0,
              "plan": [], "clock_wall": time.monotonic(), "pose_wall": time.monotonic(), "seen_frames": set(),
-             "stopping": False}
+             "stopping": False, "velocity": None, "command": None}
+    trace, start_time, partial = None, None, None
     model_name = ros.get("gazebo_model", "robot")
 
     def clock(msg):
@@ -66,12 +69,37 @@ def execute(directory):
         stopping = msg.action_type == CollisionMonitorState.STOP
         if stopping and not state["stopping"]:
             state["stops"] += 1
+        if trace is not None and stopping != state["stopping"]:
+            trace.event("safety_stop" if stopping else "safety_resume", state["clock"] - start_time, state["pose"])
         state["stopping"] = stopping
+
+    def odometry(msg):
+        state["odom"] = True
+        state["velocity"] = (state["clock"], (msg.twist.twist.linear.x, msg.twist.twist.angular.z))
+
+    def commanded(msg):
+        twist = msg.twist if ros.get("cmd_vel_stamped", True) else msg
+        state["command"] = (state["clock"], (twist.linear.x, twist.angular.z))
+
+    def recovery(msg):
+        count = msg.feedback.number_of_recoveries
+        if count > state["recoveries"] and trace is not None:
+            trace.event("recovery", state["clock"] - start_time, state["pose"],
+                        count=count, increase=count-state["recoveries"])
+        state["recoveries"] = max(state["recoveries"], count)
+
+    def fresh(key):
+        value = state[key]
+        if value is None or value[0] is None or not 0 <= state["clock"] - value[0] <= .5:
+            return None
+        return value[1]
 
     node.create_subscription(Clock, "/clock", clock, 10)
     node.create_subscription(LaserScan, ros["scan_topic"], lambda msg: state.update(scan=msg.header.frame_id),
                              qos_profile_sensor_data)
-    node.create_subscription(Odometry, ros["odom_topic"], lambda msg: state.update(odom=True), qos_profile_sensor_data)
+    node.create_subscription(Odometry, ros["odom_topic"], odometry, qos_profile_sensor_data)
+    node.create_subscription(TwistStamped if ros.get("cmd_vel_stamped", True) else Twist,
+                             ros["cmd_vel_topic"], commanded, qos_profile_sensor_data)
     truth_node = GzNode()
     truth_node.subscribe(Pose_V, "/world/default/dynamic_pose/info", truth)
     node.create_subscription(CollisionMonitorState, "collision_monitor_state", safety, 10)
@@ -114,8 +142,7 @@ def execute(directory):
         goal.pose.header.frame_id = ros["map_frame"]
         goal.pose.pose.position.x, goal.pose.pose.position.y = case["goal"]
         goal.pose.pose.orientation.w = 1.
-        sent = client.send_goal_async(goal, feedback_callback=lambda msg: state.update(
-            recoveries=max(state["recoveries"], msg.feedback.number_of_recoveries)))
+        sent = client.send_goal_async(goal, feedback_callback=recovery)
         spin_until(sent.done, request["startup_timeout"])
         handle = sent.result()
         if not handle.accepted:
@@ -125,7 +152,27 @@ def execute(directory):
         trajectory, travelled, clearance, collision = [state["pose"][:2]], 0., float("inf"), False
         md = MapData.load(directory.parents[1] / case["map_file"])
         footprint = np.asarray(robot["footprint"]) if robot.get("footprint") else None
+        trace = BehaviorTrace(case, pose_source="Gazebo ground truth in canonical map coordinates",
+                              velocity_source=f"{ros['odom_topic']} odometry twist in its child frame",
+                              command_source=f"{ros['cmd_vel_topic']} after collision monitor or direct Nav2 recovery",
+                              clearance_source="sampled ground-truth 2D footprint geometry, not contact sensors")
+        trace.data["freshness"] = "command/velocity are latest received samples, null after 0.5 s of simulation time"
+        trace.data["sample_convention"] = "ground-truth pose samples with latest fresh ROS command/velocity"
+        state["stops"], state["recoveries"] = 0, 0
+        distance = float(footprint_clearance(np.asarray(state["pose"][:2]), state["pose"][2],
+                                           robot["footprint_radius"], footprint, md.primitives))
+        clearance = distance
+        collision = distance <= 0.
+        trace.sample(0., state["pose"], command=fresh("command"), velocity=fresh("velocity"), clearance=distance)
+        if state["stopping"]:
+            state["stops"] = 1
+            trace.event("safety_stop", 0., state["pose"], already_active=True)
+        partial = {"case_id": case["id"], "trajectory": trajectory, "_trace": trace.data,
+                   "travelled_distance": 0., "completion_time": 0., "clearance": clearance,
+                   "safety_stops": state["stops"], "recovery_actions": state["recoveries"], "collision": collision}
+        write_json(directory / "partial.json", partial)
         last_sample = None
+        last_snapshot = 0.
         while not result.done() and state["clock"] - start_time < case["time_budget"] and not collision:
             rclpy.spin_once(node, timeout_sec=.02)
             if any(p.poll() is not None for p in processes):
@@ -141,26 +188,42 @@ def execute(directory):
             pose = state["pose"]
             travelled += math.dist(trajectory[-1], pose[:2])
             trajectory.append(pose[:2])
-            write_json(directory / "partial.json", {"case_id": case["id"], "trajectory": trajectory,
-                       "travelled_distance": travelled, "completion_time": state["clock"]-start_time})
             distance = footprint_clearance(np.asarray(pose[:2]), pose[2], robot["footprint_radius"],
                                            footprint, md.primitives)
             clearance = min(clearance, float(distance))
             collision |= distance <= 0.
+            trace.sample(state["clock"] - start_time, pose, command=fresh("command"),
+                         velocity=fresh("velocity"), clearance=float(distance))
+            partial = {"case_id": case["id"], "trajectory": trajectory, "_trace": trace.data,
+                       "travelled_distance": travelled, "completion_time": state["clock"]-start_time,
+                       "clearance": clearance, "safety_stops": state["stops"],
+                       "recovery_actions": state["recoveries"], "collision": collision}
+            if now - last_snapshot >= .5:
+                write_json(directory / "partial.json", partial)
+                last_snapshot = now
         timed_out = state["clock"] - start_time >= case["time_budget"]
         succeeded = result.done() and result.result().status == GoalStatus.STATUS_SUCCEEDED
+        reason = ("nav2_succeeded" if succeeded else "nav2_aborted"
+                  if result.done() and result.result().status == GoalStatus.STATUS_ABORTED else
+                  "nav2_canceled" if result.done() else "collision" if collision else "time_budget")
+        if succeeded and math.dist(state["pose"][:2], case["goal"]) > case["tolerance"]:
+            reason = "nav2_succeeded_outside_goal_tolerance"
         if not result.done():
             handle.cancel_goal_async()
         row = score(case, success=succeeded and math.dist(state["pose"][:2], case["goal"]) <= case["tolerance"],
                     collision=collision, timeout=timed_out, travelled=travelled,
                     elapsed=state["clock"]-start_time, clearance=clearance if math.isfinite(clearance) else None,
-                    trajectory=trajectory, safety_stops=state["stops"], recoveries=state["recoveries"])
+                     trajectory=trajectory, safety_stops=state["stops"], recoveries=state["recoveries"],
+                     termination_reason=reason)
+        row["_trace"] = trace.data
         row["diagnostics"] = {"localization": "spawn_transform_sim_odometry", "planner": "navfn",
                               "safety": True, "global_plans": state["plan"],
                               "collision_measurement": "ground_truth_2d_footprint_geometry",
                               "limitation": "sampled poses; not continuous contact reporting"}
         write_json(directory / "result.json", row)
     finally:
+        if partial is not None:
+            write_json(directory / "partial.json", partial)
         truth_node.unsubscribe("/world/default/dynamic_pose/info")
         for process in processes:
             if process.poll() is None:
