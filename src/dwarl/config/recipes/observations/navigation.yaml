@@ -1,0 +1,26 @@
+# Each group concatenates its ordered terms. Null disables a term.
+lidar:
+  concatenate_dim: -1
+  terms:
+    scan:
+      func: dwarl.navigation.observations:LidarHistory
+      params:
+        history: [0, 2, 5]        # control steps ago; current scan first
+        normalization: log       # linear | log
+state:
+  concatenate_dim: -1
+  terms:
+    goals:
+      func: dwarl.navigation.observations:goal_points
+      params: {command_name: path, max_distance: 10.0}
+    last_action:
+      func: dwarl.navigation.observations:last_action
+    velocity:
+      func: dwarl.navigation.observations:base_velocity
+    command_feedback: null       # Cody enables normalized previous limited velocity command
+privileged:
+  concatenate_dim: -1
+  terms:
+    path:
+      func: dwarl.navigation.observations:path_features
+      params: {command_name: path, lookahead: [0.5, 1.0, 2.0, 3.0]}

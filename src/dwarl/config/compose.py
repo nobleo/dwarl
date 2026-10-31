@@ -1,0 +1,89 @@
+from difflib import get_close_matches
+from math import isfinite
+from pathlib import Path
+
+from hydra import compose, initialize_config_module
+from hydra.core.config_store import ConfigStore
+from omegaconf import OmegaConf
+
+from .schema import Config
+
+PATHS = ("robot", "train.resume", "train.data.path", "test.run", "test.dataset", "deploy.run")
+
+
+def _paths(cfg, base):
+    for key in PATHS:
+        value = OmegaConf.select(cfg, key)
+        if value is None or value == "latest":
+            continue
+        if key == "robot" and "/" not in value and not (base / value).exists():
+            continue  # builtin or explicit ROS package reference
+        OmegaConf.update(cfg, key, str((base / Path(value).expanduser()).resolve()))
+
+
+def _known(cfg, prefix=""):
+    for key, value in cfg.items():
+        path = prefix + key
+        yield path
+        if OmegaConf.is_dict(value):
+            yield from _known(value, path + ".")
+
+
+def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None):
+    cwd = Path(cwd or Path.cwd()).resolve()
+    ConfigStore.instance().store(name="dwarl_public", node=Config)
+    with initialize_config_module("dwarl.config.recipes", version_base="1.3"):
+        cfg = compose(config_name="public")
+    source = (cwd / config).resolve() if config else cwd / "dwarl.yaml"
+    if config or source.exists():
+        supplied = OmegaConf.load(source)
+        _paths(supplied, source.parent)
+        if explicit_keys is not None:
+            explicit_keys.extend(k for k in _known(supplied) if not OmegaConf.is_dict(OmegaConf.select(supplied, k)))
+        cfg = OmegaConf.merge(cfg, supplied)
+    seen = set()
+    for assignment in assignments:
+        key, sep, value = assignment.partition("=")
+        if not sep:
+            raise ValueError(f"expected schema.path=value, got {assignment!r}")
+        if any(key == other or key.startswith(other + ".") or other.startswith(key + ".") for other in seen):
+            raise ValueError(f"duplicate CLI assignment: {key}")
+        seen.add(key)
+        if explicit_keys is not None:
+            explicit_keys.append(key)
+        if key not in set(_known(cfg)):
+            suggestions = get_close_matches(key, list(_known(cfg)), n=3)
+            raise ValueError(f"unknown key {key!r}; suggestions: {', '.join(suggestions)}")
+        update = OmegaConf.from_dotlist([assignment])
+        _paths(update, cwd)
+        cfg = OmegaConf.merge(cfg, update)
+    OmegaConf.resolve(cfg)
+    if cfg.schema != "dwarl/1":
+        raise ValueError(f"unsupported schema: {cfg.schema}")
+    for key in ("train.num_envs", "train.max_iterations", "train.save_interval", "train.validation_cases",
+                "train.data.train_maps", "train.data.validation_maps", "train.data.test_maps",
+                "train.data.pairs_per_map", "train.data.workers", "test.repeats",
+                "test.startup_timeout", "test.stall_timeout"):
+        if OmegaConf.select(cfg, key) <= 0:
+            raise ValueError(f"{key} must be positive")
+    if cfg.test.max_cases is not None and cfg.test.max_cases <= 0:
+        raise ValueError("test.max_cases must be positive")
+    if cfg.train.validation_interval < 0:
+        raise ValueError("train.validation_interval must be nonnegative")
+    if cfg.test.sim not in ("mujoco", "gazebo", "both"):
+        raise ValueError("test.sim must be mujoco, gazebo or both")
+    if cfg.test.suite not in ("benchmark", "validation", "test"):
+        raise ValueError("test.suite must be benchmark, validation or test")
+    for key in ("recipe.env.control_dt", "recipe.env.episodes_per_map", "recipe.sim.timestep",
+                "recipe.sim.pool_size", "recipe.agent.num_steps_per_env", "recipe.agent.algorithm.num_mini_batches",
+                "recipe.agent.algorithm.num_learning_epochs", "recipe.agent.algorithm.learning_rate"):
+        if OmegaConf.select(cfg, key) <= 0:
+            raise ValueError(f"{key} must be positive")
+    for key in _known(cfg):
+        value = OmegaConf.select(cfg, key)
+        if isinstance(value, float) and not isfinite(value):
+            raise ValueError(f"{key} must be finite")
+    from dwarl.config.managers import apply_manager_schemas
+
+    apply_manager_schemas(cfg.recipe)
+    return cfg

@@ -1,0 +1,14 @@
+[project]
+name = "dwarl-runtime"
+version = "0.1.0"
+license = "MIT"
+description = "Run DWARL policy bundles (deploy.yaml + policy.onnx) in any robot stack: no ROS, torch or MuJoCo"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.22", "pyyaml>=5.4", "onnxruntime>=1.16"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dwarl_runtime"]

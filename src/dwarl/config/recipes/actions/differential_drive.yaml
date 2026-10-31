@@ -1,0 +1,5 @@
+drive:
+  class_type: dwarl.navigation.actions:DifferentialDriveAction
+  clip: [-1.0, 1.0]
+  params:
+    mode: window                 # window: reachable velocity increment | absolute: limited target velocity

@@ -1,0 +1,58 @@
+# Mixture of all generators. Ranges [lo, hi] are sampled per map.
+seed: 0
+size: 8.0                  # tile side length [m]
+resolution: 0.05           # occupancy grid resolution [m]
+border_thickness: 0.1
+height: [0.4, 1.0]         # obstacle height range [m] (lidar is at 0.2 m)
+max_primitives: 300        # must be <= sim.pool_size
+robot_radius: 0.18         # footprint radius used for inflation (matches diffbot chassis)
+# Robot profiles inject `passage_radius` (a rectangular footprint's lateral half-width) and the
+# footprint polygon; the maze/rooms generators then inflate by that narrower width instead of
+# `robot_radius`, so hallways and doors stay tight for non-circular robots.
+inflation_margin: 0.05
+num_previews: 12
+splits:
+  train: 400
+  val: 40
+  test: 60
+spawn:
+  num: 24
+  min_num: 4
+  extra_clearance: 0.12    # spawns need robot_radius + this clearance
+  min_separation: 0.8
+planner:
+  pairs_per_map: 32
+  min_pairs: 3
+  min_distance: 1.5
+  max_distance: 12.0
+  clearance_weight: 4.0    # A* cost multiplier near obstacles: 1 + w*exp(-(clr-r)/decay)
+  clearance_decay: 0.15
+  waypoint_spacing: 0.1
+generators:
+  clutter:
+    weight: 1.0
+    density: [0.03, 0.18]
+    box_half: [0.1, 0.5]
+    cyl_radius: [0.08, 0.35]
+    cylinder_prob: 0.4
+    max_obstacles: 120
+  maze:
+    weight: 1.0
+    corridor: null             # null = derive from the robot's passage radius (tight but traversable); or [lo, hi] to force
+    corridor_clearance: [0.1, 0.5]   # extra free passage width [m] added to the robot's minimum
+    wall_thickness: 0.1
+    braid: [0.05, 0.35]
+    plaza: [2, 4]              # 2x2 open blocks (spawn points) for rectangular-footprint robots; ignored for circular ones
+  rooms:
+    weight: 1.0
+    min_room: [1.8, 2.8]
+    door_width: [0.8, 1.3]
+    wall_thickness: 0.1
+    extra_doors_prob: 0.3
+    furniture: [0, 3]
+  caves:
+    weight: 1.0
+    cell: [0.2, 0.3]
+    fill: [0.40, 0.48]
+    steps: 5
+    min_blob_cells: 3

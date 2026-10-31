@@ -1,0 +1,7 @@
+path:
+  class_type: dwarl.navigation.commands:PathCommand
+  params:
+    goal_mode: lookahead          # lookahead | final
+    lookahead_distances: [0.5, 1.0, 2.0, 3.0]
+    lookahead_distance: 2.0       # main target for visualization and critic distance
+    projection_window: [-5, 30]   # candidate segment offsets, end exclusive

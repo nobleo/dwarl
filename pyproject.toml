@@ -1,0 +1,52 @@
+[project]
+name = "dwarl"
+version = "0.1.0"
+license = "MIT"
+description = "RL local planner for differential-drive mobile robots (MuJoCo + RSL-RL + Hydra)"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "mujoco>=3.3",
+    "rsl-rl-lib>=5.5,<6",
+    "torch>=2.4",
+    "tensordict>=0.8",
+    "tensorboard>=2.16",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pillow>=10",
+    "pyyaml>=6",
+    "onnx>=1.16",
+    "onnxruntime>=1.18",
+    "matplotlib>=3.8",
+    "dwarl-runtime",
+]
+
+[project.scripts]
+dwarl = "dwarl.cli:app"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.uv.sources]
+dwarl-runtime = { path = "runtime", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dwarl"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["ros"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["ros", "runs", "data"]
