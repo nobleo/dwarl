@@ -1,6 +1,7 @@
 # Test results
 
-Tests default to at most **32 episodes per simulator**, selected in dataset order.
+Tests default to at most **32 episodes per simulator**, balanced across map types
+and individual maps using the test seed for reproducible selection.
 Use `--set test.max_cases=8` for a shorter check. To explicitly evaluate the full
 selected suite, use:
 

@@ -1,11 +1,44 @@
 """Freeze geometry and starts once; simulators consume the same cases.json."""
 
 import math
+import random
 import shutil
 import tempfile
+from collections import deque
 from pathlib import Path
 
 from dwarl.runs.store import identity, lock, sha256, write_json
+
+
+def select_cases(cases, limit, seed):
+    """Balance capped workloads across generators, then maps within each generator."""
+    if limit is None or len(cases) <= limit:
+        return cases
+    rng = random.Random(seed)
+    groups = {}
+    for case in cases:
+        groups.setdefault(case["name"], {}).setdefault(case["map"], []).append(case)
+    generators = []
+    for name in sorted(groups):
+        maps = []
+        for index in sorted(groups[name]):
+            candidates = list(groups[name][index])
+            rng.shuffle(candidates)
+            maps.append(deque(candidates))
+        rng.shuffle(maps)
+        generators.append(deque(maps))
+    rng.shuffle(generators)
+    pending = deque(generators)
+    selected = []
+    while pending and len(selected) < limit:
+        maps = pending.popleft()
+        candidates = maps.popleft()
+        selected.append(candidates.popleft())
+        if candidates:
+            maps.append(candidates)
+        if maps:
+            pending.append(maps)
+    return selected
 
 
 def materialize(contract, request, out):
@@ -54,8 +87,7 @@ def materialize(contract, request, out):
                         "robot": contract.robot.profile_sha256, "suite": request.suite}
                 case["id"] = identity(case)
                 cases.append(case)
-    if request.max_cases is not None:
-        cases = cases[:request.max_cases]
+    cases = select_cases(cases, request.max_cases, request.seed)
     if not cases:
         raise ValueError("selected workload contains no cases")
     index = {"config": dataset.index.get("config", {}), "splits": {split: {"maps": files}}}

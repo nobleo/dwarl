@@ -4,13 +4,40 @@ import numpy as np
 from dwarl.config import compose_config
 from dwarl.robot.config import materialize
 from dwarl.testing.cases import materialize as materialize_cases
+from dwarl.testing.cases import select_cases
 from dwarl.testing.scoring import score, summarize
+
+
+def test_capped_cases_cover_types_and_maps_reproducibly():
+    from collections import Counter
+
+    cases = [{"name": name, "map": mi, "pair": pi}
+             for name, maps in (("rooms", range(4)), ("corridors", range(4, 6)))
+             for mi in maps for pi in range(32)]
+    selected = select_cases(cases, 32, 42)
+    assert Counter(c["name"] for c in selected) == {"rooms": 16, "corridors": 16}
+    assert Counter(c["map"] for c in selected) == {0: 4, 1: 4, 2: 4, 3: 4, 4: 8, 5: 8}
+    assert len({(c["map"], c["pair"]) for c in selected}) == 32
+    assert selected == select_cases(cases, 32, 42)
+    assert selected != select_cases(cases, 32, 43)
+    assert select_cases(cases, None, 42) == cases
+    assert select_cases(cases, len(cases), 42) == cases
+
+
+def test_capped_cases_redistribute_exhausted_groups():
+    cases = [{"name": "doorway", "map": 0, "pair": 0}] + [
+        {"name": "rooms", "map": 1, "pair": pi} for pi in range(40)]
+    selected = select_cases(cases, 32, 42)
+    assert len(selected) == 32
+    assert cases[0] in selected
+    assert len({(c["map"], c["pair"]) for c in selected}) == 32
 
 
 def test_case_selection_and_show_do_not_change_workload(train_cfg, tmp_path):
     materialize(train_cfg, tmp_path / "robot")
     request = compose_config().test
     request.suite = "validation"
+    request.max_cases = None
     a = tmp_path / "a"
     a.mkdir()
     first = materialize_cases(train_cfg, request, a)
