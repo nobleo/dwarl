@@ -1,10 +1,43 @@
-# DWARL
+<div class="docs-hero" markdown>
 
-Train a differential-drive neural local planner, evaluate exact checkpoints, and
-install them into a ROS 2/Nav2 robot integration.
+<span class="eyebrow">NOBLEO TECHNOLOGY · DWARL</span>
 
-**Start with the [Cody walkthrough](cody.md)** for the complete first-time workflow.
-No pretrained navigation-quality policy is included.
+# From training to navigation.
+
+Build a neural local planner for your robot. Train in MuJoCo, compare with
+Gazebo, and deploy the same policy to Nav2.
+
+[Get started with Cody →](cody.md){ .md-button .md-button--primary }
+[Explore the commands](reference.md){ .md-button }
+
+<span class="hero-note">Experimental toolkit · ROS 2 Jazzy · No pretrained policy included</span>
+
+</div>
+
+<div class="workflow-grid" markdown>
+
+<a class="workflow-card" href="cody/#3-smoke-test-training-and-resume">
+<span class="step-label">01 / TRAIN</span>
+<strong>Start with your robot</strong>
+<span>Inspect the model, generate robot-sized maps, and run your first training session.</span>
+<code>dwarl train</code>
+</a>
+
+<a class="workflow-card" href="cody/#6-evaluate-the-full-workload">
+<span class="step-label">02 / TEST</span>
+<strong>Measure what works</strong>
+<span>Evaluate exact checkpoints and compare trajectories across both simulators.</span>
+<code>dwarl test</code>
+</a>
+
+<a class="workflow-card" href="cody/#7-deploy-and-drive-in-the-office">
+<span class="step-label">03 / DEPLOY</span>
+<strong>Bring it to Cody</strong>
+<span>Install a tested policy into the robot integration and try the office scenario.</span>
+<code>dwarl deploy</code>
+</a>
+
+</div>
 
 ## What can I do?
 

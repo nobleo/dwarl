@@ -3,14 +3,22 @@
 Train a differential-drive local planner, test an exact checkpoint, and install it into a robot integration.
 The Python package and command are `dwarl`.
 
-**[First-time Cody walkthrough](docs/cody.md)** · **[Documentation overview](docs/index.md)**
-
-The searchable documentation site is generated on every main push; see
-[preview and Pages setup](docs/documentation.md). The walkthrough includes
-TensorBoard, resume, paired simulator testing and deployment.
-
 DWARL is experimental. No pretrained navigation policy is included; evaluate trained
 policies for your robot and operating environment before deployment.
+
+## Documentation
+
+**GitHub Pages:** [nobleo.github.io/dwarl](https://nobleo.github.io/dwarl/)
+— hosting pending; the current GitHub plan does not support Pages for this private repository.
+
+Start with the **[Cody walkthrough](docs/cody.md)** for setup, training,
+TensorBoard, simulation testing and deployment. The [documentation overview](docs/index.md)
+lists available capabilities.
+
+The searchable site and command reference are generated on every main push.
+Until Pages is enabled, download the `documentation` artifact from
+[GitHub Actions](https://github.com/nobleo/dwarl/actions/workflows/docs.yml),
+or [preview the site locally](docs/documentation.md).
 
 ## Install
 

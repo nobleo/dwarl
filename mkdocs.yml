@@ -15,6 +15,8 @@ theme:
 extra_css:
   - stylesheets/nobleo.css
 markdown_extensions:
+  - attr_list
+  - md_in_html
   - pymdownx.highlight
   - pymdownx.superfences
 nav:
