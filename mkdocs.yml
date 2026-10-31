@@ -31,7 +31,7 @@ markdown_extensions:
   - pymdownx.superfences
 nav:
   - Start here: index.md
-  - Integration example (Cody): cody.md
+  - Your robot: integrate-robot.md
   - Configuration: configuration.md
   - Results: results.md
   - ROS setup: ros.md

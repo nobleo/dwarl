@@ -1,0 +1,53 @@
+# Replace the example geometry, names, limits and dynamics with your robot's values.
+schema: dwarl_robot/1
+id: my_robot
+
+description:
+  urdf: package://my_robot_description/urdf/robot.urdf.xacro
+  base_link: base_link
+  xacro_args: {}
+
+drive:
+  type: diff
+  left_wheel_joint: left_wheel_joint
+  right_wheel_joint: right_wheel_joint
+  actuator: {kv: 1.0, max_wheel_speed: 20.0, max_torque: 5.0}
+
+limits:
+  v_min: 0.0           # m/s; set negative only if your robot should reverse
+  v_max: 0.5          # m/s
+  w_max: 1.0          # rad/s
+  a_max: 0.5          # m/s²
+  alpha_max: 1.0      # rad/s²
+
+footprint:
+  polygon: [[0.3, 0.2], [0.3, -0.2], [-0.3, -0.2], [-0.3, 0.2]]
+
+lidar:
+  link: laser_link
+  num_rays: 360
+  fov_deg: 360.0
+  min_range: 0.05
+  max_range: 10.0
+  noise_std: 0.01
+  dropout_prob: 0.005
+
+# Add collision/physics overrides for your actual support and caster geometry.
+# See the guide before setting chassis_z, supports, or additional chassis_mass.
+
+ros:
+  base_frame: base_link
+  odom_frame: odom
+  map_frame: map
+  scan_topic: /scan
+  odom_topic: /odom
+  cmd_vel_topic: /cmd_vel
+  cmd_vel_stamped: true
+  # Uncomment BEFORE training if you have implemented the Gazebo adapter:
+  # sim_launch: {package: my_robot_dwarl, file: simulation.launch.py}
+
+deployment:
+  policy_directory: policies
+  selected_policy: selected_policy.yaml
+  # Optional: your launch that reads the selection and starts navigation.
+  # launch: {package: my_robot_dwarl, file: navigation.launch.py}

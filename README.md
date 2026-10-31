@@ -11,8 +11,10 @@ policies for your robot and operating environment before deployment.
 **GitHub Pages:** [nobleo.github.io/dwarl](https://nobleo.github.io/dwarl/)
 — hosting pending; the current GitHub plan does not support Pages for this private repository.
 
-Start with the **[documentation overview](docs/index.md)** for installation and
-available capabilities. See [configuration](docs/configuration.md),
+Start with **[Your robot: from model to Nav2](docs/integrate-robot.md)**:
+define a robot profile, train, test, export the ONNX policy and run it on your
+robot with Nav2. Includes a profile template and Gazebo adapter requirements.
+See the [documentation overview](docs/index.md), [configuration](docs/configuration.md),
 [test results](docs/results.md), and [ROS setup](docs/ros.md) for the full workflow.
 
 The searchable site and command reference are generated on every main push.

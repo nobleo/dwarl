@@ -1,5 +1,8 @@
 # Native ROS setup
 
+For the complete model → training → testing → export → Nav2 workflow, follow
+[Your robot: from model to Nav2](integrate-robot.md).
+
 Target platform: Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic. The training environment
 and the lightweight robot runtime are separate packages. Loading different policy
 weights must not require a ROS rebuild.

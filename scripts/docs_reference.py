@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from dwarl.cli import parser  # noqa: E402
 from dwarl.config import compose_config  # noqa: E402
+from dwarl.robot.schema import ProfileCfg  # noqa: E402
 
 root = parser()
 with mkdocs_gen_files.open("reference.md", "w") as out:
@@ -25,4 +26,10 @@ with mkdocs_gen_files.open("reference.md", "w") as out:
               "Manager parameters and rewards are included below.\n\n```yaml\n")
     with tempfile.TemporaryDirectory() as directory:
         out.write(OmegaConf.to_yaml(compose_config(cwd=directory), resolve=True))
+    out.write("```\n")
+    out.write("\n## Robot profile schema\n\nSee [the integration guide](integrate-robot.md) and "
+              "[profile template](examples/dwarl_robot.yaml) for a starting point. "
+              "Below, `???` marks required values; `null` means unset. "
+              "Exactly one description source and one footprint representation are required.\n\n```yaml\n")
+    out.write(OmegaConf.to_yaml(OmegaConf.structured(ProfileCfg)))
     out.write("```\n")

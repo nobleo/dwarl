@@ -9,7 +9,7 @@ assignments are errors. `--set` uses the actual schema key.
 schema: dwarl/1
 robot: /path/to/robot-repository
 train:
-  name: cody
+  name: navigation
   num_envs: 64
   seed: 42
   device: auto

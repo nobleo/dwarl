@@ -7,7 +7,7 @@
 Build a neural local planner for your robot. Train in MuJoCo, compare with
 Gazebo, and deploy the same policy to Nav2.
 
-[Install DWARL →](#install){ .md-button .md-button--primary }
+[Integrate your robot →](integrate-robot.md){ .md-button .md-button--primary }
 [Explore the commands](reference.md){ .md-button }
 
 <span class="hero-note">Experimental toolkit · ROS 2 Jazzy · No pretrained policy included</span>
@@ -16,21 +16,21 @@ Gazebo, and deploy the same policy to Nav2.
 
 <div class="workflow-grid" markdown>
 
-<a class="workflow-card" href="configuration/">
+<a class="workflow-card" href="integrate-robot/#3-smoke-test-the-training-pipeline">
 <span class="step-label">01 / TRAIN</span>
 <strong>Start with your robot</strong>
 <span>Inspect the model, generate robot-sized maps, and run your first training session.</span>
 <code>dwarl train</code>
 </a>
 
-<a class="workflow-card" href="results/">
+<a class="workflow-card" href="integrate-robot/#5-evaluate-a-trained-checkpoint">
 <span class="step-label">02 / TEST</span>
 <strong>Measure what works</strong>
 <span>Evaluate exact checkpoints and compare trajectories across both simulators.</span>
 <code>dwarl test</code>
 </a>
 
-<a class="workflow-card" href="ros/">
+<a class="workflow-card" href="integrate-robot/#7-export-and-install-the-network">
 <span class="step-label">03 / DEPLOY</span>
 <strong>Bring it to your robot</strong>
 <span>Install a tested policy into your robot integration and run it with Nav2.</span>
