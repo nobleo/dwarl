@@ -72,3 +72,4 @@ log/
 Thumbs.db
 .docs-venv/
 site/
+.playwright-mcp/

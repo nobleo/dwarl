@@ -1,0 +1,28 @@
+/* Nobleo-inspired colours; keep the standard documentation layout. */
+:root {
+  --md-primary-fg-color: #85358a;
+  --md-primary-fg-color--light: #a35ca7;
+  --md-primary-fg-color--dark: #67296b;
+  --md-accent-fg-color: #a74e00;
+  --md-default-bg-color: #ffffff;
+  --md-text-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --md-code-font: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.md-header {
+  border-bottom: 3px solid #f5a800;
+  box-shadow: none;
+}
+
+.md-typeset h1,
+.md-typeset h2 {
+  color: #343039;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.md-typeset h1 { margin-bottom: 0.8em; }
+.md-typeset code { border-radius: 4px; }
+.md-typeset pre > code { border-radius: 6px; }
+.md-typeset table:not([class]) { box-shadow: none; }
+.md-typeset table:not([class]) th { background: #f6f1f7; }

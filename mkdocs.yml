@@ -3,7 +3,20 @@ site_description: Train, test and deploy a neural local planner
 site_url: https://nobleo.github.io/dwarl/
 repo_url: https://github.com/nobleo/dwarl
 theme:
-  name: mkdocs
+  name: material
+  font: false
+  palette:
+    primary: custom
+    accent: custom
+  features:
+    - content.code.copy
+    - navigation.footer
+    - search.highlight
+extra_css:
+  - stylesheets/nobleo.css
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
 nav:
   - Start here: index.md
   - Cody walkthrough: cody.md
