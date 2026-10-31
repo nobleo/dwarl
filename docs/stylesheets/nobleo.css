@@ -97,3 +97,48 @@ body, input, button {
   .workflow-grid { grid-template-columns: 1fr; }
   .docs-hero { padding-top: .5rem; }
 }
+
+/* Keep Nobleo's purple accent in both modes. */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #bd80c3;
+  --md-accent-fg-color: #d69cdb;
+  --md-default-bg-color: #19171e;
+  --md-default-fg-color: #e7e2ec;
+  --md-default-fg-color--light: #b8afc3;
+  --md-typeset-a-color: #cf97d5;
+  --md-code-bg-color: #25212c;
+}
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-footer,
+[data-md-color-scheme="slate"] .md-footer-meta {
+  background: #1e1b24;
+  color: #e7e2ec;
+  border-color: #37313f;
+}
+[data-md-color-scheme="slate"] .md-search__form { background: #2b2633; }
+[data-md-color-scheme="slate"] .md-search__input,
+[data-md-color-scheme="slate"] .md-search__input::placeholder,
+[data-md-color-scheme="slate"] .md-search__icon { color: #d3cadf !important; }
+[data-md-color-scheme="slate"] .md-typeset h1,
+[data-md-color-scheme="slate"] .md-typeset h2,
+[data-md-color-scheme="slate"] .md-typeset h3,
+[data-md-color-scheme="slate"] .workflow-card strong { color: #f0eaf5; }
+[data-md-color-scheme="slate"] .docs-hero > p,
+[data-md-color-scheme="slate"] .hero-note,
+[data-md-color-scheme="slate"] .md-nav__title,
+[data-md-color-scheme="slate"] .md-typeset .workflow-card { color: #bdb3c9; }
+[data-md-color-scheme="slate"] .eyebrow,
+[data-md-color-scheme="slate"] .step-label,
+[data-md-color-scheme="slate"] .md-header__button.md-logo { color: #cf97d5; }
+[data-md-color-scheme="slate"] .md-typeset pre > code,
+[data-md-color-scheme="slate"] .md-typeset table:not([class]),
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) td,
+[data-md-color-scheme="slate"] .md-typeset .workflow-card,
+[data-md-color-scheme="slate"] .md-typeset .md-button { border-color: #44394f; }
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) th {
+  background: #25212c;
+  color: #d3cadf;
+}
+[data-md-color-scheme="slate"] .md-typeset .workflow-card:hover { background: #28212e; border-color: #a76daf; }
+[data-md-color-scheme="slate"] .md-copyright,
+[data-md-color-scheme="slate"] .md-copyright a { color: #bdb3c9 !important; }
