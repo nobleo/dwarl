@@ -1,0 +1,3 @@
+Decision: No causal claim is justified. The new run performed worse (5/8 → 4/8 successes; 0 → 1 collisions), but zero reverse-limit interventions means the degradation cannot be attributed to active limiting. Run variability or another change could explain it.
+
+Next experiment: Repeat matched limiter-off/on validation runs with the same checkpoint, eight cases, seeds, stack settings and source revision, changing only the limiter flag. Verify intervention telemetry and include a controlled reverse-command case to confirm activation. Predeclare the repeat budget; compare success, collisions, clearance and recovery before deciding whether to retain it.
