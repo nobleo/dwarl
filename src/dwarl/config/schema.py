@@ -54,7 +54,7 @@ class TestConfig:
     repeats: int = 1
     seed: int = 42
     dataset: str | None = None
-    max_cases: int | None = None
+    max_cases: int | None = 32
     startup_timeout: float = 120.0
     stall_timeout: float = 30.0
 

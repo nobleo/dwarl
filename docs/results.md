@@ -1,5 +1,13 @@
 # Test results
 
+Tests default to at most **32 episodes per simulator**, selected in dataset order.
+Use `--set test.max_cases=8` for a shorter check. To explicitly evaluate the full
+selected suite, use:
+
+```bash
+dwarl test --suite test --set test.max_cases=null
+```
+
 Each test lives in `runs/<run>/tests/<test-id>/` and records the request, saved contract,
 case geometry, exact start poses, checkpoint hash, runtime bundle reference, episodes
 and summary. Failed episodes remain results.
