@@ -26,6 +26,7 @@ The robot-specific parameters here are study inputs, not general toolkit default
 | Forward-only (`153559`) | 4/8 / 1 | 7/8 / 0 | 6/8 / 0 |
 | Predictive slowing (`155048`) | 7/8 / 0 | — | — |
 | Refined repeat (`155521`) | 5/8 / 1 | 7/8 / 0 | 7/8 / 0 |
+| Predictive slowing verification (`161005`) | 6/8 / 0 | 7/8 / 0 | 7/8 / 0 |
 
 Full directory IDs are in `records/` and the parent run's `tests/` directory.
 All observed collisions remain counted. Zero recorded DWARL reverse-limit
@@ -33,9 +34,22 @@ interventions prohibit attributing the forward-only run's outcome to clipping.
 
 Predictive slowing (`approach_time: 1.2 s`) met the screening criterion of two
 additional successes without an increased collision count. All-controller
-verification is pending. The hypothesis follows a measured collision after a
+verification completed in `20261031-161005_b793fe5c` and passed the consistency
+audit. DWARL's repeat improved by one success over both non-approach runs, not
+the two seen in screening: the full screening effect was not reproduced.
+MPPI and DWB retained 7/8 with zero observed collisions. The hypothesis follows a measured collision after a
 zero command while the simulated robot was still moving; this is not a physical
-braking validation. No final configuration is declared yet.
+braking validation. Predictive slowing remains the leading shared candidate;
+final policy selection awaits the bounded training sweep. No more shared-stack
+parameter candidates are planned in this study.
+
+Both DWARL failures in the verification were maze timeouts, with five safety
+stops and seven recovery actions each. Case `8a3f0f97` ended at 50.1 s simulation
+time, 4.154 m from the goal, with minimum clearance 0.0300 m. Case `30b6fc9c`
+ended at 52.5 s, 2.367 m from the goal, with minimum clearance 0.0969 m; that
+case had succeeded in the first approach run. Neither reached a Nav2 success
+outside tolerance. These traces show unresolved stop/recovery behaviour rather
+than an infrastructure failure. Unknown/stale command samples remain null.
 
 ## Bounded training budget
 
