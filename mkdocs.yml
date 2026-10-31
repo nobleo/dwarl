@@ -21,7 +21,7 @@ markdown_extensions:
   - pymdownx.superfences
 nav:
   - Start here: index.md
-  - Cody walkthrough: cody.md
+  - Integration example (Cody): cody.md
   - Configuration: configuration.md
   - Results: results.md
   - ROS setup: ros.md

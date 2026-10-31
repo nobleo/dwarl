@@ -11,9 +11,9 @@ policies for your robot and operating environment before deployment.
 **GitHub Pages:** [nobleo.github.io/dwarl](https://nobleo.github.io/dwarl/)
 — hosting pending; the current GitHub plan does not support Pages for this private repository.
 
-Start with the **[Cody walkthrough](docs/cody.md)** for setup, training,
-TensorBoard, simulation testing and deployment. The [documentation overview](docs/index.md)
-lists available capabilities.
+Start with the **[documentation overview](docs/index.md)** for installation and
+available capabilities. See [configuration](docs/configuration.md),
+[test results](docs/results.md), and [ROS setup](docs/ros.md) for the full workflow.
 
 The searchable site and command reference are generated on every main push.
 Until Pages is enabled, download the `documentation` artifact from

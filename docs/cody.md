@@ -1,5 +1,9 @@
 # Cody walkthrough
 
+This integration-specific example is for developers with access to the Cody robot
+workspace. Cody is not included with DWARL or required to use it. For general
+installation and capabilities, start with the [documentation overview](index.md).
+
 This walkthrough exercises inspection, data generation, training, validation,
 resume, ONNX preparation, both simulators, reports and deployment.
 Examples assume sibling `~/repos/dwarl` and `~/repos/cody-dwarl2` checkouts;

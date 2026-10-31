@@ -37,3 +37,22 @@ generator version. An explicit `train.data.path` is checked for footprint compat
 Periodic validation uses the validation split only. Best means maximum success rate
 over a completed, identical validation workload; ties keep the earliest selection.
 The held-out `test` suite is never used for checkpoint selection.
+
+## Monitor training
+
+TensorBoard is included in the Python environment. From your DWARL working
+directory, run this in a second activated terminal:
+
+```bash
+tensorboard --logdir runs --host localhost --port 6006
+```
+
+Open <http://localhost:6006>. To focus on one run, use
+`--logdir runs/<run>/checkpoints`. Events appear once training begins, after
+dataset generation. Inspect reward, episode length, losses and throughput;
+use scored validation and test reports to assess navigation quality.
+
+Add `--show` to watch training or `--detached` to run it in the background.
+List runs with `dwarl runs list`, stop with `dwarl stop runs/<run>`, and resume
+with `dwarl train --resume runs/<run> --max-iterations 5000`. The iteration budget
+is the total target, not additional iterations. Resume requires a completed checkpoint.
