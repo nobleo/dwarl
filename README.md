@@ -49,6 +49,11 @@ latest **completed** checkpoint of the latest run once, print its hash, and prep
 an immutable ONNX bundle automatically. `--checkpoint best` is explicit and requires
 completed validation evidence. A fresh one-iteration smoke policy is not a usable planner.
 
+Intermediate checks and early stopping are off by default. Enable validation with
+`--set train.validation_interval=200`, benchmarks with `--set train.benchmark_interval=500`,
+and validation-based stopping with `--set train.early_stop.enabled=true`.
+See [configuration](docs/configuration.md#optional-intermediate-testing-and-early-stopping).
+
 For a standalone MuJoCo smoke test, use the included `diffbot`:
 
 ```sh

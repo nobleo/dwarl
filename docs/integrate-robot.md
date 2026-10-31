@@ -208,13 +208,21 @@ it. Set `--set train.data.workers=4` to parallelize generation if resources allo
 ## 4. Train and monitor
 
 ```bash
-dwarl train "$INTEGRATION" --name navigation --num-envs 64 --max-iterations 3000
+dwarl train "$INTEGRATION" --name navigation --num-envs 64 --max-iterations 3000 \
+  --set train.validation_interval=200
 ```
 
 Reduce `--num-envs` for a smaller machine. Device selection is automatic, with
 `--device cpu` and `--device cuda` overrides. Add `--show` for a viewer or
 `--detached` for background training. The training budget is a starting point,
 not a guarantee of navigation quality.
+
+The command above explicitly enables intermediate validation so that the following
+`--checkpoint best` examples have selection evidence. Intermediate checks and
+early stopping are otherwise disabled by default. Optionally add
+`--set train.benchmark_interval=500` for canonical checks or
+`--set train.early_stop.enabled=true` for validation-based plateau stopping.
+See [check scheduling and patience](configuration.md#optional-intermediate-testing-and-early-stopping).
 
 ```bash
 RUN="runs/<your-navigation-run>"

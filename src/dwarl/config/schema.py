@@ -17,6 +17,13 @@ class DataConfig:
 
 
 @dataclass
+class EarlyStopConfig:
+    enabled: bool = False
+    patience: int = 5
+    min_delta: float = 0.01
+
+
+@dataclass
 class TrainConfig:
     name: str = "navigation"
     num_envs: int = 64
@@ -27,8 +34,11 @@ class TrainConfig:
     show: bool = False
     detached: bool = False
     save_interval: int = 50
-    validation_interval: int = 200
+    validation_interval: int = 0
     validation_cases: int = 32
+    benchmark_interval: int = 0
+    benchmark_cases: int = 32
+    early_stop: EarlyStopConfig = field(default_factory=EarlyStopConfig)
     deployment_ready: bool = True
     data: DataConfig = field(default_factory=DataConfig)
 

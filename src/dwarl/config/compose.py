@@ -29,6 +29,21 @@ def _known(cfg, prefix=""):
             yield from _known(value, path + ".")
 
 
+def validate_training(train):
+    for name in ("validation_interval", "benchmark_interval"):
+        interval = train[name]
+        if interval < 0:
+            raise ValueError(f"train.{name} must be nonnegative (0 disables it)")
+        if interval and interval % train.save_interval:
+            raise ValueError(f"train.{name} must be a multiple of train.save_interval")
+    if train.benchmark_cases <= 0 or train.early_stop.patience <= 0:
+        raise ValueError("train.benchmark_cases and train.early_stop.patience must be positive")
+    if not isfinite(train.early_stop.min_delta) or not 0 <= train.early_stop.min_delta <= 1:
+        raise ValueError("train.early_stop.min_delta must be between 0 and 1")
+    if train.early_stop.enabled and not train.validation_interval:
+        raise ValueError("early stopping requires train.validation_interval > 0")
+
+
 def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None):
     cwd = Path(cwd or Path.cwd()).resolve()
     ConfigStore.instance().store(name="dwarl_public", node=Config)
@@ -68,8 +83,7 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None):
             raise ValueError(f"{key} must be positive")
     if cfg.test.max_cases is not None and cfg.test.max_cases <= 0:
         raise ValueError("test.max_cases must be positive")
-    if cfg.train.validation_interval < 0:
-        raise ValueError("train.validation_interval must be nonnegative")
+    validate_training(cfg.train)
     if cfg.test.sim not in ("mujoco", "gazebo", "both"):
         raise ValueError("test.sim must be mujoco, gazebo or both")
     if cfg.test.suite not in ("benchmark", "validation", "test"):

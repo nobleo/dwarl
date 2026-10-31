@@ -24,13 +24,18 @@ def execute(cfg, assignments=()):
     from dwarl.training.contract import build_contract, device, load_contract
     from dwarl.training.environment.nav_env import NavVecEnv
     from dwarl.training.runner_adapter import RunnerAdapter
+    from dwarl.training.validation import EarlyStop, attach_validation
 
     checkpoint = None
     if cfg.train.resume:
         run = resolve_run(cfg.train.resume)
         checkpoint = resolve_checkpoint(run)
         saved = OmegaConf.load(run / "config.yaml")
-        permitted = {"train.resume", "train.device", "train.max_iterations", "train.show", "train.detached"}
+        from dwarl.config.schema import TrainConfig
+
+        saved.train = OmegaConf.merge(OmegaConf.structured(TrainConfig), saved.train)
+        permitted = {"train.resume", "train.device", "train.max_iterations", "train.show", "train.detached",
+                     "train.early_stop.enabled"}
         for assignment in assignments:
             key = assignment.partition("=")[0]
             if key not in permitted:
@@ -39,6 +44,9 @@ def execute(cfg, assignments=()):
                 raise ValueError(f"resume cannot change {key}; supported changes: {sorted(permitted)}")
             OmegaConf.update(saved, key, OmegaConf.select(cfg, key))
         cfg = saved
+        from dwarl.config.compose import validate_training
+
+        validate_training(cfg.train)
         contract = load_contract(run)
         print("Resume: saved recipe restored; simulator episodes restart.")
     else:
@@ -86,31 +94,39 @@ def execute(cfg, assignments=()):
                 deploy_spec(contract, env)  # fail before PPO starts
             runner = OnPolicyRunner(env, OmegaConf.to_container(contract.agent, resolve=True),
                                     log_dir=str(run / "checkpoints"), device=contract.device)
-            attach(runner, env)
             adapter = RunnerAdapter.for_runner(runner)
             adapter.after_save.append(lambda path: complete_checkpoint(run, path, runner.current_learning_iteration))
-            if cfg.train.validation_interval:
-                from dwarl.training.validation import attach_validation
+            checks = attach_validation(runner, run, cfg)
+            attach(runner, env, checks.state_dict)
+            from dwarl.training.diagnostics import attach_diagnostics
 
-                attach_validation(runner, run, cfg)
+            attach_diagnostics(runner, env, cfg, checks)
             if checkpoint:
                 infos = runner.load(str(checkpoint.path), map_location=contract.device)
                 runner.current_learning_iteration += 1
                 if infos and "dwarl" in infos:
                     restore(env, infos["dwarl"])
+                checks.restore(checkpoint, infos)
             print(f"Training run: {run}", flush=True)
             print(f"TensorBoard: tensorboard --logdir {run / 'checkpoints'}", flush=True)
+            reason = "iteration_budget"
             try:
+                if cfg.train.early_stop.enabled and checks.state["stop_reason"]:
+                    raise EarlyStop(checks.state["stop_reason"])
                 runner.learn(max(0, cfg.train.max_iterations - runner.current_learning_iteration))
                 state = "finished"
+            except EarlyStop as exc:
+                state, reason = "early_stopped", str(exc)
+                print(f"Early stop: {reason}", flush=True)
             except KeyboardInterrupt:
-                state = "interrupted"
+                state, reason = "interrupted", "user_interrupt"
             finally:
                 writer = getattr(runner.logger, "writer", None)
                 if writer is not None:
                     writer.flush()
                     writer.close()
-            write_json(run / "status.json", {"state": state, "pid": None})
+            write_json(run / "status.json", {"state": state, "pid": None, "reason": reason,
+                                             "iteration": runner.current_learning_iteration})
         except BaseException as exc:
             write_json(run / "status.json", {"state": "failed", "pid": None, "error": str(exc)})
             raise
