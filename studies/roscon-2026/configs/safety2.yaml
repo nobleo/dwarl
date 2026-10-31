@@ -1,0 +1,15 @@
+# Same external monitor and recovery as safety1. Let the policy try monitored escape
+# commands instead of immediately latching a FollowPath failure on a monitor STOP.
+# Progress checking still requests recovery if the robot cannot move.
+safety:
+  rotation_sweep: true
+progress_checker:
+  required_movement_radius: 0.2
+  movement_time_allowance: 8.0
+recovery:
+  through_monitor: true
+  retry_count: 1
+  backup_required: true
+  replan_after_backup: true
+dwarl:
+  safety_state_topic: ""

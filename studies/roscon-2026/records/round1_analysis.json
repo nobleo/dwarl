@@ -1,0 +1,185 @@
+{
+  "path": "/home/bramo/repos/dwarl/runs/20261031-120652_navigation_b2ce75/tests/20261031-144716_fb0069fc",
+  "decisions": [
+    "Do not select round1 as winner: no demonstrated improvement on matched difficult cases.",
+    "DWB obstacle weight 0.02 removes initial stall but allows very tight approaches; try intermediate 0.1.",
+    "MPPI shorter horizon and increased samples alone do not cure corner trapping; test stronger near-collision penalty and earlier path alignment.",
+    "Keep Nav2-success-outside-tolerance separate. Add final TF vs ground-truth diagnostics before choosing a robust goal-check margin."
+  ],
+  "controllers": {
+    "gazebo-mppi": {
+      "scored_success": 3,
+      "nav2_success": 6,
+      "collision": 0,
+      "cases": [
+        {
+          "id": "68188e07ba485810949b845ea25f683a3f2c2055442511bcb62509257eb32d65",
+          "name": "rooms",
+          "outcome": "aborted",
+          "termination": "nav2_aborted",
+          "goal_distance_m": 3.1034278602043646,
+          "clearance_m": 0.002532604819409669,
+          "safety_stops": 1,
+          "recoveries": 6
+        },
+        {
+          "id": "47bb12bed8c6a3eed578a922a45421daad2af6c838fcec8e14ed9de62e0ed399",
+          "name": "clutter",
+          "outcome": "success",
+          "termination": "nav2_succeeded",
+          "goal_distance_m": 0.2978349859198311,
+          "clearance_m": 0.42169709346220813,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "f13ba6aa51e82aa31fb3b2de4610def86b2e2dada5e040631e0fbd42dcf0aa55",
+          "name": "caves",
+          "outcome": "terminated",
+          "termination": "nav2_succeeded_outside_goal_tolerance",
+          "goal_distance_m": 0.30044729655175584,
+          "clearance_m": 0.33885525075283696,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "8a3f0f9799a9b293ca5670aa9238e2f83f02beec90f0d71969dbffd169f27599",
+          "name": "maze",
+          "outcome": "timeout",
+          "termination": "time_budget",
+          "goal_distance_m": 4.033175538404283,
+          "clearance_m": 0.05008917071784248,
+          "safety_stops": 12,
+          "recoveries": 3
+        },
+        {
+          "id": "fb3d9445f78d55720de8197d0f2de01648955d4458693bf94723873495ce12ed",
+          "name": "rooms",
+          "outcome": "terminated",
+          "termination": "nav2_succeeded_outside_goal_tolerance",
+          "goal_distance_m": 0.30008420892352616,
+          "clearance_m": 0.055639633458710834,
+          "safety_stops": 1,
+          "recoveries": 0
+        },
+        {
+          "id": "1f447e8bd05207ff64aebf8c030249b35a34091fbbdb0813708cbb938982e6ec",
+          "name": "clutter",
+          "outcome": "terminated",
+          "termination": "nav2_succeeded_outside_goal_tolerance",
+          "goal_distance_m": 0.3016989026637297,
+          "clearance_m": 0.4093822602753251,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "7e262e5619ce72efa02ef14e6134964b833a16ea0ae086d5e464d245939945d3",
+          "name": "caves",
+          "outcome": "success",
+          "termination": "nav2_succeeded",
+          "goal_distance_m": 0.2981384671540281,
+          "clearance_m": 0.659751121000379,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "30b6fc9c3040ef7fc27ec558c1b62435c4352235b8bfdc49caaad318c28e1cd2",
+          "name": "maze",
+          "outcome": "success",
+          "termination": "nav2_succeeded",
+          "goal_distance_m": 0.26761808489052064,
+          "clearance_m": 0.07755073427910862,
+          "safety_stops": 5,
+          "recoveries": 0
+        }
+      ]
+    },
+    "gazebo-dwb": {
+      "scored_success": 2,
+      "nav2_success": 4,
+      "collision": 0,
+      "cases": [
+        {
+          "id": "68188e07ba485810949b845ea25f683a3f2c2055442511bcb62509257eb32d65",
+          "name": "rooms",
+          "outcome": "aborted",
+          "termination": "nav2_aborted",
+          "goal_distance_m": 2.9296514069248984,
+          "clearance_m": 0.03517912153972973,
+          "safety_stops": 0,
+          "recoveries": 6
+        },
+        {
+          "id": "47bb12bed8c6a3eed578a922a45421daad2af6c838fcec8e14ed9de62e0ed399",
+          "name": "clutter",
+          "outcome": "success",
+          "termination": "nav2_succeeded",
+          "goal_distance_m": 0.29940731073749793,
+          "clearance_m": 0.42594633640192364,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "f13ba6aa51e82aa31fb3b2de4610def86b2e2dada5e040631e0fbd42dcf0aa55",
+          "name": "caves",
+          "outcome": "terminated",
+          "termination": "nav2_succeeded_outside_goal_tolerance",
+          "goal_distance_m": 0.3004399397819637,
+          "clearance_m": 0.38298791970866064,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "8a3f0f9799a9b293ca5670aa9238e2f83f02beec90f0d71969dbffd169f27599",
+          "name": "maze",
+          "outcome": "timeout",
+          "termination": "time_budget",
+          "goal_distance_m": 5.16164919878816,
+          "clearance_m": 0.0525257342917453,
+          "safety_stops": 2,
+          "recoveries": 4
+        },
+        {
+          "id": "fb3d9445f78d55720de8197d0f2de01648955d4458693bf94723873495ce12ed",
+          "name": "rooms",
+          "outcome": "timeout",
+          "termination": "time_budget",
+          "goal_distance_m": 0.49699911256252927,
+          "clearance_m": 0.036887562161941764,
+          "safety_stops": 4,
+          "recoveries": 2
+        },
+        {
+          "id": "1f447e8bd05207ff64aebf8c030249b35a34091fbbdb0813708cbb938982e6ec",
+          "name": "clutter",
+          "outcome": "success",
+          "termination": "nav2_succeeded",
+          "goal_distance_m": 0.294215090157845,
+          "clearance_m": 0.4038825432294839,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "7e262e5619ce72efa02ef14e6134964b833a16ea0ae086d5e464d245939945d3",
+          "name": "caves",
+          "outcome": "terminated",
+          "termination": "nav2_succeeded_outside_goal_tolerance",
+          "goal_distance_m": 0.3048839482247813,
+          "clearance_m": 0.6832745658798207,
+          "safety_stops": 0,
+          "recoveries": 0
+        },
+        {
+          "id": "30b6fc9c3040ef7fc27ec558c1b62435c4352235b8bfdc49caaad318c28e1cd2",
+          "name": "maze",
+          "outcome": "timeout",
+          "termination": "time_budget",
+          "goal_distance_m": 2.0083638865739077,
+          "clearance_m": 0.05828947243442276,
+          "safety_stops": 0,
+          "recoveries": 0
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# Forward-only policy/controller commands for a front-lidar robot. Nav2's explicit
+# backup recovery remains slow, costmap-checked and routed through the monitor.
+safety:
+  rotation_sweep: true
+progress_checker:
+  required_movement_radius: 0.2
+  movement_time_allowance: 8.0
+recovery:
+  through_monitor: true
+  retry_count: 1
+  backup_required: true
+  replan_after_backup: true
+motion_limits:
+  min_linear_velocity: 0.0
+dwarl:
+  safety_state_topic: ""

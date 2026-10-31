@@ -1,0 +1,14 @@
+# Model-derived stopping sweep replaces the full-rotation envelope only for near-in-place turns.
+# Braking latency, footprint margin, forward/backward stop zones and lidar threshold stay matched.
+safety:
+  rotation_sweep: true
+progress_checker:
+  required_movement_radius: 0.2
+  movement_time_allowance: 8.0
+recovery:
+  through_monitor: true
+  retry_count: 1
+  backup_required: true
+  replan_after_backup: true
+dwarl:
+  safety_grace: 0.3

@@ -1,0 +1,26 @@
+mppi:
+  time_steps: 32
+  batch_size: 2000
+  prune_distance: 1.7
+  vx_std: 0.2
+  wz_std: 0.5
+  CostCritic.cost_weight: 5.0
+  PathAlignCritic.cost_weight: 8.0
+  PathFollowCritic.cost_weight: 5.0
+  PathFollowCritic.offset_from_furthest: 5
+  GoalCritic.cost_weight: 5.0
+  GoalCritic.threshold_to_consider: 1.0
+dwb:
+  sim_time: 2.0
+  vx_samples: 24
+  vtheta_samples: 48
+  linear_granularity: 0.025
+  angular_granularity: 0.025
+  critics: [ObstacleFootprint, Oscillation, PathAlign, GoalAlign, PathDist, GoalDist]
+  ObstacleFootprint.scale: 0.02
+  PathAlign.scale: 16.0
+  PathAlign.forward_point_distance: 0.15
+  GoalAlign.scale: 8.0
+  GoalAlign.forward_point_distance: 0.15
+  PathDist.scale: 32.0
+  GoalDist.scale: 24.0

@@ -1,0 +1,54 @@
+mppi:
+  time_steps: 40
+  batch_size: 2000
+  prune_distance: 1.8
+  vx_std: 0.25
+  wz_std: 0.6
+  temperature: 0.2
+  CostCritic.cost_weight: 8.0
+  CostCritic.near_collision_cost: 200
+  CostCritic.critical_cost: 500.0
+  CostCritic.trajectory_point_step: 1
+  PathAlignCritic.cost_weight: 12.0
+  PathAlignCritic.offset_from_furthest: 5
+  PathAlignCritic.trajectory_point_step: 2
+  PathFollowCritic.cost_weight: 5.0
+  PathFollowCritic.offset_from_furthest: 5
+  GoalCritic.cost_weight: 5.0
+  GoalCritic.threshold_to_consider: 1.0
+dwb:
+  sim_time: 2.5
+  vx_samples: 24
+  vtheta_samples: 48
+  linear_granularity: 0.025
+  angular_granularity: 0.025
+  critics:
+  - ObstacleFootprint
+  - Oscillation
+  - PathAlign
+  - GoalAlign
+  - PathDist
+  - GoalDist
+  ObstacleFootprint.scale: 0.1
+  PathAlign.scale: 24.0
+  PathAlign.forward_point_distance: 0.2
+  GoalAlign.scale: 12.0
+  GoalAlign.forward_point_distance: 0.2
+  PathDist.scale: 32.0
+  GoalDist.scale: 24.0
+safety:
+  rotation_sweep: true
+progress_checker:
+  required_movement_radius: 0.2
+  movement_time_allowance: 8.0
+recovery:
+  through_monitor: true
+  retry_count: 1
+  backup_required: true
+  replan_after_backup: true
+motion_limits:
+  min_linear_velocity: 0.0
+dwarl:
+  safety_state_topic: ''
+goal_checker:
+  xy_goal_tolerance: 0.25

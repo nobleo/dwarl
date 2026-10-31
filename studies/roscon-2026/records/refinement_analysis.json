@@ -1,0 +1,61 @@
+{
+  "decision": "Reject forward-only controller limit for this study; retain trained reverse capability in leading setup.",
+  "evidence": [
+    {
+      "name": "refined_reverse",
+      "path": "/home/bramo/repos/dwarl/runs/20261031-120652_navigation_b2ce75/tests/20261031-152132_7edfc82a",
+      "controllers": {
+        "gazebo": {
+          "successes": 5,
+          "collisions": 0,
+          "timeouts": 3,
+          "outside_tolerance": 0,
+          "minimum_clearance_m": 0.004987796043884981
+        },
+        "gazebo-mppi": {
+          "successes": 7,
+          "collisions": 0,
+          "timeouts": 1,
+          "outside_tolerance": 0,
+          "minimum_clearance_m": 0.06586515385130229
+        },
+        "gazebo-dwb": {
+          "successes": 7,
+          "collisions": 0,
+          "timeouts": 1,
+          "outside_tolerance": 0,
+          "minimum_clearance_m": 0.036095147300018275
+        }
+      }
+    },
+    {
+      "name": "refined_forward",
+      "path": "/home/bramo/repos/dwarl/runs/20261031-120652_navigation_b2ce75/tests/20261031-153559_c5c3518e",
+      "controllers": {
+        "gazebo": {
+          "successes": 4,
+          "collisions": 1,
+          "timeouts": 3,
+          "outside_tolerance": 0,
+          "minimum_clearance_m": 0.0
+        },
+        "gazebo-mppi": {
+          "successes": 7,
+          "collisions": 0,
+          "timeouts": 1,
+          "outside_tolerance": 0,
+          "minimum_clearance_m": 0.0648447864496204
+        },
+        "gazebo-dwb": {
+          "successes": 6,
+          "collisions": 0,
+          "timeouts": 2,
+          "outside_tolerance": 0,
+          "minimum_clearance_m": 0.02916427504689003
+        }
+      }
+    }
+  ],
+  "next": "Test approach slowing on DWARL, independently repeat the leading all-controller configuration, then freeze before held-out evaluation.",
+  "approach_selection_rule": "Require at least two additional successes versus the 5/8 leading DWARL run and zero observed collisions before expanding approach testing to the other controllers; a smaller single-run gain is insufficient to displace the repeated shared setup."
+}
