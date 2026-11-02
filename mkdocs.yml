@@ -5,6 +5,8 @@ repo_url: https://github.com/nobleo/dwarl
 theme:
   name: material
   font: false
+  logo: assets/dwarl-logo.png
+  favicon: assets/favicon.png
   palette:
     - scheme: default
       primary: custom

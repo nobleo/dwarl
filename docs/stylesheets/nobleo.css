@@ -1,12 +1,13 @@
 /* A small visual layer over Material; no custom theme or JavaScript. */
 :root {
-  --md-primary-fg-color: #85358a;
+  --md-primary-fg-color: #8b348a;
   --md-primary-fg-color--light: #a35ca7;
-  --md-primary-fg-color--dark: #67296b;
-  --md-accent-fg-color: #85358a;
+  --md-primary-fg-color--dark: #250326;
+  --md-accent-fg-color: #8b348a;
+  --nobleo-orange: #f59a18;
   --md-default-bg-color: #fff;
   --md-default-fg-color: #302c36;
-  --md-typeset-a-color: #85358a;
+  --md-typeset-a-color: #8b348a;
   --md-code-bg-color: #f6f5f8;
 }
 
@@ -31,7 +32,11 @@ body, input, button {
   border-bottom: 1px solid #ece9ef;
 }
 .md-header__title { font-weight: 750; letter-spacing: -.03em; }
-.md-header__button.md-logo { color: #85358a; }
+.md-header__button.md-logo { color: #8b348a; }
+.md-header__button.md-logo img { width: 7rem; height: auto; }
+.md-nav__title .md-logo img { width: 7rem; height: auto; }
+.md-header { border-top: 3px solid var(--nobleo-orange); }
+.md-typeset .hero-logo { display: block; width: 24rem; max-width: 100%; margin-bottom: 1.5rem; }
 .md-search__form { background: #f3f1f5; border-radius: 8px; }
 .md-search__input, .md-search__input::placeholder { color: #645d6d; }
 .md-search__icon { color: #645d6d !important; }
@@ -57,7 +62,7 @@ body, input, button {
   }
 }
 .md-typeset h1, .md-typeset h2, .md-typeset h3 {
-  color: #29242f;
+  color: #250326;
   font-weight: 700;
   letter-spacing: -.035em;
   line-height: 1.2;
@@ -82,10 +87,10 @@ body, input, button {
 .md-footer-meta { background: #f8f7fa; }
 .md-copyright, .md-copyright a { color: #777080 !important; }
 
-.docs-hero { padding: 1.5rem 0 2rem; }
+.docs-hero { padding: 1.5rem 0 2rem; border-bottom: 2px solid var(--nobleo-orange); margin-bottom: 2rem; }
 .eyebrow, .step-label {
   display: block;
-  color: #85358a;
+  color: #8b348a;
   font-size: .58rem;
   font-weight: 750;
   letter-spacing: .12em;
@@ -100,7 +105,12 @@ body, input, button {
   padding: .6rem .9rem;
   margin: .4rem .3rem .4rem 0;
 }
-.md-typeset .md-button--primary { background: #85358a; border-color: #85358a; color: #fff; }
+.md-typeset .md-button--primary { background: #8b348a; border-color: #8b348a; color: #fff; }
+.md-typeset .md-button:hover, .md-typeset .md-button:focus {
+  background: var(--nobleo-orange);
+  border-color: var(--nobleo-orange);
+  color: #250326;
+}
 .hero-note { display: block; font-size: .61rem; color: #777080; margin-top: .7rem; }
 .workflow-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; margin-bottom: 2.5rem; }
 .workflow-grid > p { display: flex; margin: 0; }
@@ -141,6 +151,8 @@ body, input, button {
   color: #e7e2ec;
   border-color: #37313f;
 }
+[data-md-color-scheme="slate"] .md-header { border-top-color: var(--nobleo-orange); }
+[data-md-color-scheme="slate"] .md-logo img { content: url("../assets/dwarl-logo-dark.png"); }
 [data-md-color-scheme="slate"] .md-search__form { background: #2b2633; }
 [data-md-color-scheme="slate"] .md-search__input,
 [data-md-color-scheme="slate"] .md-search__input::placeholder,
