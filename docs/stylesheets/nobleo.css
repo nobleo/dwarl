@@ -39,6 +39,23 @@ body, input, button {
 .md-nav__link { padding: .25rem 0; }
 .md-nav__link--active { font-weight: 650; }
 .md-nav__title { color: #777080; font-size: .65rem; letter-spacing: .04em; }
+/* Desktop section labels are headings; mobile labels remain drawer controls. */
+@media (min-width: 76.25em) {
+  .md-nav--primary .md-nav__item--section > label.md-nav__link {
+    margin-top: 1.15rem;
+    padding-top: .7rem;
+    border-top: 1px solid var(--md-default-fg-color--lightest);
+    color: var(--md-default-fg-color);
+    font-size: .62rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: default;
+  }
+  .md-nav--primary .md-nav__item--section > .md-nav > .md-nav__list {
+    padding-inline-start: .55rem;
+  }
+}
 .md-typeset h1, .md-typeset h2, .md-typeset h3 {
   color: #29242f;
   font-weight: 700;
