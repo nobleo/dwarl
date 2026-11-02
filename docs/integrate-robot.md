@@ -6,6 +6,8 @@ pipeline run. DWARL supports differential drive with a 2D lidar.
 Bring a URDF/xacro, the physical footprint, command limits and filtered lidar
 settings. Keep the integration in your robot repository.
 
+**Using a coding agent?** [Give it the setup skill and this ready-to-paste prompt](agent-setup.md).
+
 ## 1. Start setup
 
 From the DWARL checkout:

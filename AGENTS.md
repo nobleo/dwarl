@@ -14,6 +14,8 @@ with compute profiling and intermediate training checks disabled.
 
 These files are portable agent instructions; a harness can load them directly.
 The deterministic tools they reference are normal repository scripts.
+For agent-assisted onboarding, follow `docs/agent-setup.md`. The setup skill works
+as plain file instructions even in agents without automatic skill discovery.
 
 ## Environment: always pixi
 

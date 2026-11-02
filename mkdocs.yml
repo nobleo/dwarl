@@ -43,6 +43,7 @@ nav:
   - Start:
     - Try the example: quickstart.md
     - Integrate your robot: integrate-robot.md
+    - Use your coding agent: agent-setup.md
   - Workflow:
     - Train: train.md
     - Test and understand results: test.md

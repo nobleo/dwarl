@@ -73,3 +73,6 @@ with mkdocs_gen_files.open("reference/robot-profile.md", "w") as out:
 for name in ("dwarl_robot.yaml", "navigation.launch.py"):
     with mkdocs_gen_files.open(f"examples/{name}", "w") as out:
         out.write((Path(__file__).resolve().parents[1] / "src/dwarl/templates" / name).read_text())
+
+with mkdocs_gen_files.open("agent-skills/dwarl-robot-setup.txt", "w") as out:
+    out.write((Path(__file__).resolve().parents[1] / ".agents/skills/dwarl-robot-setup/SKILL.md").read_text())

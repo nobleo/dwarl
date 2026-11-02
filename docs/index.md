@@ -27,6 +27,9 @@ pixi run setup
 Pixi manages Python, ROS and Gazebo. Setup remembers your robot. Every command
 shows its result and a next step.
 
+Prefer to use your coding agent? [Give it the included setup skill](agent-setup.md)
+with a ready-to-paste prompt.
+
 <div class="grid cards" markdown>
 
 - **01 · Train**

@@ -7,6 +7,20 @@
       "expected_output": "Inspect robot-specific geometry, full lidar transform and stamped interface; do not silently reuse incompatible policy/dataset; start bounded robot-specific workflow; MPPI/DWB require Gazebo; rear safety polygons do not add sensor visibility.",
       "files": [],
       "assertions": ["Checks full lidar transform and TwistStamped interface", "Rejects blind reuse of another robot's policy", "States MPPI/DWB comparison requires Gazebo", "Identifies rear visibility limitation"]
+    },
+    {
+      "id": 2,
+      "prompt": "Plan only; do not run commands or edit files. My robot workspace /robots/rover already has a DWARL profile, a custom simulator launch, uncommitted edits and an installed policy. Run me through how you would set it up with Gazebo and a smoke check. The smoke validation later finishes with exit 1 and three collisions. What do you report and do next?",
+      "expected_output": "Reuse and inspect the integration, preserve edits and policy, run noninteractive pixi setup and live doctor before bounded smoke training, pin the returned checkpoint, report completed navigation failures separately from infrastructure failures and stop with a handoff.",
+      "files": [],
+      "assertions": ["Preserves existing profile edits and installed policy", "Runs setup and live Gazebo checks before training", "Uses smoke preset and an explicitly pinned test checkpoint", "Reports collisions without claiming navigation passed", "Stops before long training or deployment"]
+    },
+    {
+      "id": 3,
+      "prompt": "Plan only; do not run commands or edit files. I have just a URDF in /robots/rover and want MuJoCo training, no Gazebo. I don't know the physical footprint or acceleration limits. My agent terminal cannot answer interactive prompts. Can you fill those from diffbot and finish setup?",
+      "expected_output": "Ask for missing physical measurements, inspect description and joint/link data, use answers YAML with robot init --yes after inputs are known, skip Gazebo and ROS builds, describe a bounded smoke check and mark visual inspection pending if unavailable.",
+      "files": [],
+      "assertions": ["Asks for missing measurements instead of copying diffbot", "Uses noninteractive robot init with answers YAML", "Skips Gazebo for MuJoCo-only setup", "Does not claim checks were run", "Identifies visual inspection as pending"]
     }
   ]
 }
