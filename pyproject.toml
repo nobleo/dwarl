@@ -1,0 +1,140 @@
+[project]
+name = "dwarl"
+version = "0.1.0"
+license = "Apache-2.0"
+description = "RL local planner for differential-drive mobile robots (MuJoCo + RSL-RL + Hydra)"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "mujoco>=3.3",
+    "rsl-rl-lib>=5.5,<6",
+    "torch>=2.4",
+    "tensordict>=0.8",
+    "tensorboard>=2.16",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "pillow>=10",
+    "pyyaml>=6",
+    "onnx>=1.16",
+    "onnxruntime>=1.18",
+    "matplotlib>=3.8",
+    "dwarl-runtime",
+]
+
+[project.scripts]
+dwarl = "dwarl.cli:app"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.uv.sources]
+dwarl-runtime = { path = "runtime", editable = true }
+
+[tool.pixi.workspace]
+channels = ["robostack-jazzy", "conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+python = "3.12.*"
+
+[tool.pixi.pypi-dependencies]
+dwarl = { path = ".", editable = true }
+dwarl-runtime = { path = "runtime", editable = true }
+
+[tool.pixi.activation]
+scripts = ["scripts/pixi_activate.sh"]
+
+[tool.pixi.tasks]
+dwarl = "dwarl"
+train = "dwarl train"
+
+[tool.pixi.feature.dev.tasks]
+pytest = { cmd = "pytest -q", env = { OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", PYTEST_DISABLE_PLUGIN_AUTOLOAD = "1" } }
+lint = "ruff check ."
+
+[tool.pixi.feature.docs.dependencies]
+python = "3.12.*"
+
+[tool.pixi.feature.docs.pypi-dependencies]
+mkdocs = "==1.6.1"
+mkdocs-material = "==9.6.14"
+mkdocs-gen-files = "==0.5.0"
+omegaconf = "==2.3.0"
+hydra-core = "==1.3.2"
+
+[tool.pixi.feature.docs.tasks]
+docs = "mkdocs build --strict"
+docs-serve = "mkdocs serve"
+
+[tool.pixi.feature.ros.dependencies]
+ros-jazzy-ros-base = "*"
+ros-jazzy-navigation2 = "*"
+ros-jazzy-nav2-bringup = "*"
+ros-jazzy-nav2-mppi-controller = "*"
+ros-jazzy-nav2-minimal-tb3-sim = "*"
+ros-jazzy-ros-gz = "*"
+ros-jazzy-rviz2 = "*"
+ros-jazzy-xacro = "*"
+ros-jazzy-robot-state-publisher = "*"
+ros-jazzy-joint-state-publisher = "*"
+ros-jazzy-ament-cmake-gtest = "*"
+ros-jazzy-ament-cmake-pytest = "*"
+gz-transport13 = "*"  # Python ground-truth bindings (gz.transport13 / gz.msgs10)
+gz-msgs10 = "*"
+colcon-common-extensions = "*"
+compilers = "*"
+cmake = "*"
+ninja = "*"
+pkg-config = "*"
+make = "*"
+onnxruntime-cpp = "*"
+nlohmann_json = "*"
+pyyaml = "*"
+# Packages commonly used by robot bringup/Gazebo integrations; `dwarl setup` reports any others
+ros-jazzy-slam-toolbox = "*"
+ros-jazzy-laser-filters = "*"
+ros-jazzy-twist-mux = "*"
+ros-jazzy-joy = "*"
+ros-jazzy-teleop-twist-joy = "*"
+ros-jazzy-teleop-twist-keyboard = "*"
+ros-jazzy-diagnostic-common-diagnostics = "*"
+ros-jazzy-rqt-reconfigure = "*"
+ros-jazzy-joint-state-publisher-gui = "*"
+ros-jazzy-joint-state-broadcaster = "*"
+
+[tool.pixi.feature.ros.tasks]
+build = { cmd = "colcon build --symlink-install --base-paths ros/src --build-base ros/build --install-base ros/install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo", env = { ONNXRUNTIME_ROOT = "$CONDA_PREFIX" } }
+build-robot = { cmd = "bash scripts/pixi_build_robot.sh", depends-on = ["build"] }
+ros-test = { cmd = "colcon test --base-paths ros/src --build-base ros/build --install-base ros/install --event-handlers console_direct+ && colcon test-result --test-result-base ros/build --verbose", depends-on = ["build"] }
+doctor = { cmd = "dwarl doctor --sim gazebo", depends-on = ["build"] }
+# User entrypoints: `pixi run setup` once, then train/test/deploy (test/deploy build first).
+setup = "dwarl setup"
+test = { cmd = "dwarl test", depends-on = ["build-robot"] }
+deploy = { cmd = "dwarl deploy", depends-on = ["build-robot"] }
+
+[tool.pixi.environments]
+# default has ROS/Gazebo because `dwarl test --sim gazebo|both` launches the stack itself.
+default = { features = ["ros", "dev"], solve-group = "all" }
+train = { features = ["dev"], solve-group = "all" }  # slim: no ROS (clusters, CI)
+docs = { features = ["docs"], no-default-feature = true }  # slim: mkdocs only, as in CI
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dwarl"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["ros"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = ["ros", "runs", "data"]

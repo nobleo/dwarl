@@ -1,0 +1,62 @@
+<!--
+  DiffBot: TurtleBot-like differential-drive robot with a 2D lidar.
+
+  Frame convention: x forward, y left, z up. The body origin is on the ground,
+  centred between the wheels. The sim reads wheel radius, wheel separation and
+  drive geometry from this model. The profile owns the navigation footprint;
+  its radius must agree with this model's chassis contact geometry.
+
+  Named elements the simulator depends on:
+    joint   root          free joint of the base
+    joint   left_wheel / right_wheel
+    actuator left_motor / right_motor   (velocity actuators, ctrl = wheel rad/s)
+    geom    chassis       footprint (cylinder, radius used for spawn inflation)
+    geom    left_tire / right_tire
+    site    lidar         lidar origin (rays are cast horizontally from here)
+-->
+<mujoco model="diffbot">
+  <default>
+    <default class="diffbot">
+      <geom group="2" contype="1" conaffinity="1" friction="1.0 0.005 0.0001"/>
+      <default class="caster">
+        <geom type="sphere" size="0.02" condim="1" friction="0 0 0" mass="0.05"/>
+      </default>
+      <default class="tire">
+        <geom type="cylinder" size="0.05 0.015" euler="90 0 0" mass="0.2" rgba="0.1 0.1 0.1 1"/>
+        <joint type="hinge" axis="0 1 0" damping="0.01" armature="0.001"/>
+      </default>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base" childclass="diffbot">
+      <freejoint name="root"/>
+      <geom name="chassis" type="cylinder" size="0.18 0.06" pos="0 0 0.11" mass="3.0" rgba="0.2 0.4 0.8 1"/>
+      <geom name="front_caster" class="caster" pos="0.13 0 0.023"/>
+      <geom name="rear_caster" class="caster" pos="-0.13 0 0.023"/>
+      <!-- lidar housing (visual only) -->
+      <geom name="lidar_housing" type="cylinder" size="0.035 0.02" pos="0 0 0.19" contype="0" conaffinity="0"
+            mass="0.1" rgba="0.15 0.15 0.15 1"/>
+      <site name="lidar" pos="0 0 0.2" size="0.01" rgba="1 0 0 1"/>
+      <!-- heading indicator (visual only) -->
+      <geom name="nose" type="box" size="0.03 0.01 0.005" pos="0.15 0 0.175" contype="0" conaffinity="0"
+            mass="0.001" rgba="1 1 0 1"/>
+
+      <body name="left_wheel" pos="0 0.15 0.05">
+        <joint name="left_wheel" class="tire"/>
+        <geom name="left_tire" class="tire"/>
+      </body>
+      <body name="right_wheel" pos="0 -0.15 0.05">
+        <joint name="right_wheel" class="tire"/>
+        <geom name="right_tire" class="tire"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <velocity name="left_motor" joint="left_wheel" kv="0.6" ctrlrange="-25 25" forcerange="-2 2"
+              forcelimited="true"/>
+    <velocity name="right_motor" joint="right_wheel" kv="0.6" ctrlrange="-25 25" forcerange="-2 2"
+              forcelimited="true"/>
+  </actuator>
+</mujoco>

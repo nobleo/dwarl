@@ -1,0 +1,44 @@
+site_name: DWARL
+site_description: Train, test and deploy a neural local planner
+site_url: https://nobleo.github.io/dwarl/
+repo_url: https://github.com/nobleo/dwarl
+theme:
+  name: material
+  font: false
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.footer
+    - search.highlight
+extra_css:
+  - stylesheets/nobleo.css
+markdown_extensions:
+  - attr_list
+  - md_in_html
+  - pymdownx.highlight
+  - pymdownx.superfences
+nav:
+  - Start here: index.md
+  - Your robot: integrate-robot.md
+  - Configuration: configuration.md
+  - Results: results.md
+  - ROS setup: ros.md
+  - Command reference: reference.md
+  - Documentation maintenance: documentation.md
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - scripts/docs_reference.py

@@ -1,0 +1,38 @@
+# Builtin reference robot (schema: dwarl_robot/1): a TurtleBot-like diff drive with a 360 deg lidar.
+# Its ROS side is the TurtleBot3 waffle Gazebo benchmark in dwarl_bringup (`dwarl robot` / README).
+schema: dwarl_robot/1
+id: diffbot
+
+description:
+  mjcf: diffbot.xml               # already follows the simulator naming contract (see the file header)
+
+drive:
+  type: diff
+
+limits:
+  v_min: -0.2
+  v_max: 0.8
+  w_max: 1.5
+  a_max: 1.0
+  alpha_max: 3.0
+
+footprint:
+  radius: 0.18
+
+lidar:
+  num_rays: 180
+  fov_deg: 360.0
+  min_range: 0.12
+  max_range: 8.0
+  noise_std: 0.01
+  dropout_prob: 0.005
+
+ros:
+  base_frame: base_footprint
+  odom_frame: odom
+  map_frame: map
+  scan_topic: scan
+  odom_topic: odom
+  cmd_vel_topic: cmd_vel
+  cmd_vel_stamped: false
+  sim_launch: {package: dwarl_bringup, file: tb3_sim.launch.py}

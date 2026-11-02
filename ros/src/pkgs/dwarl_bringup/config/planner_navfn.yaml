@@ -1,0 +1,10 @@
+# Global planner for planner:=navfn (default): NavFn, light Dijkstra/A* on the global costmap.
+# Limit: path extraction is capped at 4 x map-width half-cell steps (~16 m on the 8 m scenario maps),
+# so longer routes (s_turn, 18.7 m) cannot be planned; use planner:=smac2d for those.
+planner_server:
+  ros__parameters:
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      tolerance: 0.3
+      use_astar: true
+      allow_unknown: true

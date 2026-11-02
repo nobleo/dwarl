@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!-- Small URDF robot for the profile tests: base_link at the axle, lidar ahead of the axle and upside down. -->
+<robot name="testbot">
+  <link name="base_link">
+    <inertial><origin xyz="0.05 0 0.05"/><mass value="3.0"/><inertia ixx="0.02" iyy="0.03" izz="0.03" ixy="0" ixz="0" iyz="0"/></inertial>
+    <collision><origin xyz="0.05 0 0.05"/><geometry><box size="0.3 0.25 0.1"/></geometry></collision>
+  </link>
+  <link name="wheel_left">
+    <inertial><mass value="0.2"/><inertia ixx="1e-4" iyy="2e-4" izz="1e-4" ixy="0" ixz="0" iyz="0"/></inertial>
+    <collision><origin rpy="1.5708 0 0"/><geometry><cylinder radius="0.05" length="0.02"/></geometry></collision>
+  </link>
+  <link name="wheel_right">
+    <inertial><mass value="0.2"/><inertia ixx="1e-4" iyy="2e-4" izz="1e-4" ixy="0" ixz="0" iyz="0"/></inertial>
+    <collision><origin rpy="1.5708 0 0"/><geometry><cylinder radius="0.05" length="0.02"/></geometry></collision>
+  </link>
+  <link name="caster"><inertial><mass value="0.05"/><inertia ixx="1e-5" iyy="1e-5" izz="1e-5" ixy="0" ixz="0" iyz="0"/></inertial>
+    <collision><geometry><sphere radius="0.02"/></geometry></collision></link>
+  <link name="laser"/>
+  <joint name="left_joint" type="continuous"><parent link="base_link"/><child link="wheel_left"/>
+    <origin xyz="0 0.14 0"/><axis xyz="0 1 0"/></joint>
+  <joint name="right_joint" type="continuous"><parent link="base_link"/><child link="wheel_right"/>
+    <origin xyz="0 -0.14 0"/><axis xyz="0 1 0"/></joint>
+  <joint name="caster_joint" type="fixed"><parent link="base_link"/><child link="caster"/>
+    <origin xyz="0.17 0 -0.03"/></joint>
+  <joint name="laser_joint" type="fixed"><parent link="base_link"/><child link="laser"/>
+    <origin xyz="0.12 0 0.15" rpy="3.14159265 0 0"/></joint>
+</robot>

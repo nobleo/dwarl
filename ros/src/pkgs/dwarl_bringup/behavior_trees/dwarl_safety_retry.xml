@@ -1,0 +1,59 @@
+<!--
+  Copyright (C) 2026 Nobleo Autonomous Solutions B.V.
+
+  NavigateToPose tree for the DWARL RL controller with the collision_monitor safety layer (safety:=true).
+  Plan once per goal (including goal updates), not periodically while following the path.
+  The outer recovery resets planning so a failed navigation attempt can get a fresh path.
+  Same recovery structure as Nav2's navigate_to_pose_w_replanning_and_recovery.xml, except for FollowPath:
+  when FollowPath fails (e.g. a collision_monitor STOP, reported by the DWARL plugin as NoValidControl),
+  back up a little and restart the policy (the plugin resets its action/command history on restart),
+  up to 3 times. If the policy keeps getting stopped, the outer recovery (clear costmaps / spin / wait /
+  back up) and replanning take over, as in the default tree.
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+      <PipelineSequence name="NavigateWithGoalUpdatedPlanning">
+        <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
+        <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
+        <GoalUpdatedController>
+          <RecoveryNode number_of_retries="1" name="ComputePathToPose">
+            <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+            <Sequence>
+              <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+              <ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+          </RecoveryNode>
+        </GoalUpdatedController>
+        <RecoveryNode number_of_retries="3" name="SafetyRetry">
+          <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
+          <Sequence name="BackUpAndRetry">
+            <!-- BackUp checks the local costmap itself; if it cannot back up, retry anyway -->
+            <ForceSuccess>
+              <BackUp backup_dist="0.20" backup_speed="0.10" time_allowance="5.0" error_code_id="{backup_code_id}"/>
+            </ForceSuccess>
+            <ClearEntireCostmap name="ClearLocalCostmap-Retry" service_name="local_costmap/clear_entirely_local_costmap"/>
+          </Sequence>
+        </RecoveryNode>
+      </PipelineSequence>
+      <Sequence>
+        <Fallback>
+          <WouldAControllerRecoveryHelp error_code="{follow_path_error_code}"/>
+          <WouldAPlannerRecoveryHelp error_code="{compute_path_error_code}"/>
+        </Fallback>
+        <ReactiveFallback name="RecoveryFallback">
+          <GoalUpdated/>
+          <RoundRobin name="RecoveryActions">
+            <Sequence name="ClearingActions">
+              <ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+              <ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+            </Sequence>
+            <Spin spin_dist="1.57" error_code_id="{spin_error_code}"/>
+            <Wait wait_duration="5.0"/>
+            <BackUp backup_dist="0.30" backup_speed="0.15" error_code_id="{backup_code_id}"/>
+          </RoundRobin>
+        </ReactiveFallback>
+      </Sequence>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

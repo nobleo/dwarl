@@ -1,0 +1,6 @@
+control_dt: 0.1              # 10 Hz policy
+episodes_per_map: 1          # map swap is cheap (in-place geom pool), so new map every episode by default
+spawn_yaw_noise: 3.14159     # uniform +- noise around the initial path direction [rad]
+spawn_yaw_curriculum: true   # grow the spawn heading noise with the map curriculum level:
+spawn_yaw_min: 0.5           #   +- this much [rad] at the first level ...
+spawn_yaw_full_level: 0.6    #   ... up to spawn_yaw_noise at this curriculum level

@@ -1,0 +1,35 @@
+# RSL-RL OnPolicyRunner configuration (passed through as a dict).
+num_steps_per_env: 64
+logger: tensorboard
+obs_groups:
+  actor: [lidar, state]
+  critic: [lidar, state, privileged]   # asymmetric critic sees the privileged path info
+actor:
+  class_name: dwarl.training.models.lidar_cnn:LidarCNNModel
+  hidden_dims: [512, 256, 128]
+  activation: elu
+  obs_normalization: true
+  encoder_cfg: {channels: [32, 64, 64], kernels: [7, 5, 3], strides: [2, 2, 2], latent_dim: 128}
+  distribution_cfg:
+    class_name: GaussianDistribution
+    init_std: 0.6
+    std_type: scalar
+critic:
+  class_name: dwarl.training.models.lidar_cnn:LidarCNNModel
+  hidden_dims: [512, 256, 128]
+  activation: elu
+  obs_normalization: true
+  encoder_cfg: {channels: [32, 64, 64], kernels: [7, 5, 3], strides: [2, 2, 2], latent_dim: 128}
+algorithm:
+  class_name: PPO
+  num_learning_epochs: 5
+  num_mini_batches: 4
+  clip_param: 0.2
+  gamma: 0.99
+  lam: 0.95
+  value_loss_coef: 1.0
+  entropy_coef: 0.005
+  learning_rate: 0.0003
+  max_grad_norm: 1.0
+  schedule: adaptive
+  desired_kl: 0.01

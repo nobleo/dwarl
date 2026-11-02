@@ -1,0 +1,19 @@
+{
+  "skill_name": "dwarl-performance-loop",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We enabled a forward-only limiter. DWARL went from 5/8 successes with zero collisions to 4/8 with one collision. All eight new episodes recorded zero reverse-limit interventions. Can we say the limiter made DWARL worse? Give a short decision and the next experiment, without running anything.",
+      "expected_output": "Reject a causal claim because the limiter never activated; identify run variability; repeat matched validation, preserve collision outcomes, do not retune on final test cases.",
+      "files": [],
+      "assertions": ["Rejects causal attribution to a limiter that never activated", "Proposes repeated matched validation before selection", "Retains collision outcomes rather than loosening scoring"]
+    },
+    {
+      "id": 2,
+      "prompt": "The old policy scored 40.6% on workload A, while a new reward trial scored 81.3% on workload B. I want to call that an improvement and keep training until 95%. We have already had two comparable trials with no useful gain. Give a bounded evidence-based decision and commands for a proper next check; do not execute experiments.",
+      "expected_output": "Do not compare different workloads or chase a post-hoc target; remeasure comparable validation if needed, honor declared trial patience, preserve best, distinguish training and experiment stopping, keep final test separate.",
+      "files": [],
+      "assertions": ["Rejects direct comparison of different workloads", "Honors the no-improvement stopping budget", "Keeps held-out test cases out of selection"]
+    }
+  ]
+}

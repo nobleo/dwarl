@@ -1,0 +1,34 @@
+# Isaac Lab convention: reward = sum(weight * term(env) * control_dt).
+# Weights are per-second; these retain the former per-step magnitudes at 10 Hz.
+progress:
+  func: dwarl.navigation.rewards:progress
+  weight: 10.0
+cross_track:
+  func: dwarl.navigation.rewards:cross_track
+  weight: 2.0
+heading:
+  func: dwarl.navigation.rewards:heading
+  weight: 1.0
+goal:
+  func: dwarl.navigation.rewards:goal
+  weight: 300.0
+collision:
+  func: dwarl.navigation.rewards:collision
+  weight: 500.0
+stuck:
+  func: dwarl.navigation.rewards:stuck
+  weight: 200.0
+time:
+  func: dwarl.navigation.rewards:time
+  weight: 0.5
+action_rate:
+  func: dwarl.navigation.rewards:action_rate
+  weight: 0.2
+proximity:
+  func: dwarl.navigation.rewards:proximity
+  weight: 5.0
+  params: {band: 0.25, power: 1.0}
+reverse:
+  func: dwarl.navigation.rewards:reverse
+  weight: 8.0
+  params: {deadband: 0.02, power: 1.0}

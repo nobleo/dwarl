@@ -1,0 +1,12 @@
+defaults:
+  - dwarl_public
+  - sim@recipe.sim: default
+  - env@recipe.env: nav
+  - actions@recipe.actions: differential_drive
+  - commands@recipe.commands: path
+  - observations@recipe.observations: navigation
+  - rewards@recipe.rewards: path
+  - terminations@recipe.terminations: navigation
+  - curriculum@recipe.curriculum: default
+  - agent@recipe.agent: ppo
+  - _self_
