@@ -51,6 +51,8 @@ coverage.xml
 # --- ROS2 / colcon workspace ---
 ros/build/
 ros/install/
+ros/build-runtime/
+ros/install-runtime/
 ros/log/
 ros/.cache/
 

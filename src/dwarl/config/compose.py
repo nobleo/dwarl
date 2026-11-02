@@ -44,11 +44,17 @@ def validate_training(train):
         raise ValueError("early stopping requires train.validation_interval > 0")
 
 
-def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None):
+def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, preset=None):
     cwd = Path(cwd or Path.cwd()).resolve()
     ConfigStore.instance().store(name="dwarl_public", node=Config)
     with initialize_config_module("dwarl.config.recipes", version_base="1.3"):
         cfg = compose(config_name="public")
+    if preset:
+        from .presets import PRESETS
+
+        if preset not in PRESETS:
+            raise ValueError(f"unknown preset {preset!r}; choose {', '.join(PRESETS)}")
+        cfg = OmegaConf.merge(cfg, {"train": PRESETS[preset]})
     source = (cwd / config).resolve() if config else cwd / "dwarl.yaml"
     if config or source.exists():
         supplied = OmegaConf.load(source)

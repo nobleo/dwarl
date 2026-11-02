@@ -85,7 +85,7 @@ def _import_xacro():
             import xacro  # type: ignore
 
             return xacro
-    raise ProfileError("xacro not found: install ROS' xacro (apt ros-<distro>-xacro) or `pip install xacro`, "
+    raise ProfileError("xacro not found: use DWARL's default pixi environment (`pixi run setup`), "
                        "or point description.urdf at a plain .urdf")  # fmt: skip
 
 

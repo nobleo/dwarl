@@ -15,10 +15,10 @@ Run the guided setup once:
 pixi run setup
 ```
 
-It asks for your robot repository (pre-filled from a sibling checkout with a `dwarl_robot.yaml`),
-picks the integration package(s) to build, saves the answers to `.dwarl/setup.env`, builds DWARL's
-`ros/` packages and your robot workspace against pixi's ROS (into `.pixi/robot/`), and runs
-`dwarl doctor --sim gazebo`. Rerun it to change the answers. For scripts and CI:
+It offers the example robot, a new integration or a saved integration. Workspace answers
+are stored in `.dwarl/setup.env` and active selections in `.dwarl/context.json`.
+Gazebo integrations build DWARL's `ros/` packages and the robot workspace against
+pixi's ROS (into `.pixi/robot/`) and offer a live check. Rerun it to change the answers. For scripts and CI:
 `dwarl setup --robot-ws /path/to/robot --packages my_robot_dwarl --yes`.
 `DWARL_ROBOT_WS` / `DWARL_ROBOT_PACKAGES` in the environment override the saved answers.
 
@@ -29,8 +29,9 @@ run, also right after a build in the same command. Robot runtime dependencies mi
 feature in `pyproject.toml` can be added with `pixi add --feature ros ros-jazzy-<package>`.
 Run pixi from a terminal without another ROS workspace sourced.
 
-`pixi run test` and `pixi run deploy` rebuild first, so a changed integration is always current;
-inside `pixi shell`, run `pixi run build-robot` after adding files or changing compiled code.
+Gazebo testing and deployment with a launch adapter run incremental builds first.
+The same preparation runs from task shortcuts and direct CLI commands inside `pixi shell`.
+MuJoCo testing does not trigger a ROS build. Use `pixi run build-robot` for an explicit rebuild.
 `dwarl doctor --sim gazebo` (also part of `dwarl test --sim gazebo`) warns about Gazebo servers left
 behind by an interrupted DWARL test (they share ROS domains and CPU) and a `powersave` CPU governor.
 

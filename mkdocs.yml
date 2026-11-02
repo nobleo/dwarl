@@ -20,8 +20,13 @@ theme:
         name: Switch to light mode
   features:
     - content.code.copy
+    - content.tabs.link
+    - navigation.sections
+    - navigation.path
+    - navigation.top
     - navigation.footer
     - search.highlight
+    - search.suggest
 extra_css:
   - stylesheets/nobleo.css
 markdown_extensions:
@@ -29,14 +34,35 @@ markdown_extensions:
   - md_in_html
   - pymdownx.highlight
   - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
 nav:
-  - Start here: index.md
-  - Your robot: integrate-robot.md
-  - Configuration: configuration.md
-  - Results: results.md
-  - ROS setup: ros.md
-  - Command reference: reference.md
-  - Documentation maintenance: documentation.md
+  - Home: index.md
+  - Start:
+    - Try the example: quickstart.md
+    - Integrate your robot: integrate-robot.md
+  - Workflow:
+    - Train: train.md
+    - Test and understand results: test.md
+    - Deploy to Nav2: deploy.md
+  - How-to:
+    - Add Gazebo: gazebo.md
+    - Monitor and resume: monitor.md
+    - Compare controllers: compare.md
+    - Troubleshooting: troubleshooting.md
+  - Reference:
+    - CLI: reference.md
+    - Robot profile: reference/robot-profile.md
+    - Configuration: configuration.md
+    - All defaults: reference/configuration.md
+    - Results and measurements: results.md
+    - Manual integration contracts: manual-integration.md
+    - ROS builds: ros.md
+  - Contributing:
+    - Development: contributing.md
+    - Documentation: documentation.md
 plugins:
   - search
   - gen-files:

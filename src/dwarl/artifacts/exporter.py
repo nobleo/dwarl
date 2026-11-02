@@ -285,7 +285,7 @@ def benchmark_policy(export_dir: str | Path, num_rays: int = 180, iters: int = 1
         try:
             import onnxruntime as ort
         except ImportError:
-            print("[benchmark] skipping ONNX: onnxruntime not installed (pip install onnxruntime)")
+            print("[benchmark] skipping ONNX: onnxruntime not installed; run through pixi")
             onnx_path = None
 
     if onnx_path and onnx_path.exists():

@@ -20,6 +20,7 @@ def detach(cfg):
         process = subprocess.Popen([sys.executable, "-m", "dwarl", "train", "--config", str(path)],
                                    start_new_session=True, stdin=subprocess.DEVNULL, stdout=log, stderr=log)
     print(f"Started PID {process.pid}; run location and progress: {log.name}")
+    return {"pid": process.pid, "log": str(log.name), "configuration": str(path)}
 
 
 def stop(reference):

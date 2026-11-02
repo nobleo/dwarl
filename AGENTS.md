@@ -24,12 +24,22 @@ workspace and DWARL's `ros/install`, and adds `$DWARL_ROBOT_WS/src` to `DWARL_RO
 
 - `default` env: training + ROS 2 Jazzy/Nav2/Gazebo (`dwarl test --sim gazebo` launches the
   stack itself). `train`: slim, no ROS. `docs`: mkdocs.
-- Users start with `pixi run setup` (`dwarl setup`): it asks for the robot repository, saves
-  `.dwarl/setup.env`, builds and runs the Gazebo doctor. Non-interactive:
+- Users start with `pixi run setup`: example/new/existing integration; new robots use
+  `dwarl robot init`. Workspace answers live in `.dwarl/setup.env`, selections in
+  `.dwarl/context.json`, unfinished wizard profiles in `.dwarl/drafts/`. Non-interactive:
   `pixi run dwarl setup --robot-ws <path> --packages <pkg> --yes`.
-- Tasks: `setup`, `train`, `test` (= `dwarl test`, builds first), `deploy` (builds first), `pytest`,
+- Tasks: `setup`, `train`, `test`, `deploy`, `pytest`,
   `lint`, `docs`, `build` (DWARL `ros/`), `build-robot` (saved/`$DWARL_ROBOT_WS`, limited to
   `$DWARL_ROBOT_PACKAGES`, into `.pixi/robot/`), `ros-test`, `doctor`.
+- Workflow preparation builds ROS for Gazebo and deployment launch adapters only; MuJoCo
+  does not build ROS. Direct CLI commands and pixi shortcuts share preparation.
+- `train --preset smoke|navigation` opts into a recipe; plain training defaults stay unchanged.
+  Explicit config/CLI inputs beat saved selections. Smoke and navigation runs have separate pointers.
+- `status`, `next`, `runs list|show|watch`, and `report --open` read existing evidence.
+  Findings go to stderr; JSON results to stdout. Use `dwarl.cli.ui` for human output.
+- `doctor --sim gazebo --live` checks the actual simulator contract without policy inference.
+- `pixi run -e runtime runtime-launch model_dir:=...` builds/activates a separate native runtime
+  without the training stack. Supported lockfile platform remains Linux x86-64.
 - Gazebo runs load the robot overlay and `ros/install` at run time (`dwarl.ros_env.overlay`), so a
   build earlier in the same `pixi run` is picked up.
 - Add dependencies with `pixi add --feature ros ros-jazzy-<pkg>` or `pixi add --pypi <pkg>`;

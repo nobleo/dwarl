@@ -96,8 +96,8 @@ def resolve_uri(uri: str, base: Path, hints: list[Path] | None = None) -> Path:
                 pkg, _, rel = rest.partition("/")
             root = find_package(pkg, hints)
             if root is None:
-                raise ProfileError(f"ROS package '{pkg}' not found (source the workspace or add its src dir to "
-                                   f"$DWARL_ROBOT_PATH)")  # fmt: skip
+                raise ProfileError(f"ROS package '{pkg}' not found. Run `pixi run setup` to select its workspace, "
+                                   f"or add its src directory to DWARL_ROBOT_PATH.")  # fmt: skip
             return root / rel
     p = Path(os.path.expandvars(os.path.expanduser(s)))
     return p if p.is_absolute() else (base / p).resolve()

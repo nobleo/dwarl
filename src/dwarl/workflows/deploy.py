@@ -34,11 +34,18 @@ def check_compatibility(checkpoint, profile):
 
 
 def execute(cfg):
+    from dwarl.cli import ui
+
     if not cfg.robot:
         raise ValueError("select the target integration: dwarl deploy <robot>")
     checkpoint = resolve_checkpoint(resolve_run(cfg.deploy.run), cfg.deploy.checkpoint)
     profile = load_profile(cfg.robot)
     check_compatibility(checkpoint, profile)
+    ui.finding("pass", f"Target compatible with checkpoint {checkpoint.iteration} · {checkpoint.sha256[:12]}")
+    if profile.raw["deployment"].get("launch"):
+        from dwarl.workflows.prepare import ros
+
+        ros(profile.path)
     bundle = prepare_policy(checkpoint)
     metadata = validate_bundle(bundle)
     settings = profile.raw["deployment"]
@@ -65,11 +72,13 @@ def execute(cfg):
         # JSON is a YAML subset, allowing the same atomic writer and easy ROS-side parsing.
         write_json(selection, {"schema": "dwarl_selected_policy/1", "bundle_id": metadata["identity"],
                    "path": str(target.relative_to(profile.dir)), "checkpoint": checkpoint.sha256, "tests": tests})
-    print(f"Installed {checkpoint.sha256} for {profile.id}: {target}")
-    print(f"Selected policy: {selection}; recorded tests: {len(tests)}")
+    ui.finding("pass", f"Installed policy for {profile.id}: {target}")
+    ui.info(f"Selected policy: {selection} · recorded evaluations: {len(tests)}")
     launch = settings.get("launch")
     if launch:
-        print(f"Launch: ros2 launch {launch['package']} {launch['file']}")
+        ui.info("After starting robot interfaces and localization:")
+        ui.info(ui.command("ros2", "launch", launch["package"], launch["file"], f"integration:={profile.dir}"))
     else:
-        print(f"Integration has no deployment launch adapter; runtime bundle: {target}")
+        ui.info(ui.command("ros2", "launch", "dwarl_bringup", "navigation.launch.py", f"model_dir:={target}"))
+    ui.info("Transfer the whole bundle to another computer; use the pixi runtime environment on supported targets.")
     return target

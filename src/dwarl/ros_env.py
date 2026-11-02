@@ -30,12 +30,11 @@ def load_setup():
 
 
 def overlay():
-    """Source the robot overlay, then DWARL's ros/install (DWARL's controller wins), if not active yet."""
+    """Refresh built overlays, including packages added since pixi activated this process."""
     load_setup()
-    active = os.environ.get("AMENT_PREFIX_PATH", "").split(os.pathsep)
     for workspace in (root() / ".pixi/robot/install", root() / "ros/install"):
         script = workspace / "local_setup.sh"
-        if not script.is_file() or any(p.startswith(str(workspace)) for p in active if p):
+        if not script.is_file():
             continue
         dump = subprocess.run(["bash", "-c", f'AMENT_CURRENT_PREFIX="{workspace}" . "{script}" >/dev/null && env -0'],
                               capture_output=True, check=True).stdout.decode()
@@ -44,6 +43,21 @@ def overlay():
 
 def lease_directory():
     return Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/dwarl-{os.getuid()}")) / "dwarl-domains"
+
+
+def acquire_stack_lock(*, build=False):
+    """Prevent a prepared build from overlapping managed simulator use, across checkouts."""
+    import fcntl
+
+    directory = lease_directory()
+    directory.mkdir(parents=True, exist_ok=True)
+    stream = (directory / "build.lock").open("a")
+    try:
+        fcntl.flock(stream, (fcntl.LOCK_EX if build else fcntl.LOCK_SH) | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        stream.close()
+        raise ValueError("A ROS build or managed simulator is active; finish it before starting this one.") from exc
+    return stream
 
 
 def _lease_held(domain):

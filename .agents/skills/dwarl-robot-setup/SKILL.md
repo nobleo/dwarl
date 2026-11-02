@@ -38,13 +38,15 @@ footprint or treating an inflated costmap radius as the physical footprint.
    checkpoint hash. Use runtime parity checks and recorded-input model replay where
    available; desktop replay timing is not the robot CPU measurement.
 7. Run `pixi run dwarl setup --robot-ws <robot repository> --packages <integration> --yes`
-   (or interactive `pixi run setup` with the user); it builds and runs the Gazebo doctor.
+   (or interactive `pixi run setup` with the user). Use `robot init` to scaffold missing
+   integrations, `doctor --sim gazebo --live` for a policy-independent adapter check,
+   and `status`/`next` to inspect evidence and follow the workflow.
    Never source ROS or workspaces by hand.
    If the robot's launch needs a ROS package missing from pixi, add it with
    `pixi add --feature ros ros-jazzy-<pkg>`. Verify the
    Gazebo adapter accepts world/spawn arguments and supplies clock, scan, odometry,
    TF and the correct velocity interface. Match the simulator entity to the profile's
-   `ros.gazebo_model` (default `robot`); do not hard-code that default for every robot.
+    runtime contract (currently entity `robot` in world `default`).
    Run one smoke case before broader tests and check its real-time factor.
 8. Check actual clearance, commands, measured motion, safety-monitor state and
    localization differences. A successful launch is not successful navigation.

@@ -2,81 +2,62 @@
 
 <span class="eyebrow">NOBLEO TECHNOLOGY · DWARL</span>
 
-# From training to navigation.
+# Your robot. One workflow.
 
-Build a neural local planner for your robot. Train in MuJoCo, compare with
-Gazebo, and deploy the same policy to Nav2.
+Train a local planner in MuJoCo, measure how it navigates, and bring the
+same policy to ROS 2 Nav2.
 
-[Integrate your robot →](integrate-robot.md){ .md-button .md-button--primary }
-[Explore the commands](reference.md){ .md-button }
+[Try the example robot →](quickstart.md){ .md-button .md-button--primary }
+[Use your robot →](integrate-robot.md){ .md-button }
 
-<span class="hero-note">Experimental toolkit · ROS 2 Jazzy · No pretrained policy included</span>
-
-</div>
-
-<div class="workflow-grid" markdown>
-
-<a class="workflow-card" href="integrate-robot/#3-smoke-test-the-training-pipeline">
-<span class="step-label">01 / TRAIN</span>
-<strong>Start with your robot</strong>
-<span>Inspect the model, generate robot-sized maps, and run your first training session.</span>
-<code>dwarl train</code>
-</a>
-
-<a class="workflow-card" href="integrate-robot/#5-evaluate-a-trained-checkpoint">
-<span class="step-label">02 / TEST</span>
-<strong>Measure what works</strong>
-<span>Evaluate exact checkpoints and compare trajectories across both simulators.</span>
-<code>dwarl test</code>
-</a>
-
-<a class="workflow-card" href="integrate-robot/#7-export-and-install-the-network">
-<span class="step-label">03 / DEPLOY</span>
-<strong>Bring it to your robot</strong>
-<span>Install a tested policy into your robot integration and run it with Nav2.</span>
-<code>dwarl deploy</code>
-</a>
+<span class="hero-note">Linux x86-64 · ROS 2 Jazzy · Experimental · No pretrained policy included</span>
 
 </div>
 
-## What can I do?
+## Start with one command
 
-| Goal | Command / guide |
-| --- | --- |
-| First-run setup: pick your robot, build ROS, check Gazebo | `pixi run setup` (rerun to change answers) |
-| Inspect robot geometry on a floor | `dwarl robot view <robot-repository>` |
-| Check model parameters | `dwarl robot check <robot-repository>` |
-| Check simulator installation | `dwarl doctor --sim mujoco` or `--sim gazebo` |
-| Generate robot-sized data and train | `dwarl train <robot-repository>` |
-| Watch training | Add `--show`; [monitor TensorBoard](configuration.md#monitor-training) |
-| Run in the background | Add `--detached`; stop with `dwarl stop <run>` |
-| List and resume runs | `dwarl runs list`; `dwarl train --resume <run>` |
-| Evaluate canonical cases | `dwarl test --run <run> --suite benchmark` |
-| Evaluate validation / held-out data | `--suite validation` / `--suite test` |
-| Compare MuJoCo and Gazebo | `dwarl test --run <run> --sim both` |
-| Watch a case | `dwarl test --run <run> --case doorway --show` |
-| Install a checkpoint into a robot | `dwarl deploy <robot-repository> --run <run>` |
-| See all flags and settings | [Generated command reference](reference.md) |
-| Understand scores and output files | [Results](results.md) |
-
-Use `--help` on any command. Train, test and deploy also offer `--print-config`
-and `--dry-run`. [Configuration](configuration.md) explains overrides and selection.
-
-## Install
-
-Install [pixi](https://pixi.sh) once (`curl -fsSL https://pixi.sh/install.sh | bash`). It installs
-Python, the training stack, ROS 2 Jazzy, Nav2 and Gazebo into `.pixi/`; nothing needs to be sourced:
+Install [pixi](https://pixi.sh), clone the repository and let setup guide you:
 
 ```bash
 git clone https://github.com/nobleo/dwarl.git
 cd dwarl
-pixi run setup            # asks for your robot repository, builds ROS + robot, checks Gazebo
-pixi shell                # commands below run here (or prefix: `pixi run dwarl ...`)
-dwarl --help
+pixi run setup
 ```
 
-`pixi run setup` remembers its answers in `.dwarl/setup.env`; rerun it to change them.
-For a slim training-only machine without ROS, use `pixi install -e train`.
+Pixi manages Python, ROS and Gazebo. Setup remembers your robot. Every command
+shows its result and a next step.
 
-For Gazebo/Nav2,
-follow [ROS setup](ros.md) to build DWARL's ROS packages and your robot workspace.
+<div class="grid cards" markdown>
+
+- **01 · Train**
+
+    Build robot-sized datasets and train a policy. Start with a tiny pipeline check.
+
+    [Train a policy →](train.md)
+
+- **02 · Test**
+
+    Evaluate exact checkpoints and inspect success, collision and per-case behavior.
+
+    [Understand results →](test.md)
+
+- **03 · Deploy**
+
+    Install a complete ONNX bundle and connect the controller to Nav2.
+
+    [Deploy to Nav2 →](deploy.md)
+
+</div>
+
+## Pick up where you left off
+
+```bash
+pixi run dwarl status
+pixi run dwarl next
+```
+
+DWARL replaces the **local controller**. Your robot supplies its description,
+drivers, lidar, odometry and localization. Start in simulation; choose policies
+using validation evidence rather than training reward alone.
+
+[CLI reference](reference.md) · [Troubleshooting](troubleshooting.md) · [GitHub](https://github.com/nobleo/dwarl)

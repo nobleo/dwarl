@@ -12,11 +12,12 @@ from uuid import uuid4
 
 from omegaconf import OmegaConf
 
-from dwarl.ros_env import lease_directory
+from dwarl.ros_env import acquire_stack_lock, lease_directory
 from dwarl.runs.store import write_json
 
 
-def prerequisites():
+def prerequisites(*, quiet=False):
+    from dwarl.cli import ui
     from dwarl.ros_env import health_warnings, overlay
 
     missing = [name for name in ("ros2", "gz") if not shutil.which(name)]
@@ -27,9 +28,13 @@ def prerequisites():
         check = subprocess.run(["ros2", "pkg", "prefix", package], capture_output=True, text=True)
         if check.returncode:
             raise ValueError(f"ROS package {package} unavailable; run `pixi run setup` (or `pixi run build`)")
-    print("ROS/Gazebo executables and required packages found")
+    findings = [{"level": "pass", "message": "ROS/Gazebo executables and required packages found"}]
     for warning in health_warnings():
-        print(f"warning: {warning}")
+        findings.append({"level": "check", "message": warning})
+    if not quiet:
+        for item in findings:
+            ui.finding(item["level"], item["message"])
+    return findings
 
 
 def stop_owned(process):
@@ -92,6 +97,11 @@ class GazeboBackend:
                 stream.close()
         if self.lease is None:
             raise RuntimeError("all managed ROS domains are in use")
+        try:
+            self.build_lock = acquire_stack_lock()
+        except ValueError:
+            self.lease.close()
+            raise
 
     def execute_case(self, case):
         self.partial = {}
@@ -127,3 +137,4 @@ class GazeboBackend:
             stop_owned(self.process)
         if self.lease is not None:
             self.lease.close()
+        self.build_lock.close()

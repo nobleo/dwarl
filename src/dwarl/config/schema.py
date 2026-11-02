@@ -25,6 +25,7 @@ class EarlyStopConfig:
 
 @dataclass
 class TrainConfig:
+    preset: str | None = None
     name: str = "navigation"
     num_envs: int = 64
     seed: int = 42

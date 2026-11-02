@@ -1,77 +1,60 @@
 # DWARL
 
-Train a differential-drive local planner, test an exact checkpoint, and install it into a robot integration.
-The Python package and command are `dwarl`.
+**Train, test and deploy a neural local planner for your differential-drive robot.**
+Train in MuJoCo, evaluate exact checkpoints in MuJoCo or Gazebo, and install an
+ONNX policy bundle for the ROS 2 Nav2 controller plugin.
 
-DWARL is experimental. No pretrained navigation policy is included; evaluate trained
-policies for your robot and operating environment before deployment.
+[Documentation](https://nobleo.github.io/dwarl/) ·
+[Quickstart](https://nobleo.github.io/dwarl/quickstart/) ·
+[Integrate your robot](https://nobleo.github.io/dwarl/integrate-robot/)
 
-## Documentation
+## Get started
 
-**Documentation site:** [nobleo.github.io/dwarl](https://nobleo.github.io/dwarl/)
-(built from `docs/` on every main push).
+Install [pixi](https://pixi.sh), then:
 
-Start with **[Your robot: from model to Nav2](docs/integrate-robot.md)**:
-define a robot profile, train, test, export the ONNX policy and run it on your
-robot with Nav2. Includes a profile template and Gazebo adapter requirements.
-See the [documentation overview](docs/index.md), [configuration](docs/configuration.md),
-[test results](docs/results.md), and [ROS setup](docs/ros.md) for the full workflow.
-
-The searchable site and command reference are generated on every main push.
-You can also download the `documentation` artifact from
-[GitHub Actions](https://github.com/nobleo/dwarl/actions/workflows/docs.yml),
-or [preview the site locally](docs/documentation.md).
-
-## Install
-
-Install [pixi](https://pixi.sh) once (`curl -fsSL https://pixi.sh/install.sh | bash`). It installs
-Python, the training stack, ROS 2 Jazzy, Nav2 and Gazebo into `.pixi/`; nothing needs to be sourced:
-
-```sh
+```bash
 git clone https://github.com/nobleo/dwarl.git
 cd dwarl
-pixi run setup            # asks for your robot repository, builds ROS + robot, checks Gazebo
-pixi run train /path/to/robot-repository
-pixi run test --sim both
-pixi run deploy /path/to/robot-repository
+pixi run setup
 ```
 
-`pixi run setup` remembers its answers in `.dwarl/setup.env`; rerun it to change them.
-Every `dwarl ...` command below also works inside `pixi shell` (or as `pixi run dwarl ...`).
-For a slim training-only machine without ROS, use `pixi install -e train`.
+Setup lets you try the included example, integrate your robot, or continue an
+existing integration. It remembers your selection, helps create a robot profile,
+and checks the requested environment. Python, ROS 2 Jazzy and Gazebo Harmonic come
+from pixi. No manual sourcing is needed. Supported environment: **Linux x86-64**.
 
-## Workflow
+## The workflow
 
-```sh
-dwarl train /path/to/robot-repository
-dwarl test --case doorway
-dwarl test --sim gazebo --show
-dwarl test --sim both
-dwarl deploy /path/to/robot-repository
+```bash
+pixi run train --preset smoke       # small pipeline check
+pixi run train --preset navigation  # starter recipe with periodic validation
+pixi run test --suite validation    # evaluate the selected run
+pixi run dwarl report --open        # inspect individual outcomes
+pixi run deploy                    # install a compatible bundle
 ```
 
-Training prepares robot-sized datasets automatically. Test and deploy select the
-latest **completed** checkpoint of the latest run once, print its hash, and prepare
-an immutable ONNX bundle automatically. `--checkpoint best` is explicit and requires
-completed validation evidence. A fresh one-iteration smoke policy is not a usable planner.
+Each command reports its selected inputs and a concrete next step. Use
+`pixi run dwarl status` for an overview or `pixi run dwarl next` for guidance.
+Explicit robot paths, runs and checkpoints remain available through `--help`.
 
-Intermediate checks and early stopping are off by default. Enable validation with
-`--set train.validation_interval=200`, benchmarks with `--set train.benchmark_interval=500`,
-and validation-based stopping with `--set train.early_stop.enabled=true`.
-See [configuration](docs/configuration.md#optional-intermediate-testing-and-early-stopping).
+DWARL replaces the local controller, not the complete navigation stack. You bring
+the robot description, sensing, drivers and localization. Integrations remain in
+your robot repository; DWARL stays robot-neutral.
 
-For a standalone MuJoCo smoke test, use the included `diffbot`:
+DWARL is experimental and includes no pretrained navigation-quality policy.
+A smoke run checks the pipeline. Choose policies on validation data and use
+held-out tests for final evaluation.
 
-```sh
-dwarl train diffbot --num-envs 2 --max-iterations 1 \
-  --set train.validation_interval=0 \
-  --set train.data.train_maps=1 --set train.data.validation_maps=1 \
-  --set train.data.test_maps=1 --set train.data.pairs_per_map=3
-dwarl test --case doorway --set test.max_cases=1
+## Development
+
+```bash
+pixi run pytest
+pixi run lint
+pixi run docs
 ```
 
-See [configuration](docs/configuration.md), [results](docs/results.md), and
-[native ROS setup](docs/ros.md).
+See [contributing](https://nobleo.github.io/dwarl/contributing/) for environment
+variants, ROS checks and documentation preview.
 
 ## License
 

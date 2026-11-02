@@ -15,6 +15,8 @@ from dwarl.training.contract import load_contract
 
 
 def execute(cfg, checkpoint=None):
+    from dwarl.cli import ui
+
     cfg = deepcopy(cfg)
     checkpoint = checkpoint or resolve_checkpoint(resolve_run(cfg.test.run), cfg.test.checkpoint)
     print(f"Selected run={checkpoint.run} iteration={checkpoint.iteration} sha256={checkpoint.sha256}", flush=True)
@@ -52,7 +54,7 @@ def execute(cfg, checkpoint=None):
 
                     backend = GazeboBackend(contract, bundle, workload, out, cfg.test, controller=controller)
                 for index, case in enumerate(workload["cases"], 1):
-                    print(f"[{name}] {index}/{len(workload['cases'])}: {case['name']} {case['id'][:8]}", flush=True)
+                    ui.info(f"{name} · case {index}/{len(workload['cases'])} · {case['name']} · {case['id'][:8]}")
                     try:
                         row = backend.execute_case(case)
                     except KeyboardInterrupt:
@@ -66,6 +68,8 @@ def execute(cfg, checkpoint=None):
                     row.update(controller=controller, backend=simulator)
                     rows[name].append(persist_episode(out, name, case, row, checkpoint.sha256))
                     write_json(out / "episodes.json", rows)
+                    ui.finding("pass" if row.get("outcome") == "success" else "check",
+                               f"{case['name']}: {row.get('outcome', row.get('status', 'unknown'))}")
             finally:
                 if backend is not None:
                     backend.close()
@@ -97,7 +101,14 @@ def execute(cfg, checkpoint=None):
             try:
                 print("Rendering episode reports...", flush=True)
                 write_report(out, workload, rows, report)
+                from dwarl.workflows.report import render_html
+
+                render_html(out)
             except Exception as exc:
                 print(f"Report rendering failed (raw results saved): {exc}")
-        print(f"Test results: {out} ({status})", flush=True)
+        from dwarl.workflows.report import summarize as show_summary
+
+        show_summary(report)
+        ui.info(f"Results: {out}")
+        ui.next_step("dwarl", "report", out, "--open")
     return out, report

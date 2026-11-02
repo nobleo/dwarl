@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 from dwarl import ros_env
 from dwarl.workflows import setup
 
@@ -68,3 +70,29 @@ def test_reports_missing_ros_dependencies_through_workspace_packages(tmp_path):
         marker.touch()
     # hardware-only vendor_can_driver is outside the integration's closure; system keys are ignored
     assert setup.missing_ros_dependencies(ws, ["my_robot_dwarl"], [str(prefix)]) == ["twist_mux"]
+
+
+def test_build_and_simulator_lifetimes_cannot_overlap(tmp_path, monkeypatch):
+    monkeypatch.setattr(ros_env, "lease_directory", lambda: tmp_path)
+    with ros_env.acquire_stack_lock():
+        with pytest.raises(ValueError, match="active"):
+            ros_env.acquire_stack_lock(build=True)
+    with ros_env.acquire_stack_lock(build=True):
+        with pytest.raises(ValueError, match="active"):
+            ros_env.acquire_stack_lock()
+
+
+def test_overlay_refreshes_when_an_existing_workspace_gains_a_package(tmp_path, monkeypatch):
+    install = tmp_path / ".pixi/robot/install"
+    install.mkdir(parents=True)
+    (install / "local_setup.sh").touch()
+    monkeypatch.setattr(ros_env, "root", lambda: tmp_path)
+    monkeypatch.setattr(ros_env, "load_setup", lambda: None)
+    monkeypatch.setenv("AMENT_PREFIX_PATH", str(install / "old_package"))
+    new_prefix = f"{install}/new_package:{install}/old_package"
+    monkeypatch.setattr(ros_env.subprocess, "run", lambda *a, **k: SimpleNamespace(
+        stdout=f"AMENT_PREFIX_PATH={new_prefix}\0".encode()))
+    ros_env.overlay()
+    import os
+
+    assert os.environ["AMENT_PREFIX_PATH"] == new_prefix

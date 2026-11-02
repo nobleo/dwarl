@@ -1,4 +1,4 @@
-# Replace the example geometry, names, limits and dynamics with your robot's values.
+# Schema example only. Use `pixi run dwarl robot init` for guided creation.
 schema: dwarl_robot/1
 id: my_robot
 

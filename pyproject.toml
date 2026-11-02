@@ -21,6 +21,11 @@ dependencies = [
     "onnxruntime>=1.18",
     "matplotlib>=3.8",
     "dwarl-runtime",
+    "rich>=13.9",
+    "rich-argparse>=1.6",
+    "prompt-toolkit>=3.0",
+    "argcomplete>=3.5",
+    "markdown>=3.7",
 ]
 
 [project.scripts]
@@ -49,6 +54,10 @@ scripts = ["scripts/pixi_activate.sh"]
 [tool.pixi.tasks]
 dwarl = "dwarl"
 train = "dwarl train"
+setup = "dwarl setup"
+test = "dwarl test"
+deploy = "dwarl deploy"
+doctor = "dwarl doctor"
 
 [tool.pixi.feature.dev.tasks]
 pytest = { cmd = "pytest -q", env = { OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", PYTEST_DISABLE_PLUGIN_AUTOLOAD = "1" } }
@@ -63,6 +72,8 @@ mkdocs-material = "==9.6.14"
 mkdocs-gen-files = "==0.5.0"
 omegaconf = "==2.3.0"
 hydra-core = "==1.3.2"
+rich-argparse = ">=1.6"
+argcomplete = ">=3.5"
 
 [tool.pixi.feature.docs.tasks]
 docs = "mkdocs build --strict"
@@ -108,17 +119,36 @@ ros-jazzy-joint-state-broadcaster = "*"
 build = { cmd = "colcon build --symlink-install --base-paths ros/src --build-base ros/build --install-base ros/install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo", env = { ONNXRUNTIME_ROOT = "$CONDA_PREFIX" } }
 build-robot = { cmd = "bash scripts/pixi_build_robot.sh", depends-on = ["build"] }
 ros-test = { cmd = "colcon test --base-paths ros/src --build-base ros/build --install-base ros/install --event-handlers console_direct+ && colcon test-result --test-result-base ros/build --verbose", depends-on = ["build"] }
-doctor = { cmd = "dwarl doctor --sim gazebo", depends-on = ["build"] }
-# User entrypoints: `pixi run setup` once, then train/test/deploy (test/deploy build first).
-setup = "dwarl setup"
-test = { cmd = "dwarl test", depends-on = ["build-robot"] }
-deploy = { cmd = "dwarl deploy", depends-on = ["build-robot"] }
+# Workflow preparation builds ROS only when the requested operation needs it.
+
+[tool.pixi.feature.runtime.dependencies]
+python = "3.12.*"
+ros-jazzy-ros-base = "*"
+ros-jazzy-navigation2 = "*"
+ros-jazzy-nav2-bringup = "*"
+colcon-common-extensions = "*"
+compilers = "*"
+cmake = "*"
+ninja = "*"
+make = "*"
+pkg-config = "*"
+onnxruntime-cpp = "*"
+nlohmann_json = "*"
+pyyaml = "*"
+
+[tool.pixi.feature.runtime.pypi-dependencies]
+dwarl-runtime = { path = "runtime", editable = true }
+
+[tool.pixi.feature.runtime.tasks]
+runtime-build = { cmd = "colcon build --symlink-install --base-paths ros/src --build-base ros/build-runtime --install-base ros/install-runtime --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF", env = { ONNXRUNTIME_ROOT = "$CONDA_PREFIX" } }
+runtime-launch = { cmd = "bash scripts/pixi_runtime.sh", depends-on = ["runtime-build"] }
 
 [tool.pixi.environments]
 # default has ROS/Gazebo because `dwarl test --sim gazebo|both` launches the stack itself.
 default = { features = ["ros", "dev"], solve-group = "all" }
 train = { features = ["dev"], solve-group = "all" }  # slim: no ROS (clusters, CI)
 docs = { features = ["docs"], no-default-feature = true }  # slim: mkdocs only, as in CI
+runtime = { features = ["runtime"], no-default-feature = true }  # native Nav2 + inference, no training stack
 
 [build-system]
 requires = ["hatchling"]

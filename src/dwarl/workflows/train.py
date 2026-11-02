@@ -13,7 +13,11 @@ from dwarl.runs.store import complete_checkpoint, lock, resolve_checkpoint, reso
 
 
 def execute(cfg, assignments=()):
-    print("Training: loading dependencies and preparing inputs…", flush=True)
+    from dwarl.cli import ui
+
+    ui.info("Loading training dependencies and preparing inputs…")
+    ui.info(f"Recipe: {cfg.train.preset or 'configured defaults'} · environments {cfg.train.num_envs} · "
+            f"budget {cfg.train.max_iterations} iterations · validation every {cfg.train.validation_interval}")
     import torch
 
     from dwarl.artifacts.exporter import deploy_spec
@@ -71,9 +75,13 @@ def execute(cfg, assignments=()):
 
         write_json(run / "provenance.json", {"schema": "dwarl_run/1", "created_ns": time.time_ns(),
                    "source_identity": source_identity(), "versions": versions(),
-                   "robot": profile.id, "source_profile": str(profile.path), "source_sha256": profile.sha256,
-                   "dataset": dataset_id, "deployment_ready": cfg.train.deployment_ready})
+                    "robot": profile.id, "source_profile": str(profile.path), "source_sha256": profile.sha256,
+                    "dataset": dataset_id, "deployment_ready": cfg.train.deployment_ready,
+                    "preset": cfg.train.preset})
         write_json(run / "checkpoint_manifest.json", {"schema": "dwarl_checkpoints/1", "completed": [], "best": None})
+        from dwarl.workflows.context import remember_run
+
+        remember_run(profile.path, run, cfg.train.preset)
     with lock(run / ".training.lock", blocking=False):
         contract.device = device(cfg.train.device)
         contract.sim.gui = cfg.train.show
@@ -113,7 +121,10 @@ def execute(cfg, assignments=()):
             try:
                 if cfg.train.early_stop.enabled and checks.state["stop_reason"]:
                     raise EarlyStop(checks.state["stop_reason"])
-                runner.learn(max(0, cfg.train.max_iterations - runner.current_learning_iteration))
+                from dwarl.training.progress import display
+
+                with display(runner, adapter, run, cfg.train.max_iterations):
+                    runner.learn(max(0, cfg.train.max_iterations - runner.current_learning_iteration))
                 state = "finished"
             except EarlyStop as exc:
                 state, reason = "early_stopped", str(exc)
@@ -133,4 +144,13 @@ def execute(cfg, assignments=()):
         finally:
             if env is not None:
                 env.close()
+    ui.finding("pass" if state in ("finished", "early_stopped") else "check", f"Training {state}: {run}")
+    try:
+        selected = resolve_checkpoint(run)
+        ui.info(f"Completed checkpoint: iteration {selected.iteration} · {selected.sha256[:12]}")
+        ui.next_step("test", "--run", run, "--checkpoint", selected.iteration,
+                     *( ["--case", "doorway", "--set", "test.max_cases=1"] if cfg.train.preset == "smoke"
+                        else ["--suite", "validation"]))
+    except ValueError:
+        ui.next_step("train", "--resume", run)
     return run

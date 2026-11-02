@@ -30,7 +30,8 @@ def _setup(context):
         ),
         IncludeLaunchDescription(
             AnyLaunchDescriptionSource(os.path.join(tb3, "launch", "spawn_tb3.launch.py")),
-            launch_arguments={"x_pose": get("x"), "y_pose": get("y"), "yaw": get("yaw")}.items(),
+            launch_arguments={"robot_name": "robot", "x_pose": get("x"), "y_pose": get("y"),
+                              "yaw": get("yaw")}.items(),
         ),
         Node(
             package="robot_state_publisher",

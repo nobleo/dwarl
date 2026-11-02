@@ -1,9 +1,14 @@
 # Configuration
 
-Precedence: built-in typed defaults → `./dwarl.yaml` → command-line assignments.
+Precedence: built-in typed defaults → explicit `--preset` → `./dwarl.yaml` → command-line assignments.
 `--config experiment.yaml` replaces the workspace file. YAML paths are relative to
 that file; command-line paths are relative to the invoking directory. Duplicate CLI
 assignments are errors. `--set` uses the actual schema key.
+
+When a robot or run is not explicitly configured, the CLI uses setup's local
+selection. Run pointers are scoped to that robot; navigation runs take precedence
+over smoke runs. The selected inputs are printed before execution. Use `--run` to
+override this choice. See [generated presets and defaults](reference/configuration.md).
 
 ```yaml
 schema: dwarl/1

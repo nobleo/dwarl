@@ -21,7 +21,7 @@ if [ -n "${DWARL_ROBOT_WS:-}" ] && [ -d "$DWARL_ROBOT_WS/src" ]; then
 fi
 
 # Only when ROS is installed (not in the slim `train` env).
-if command -v ros2 >/dev/null 2>&1; then
+if command -v ros2 >/dev/null 2>&1 && [ "${PIXI_ENVIRONMENT_NAME:-}" != runtime ]; then
   for _ws in "$_dwarl_root/.pixi/robot/install" "$_dwarl_root/ros/install"; do
     if [ -f "$_ws/local_setup.sh" ]; then
       AMENT_CURRENT_PREFIX="$_ws" . "$_ws/local_setup.sh"
