@@ -24,6 +24,60 @@ and separate images for each simulator. There are no multi-case collages.
 
 ## Per-episode behavior reports
 
+### Open and read the report
+
+After testing, open the exact result directory printed by the CLI:
+
+```bash
+pixi run dwarl report runs/<run>/tests/<test-id> --open
+```
+
+`report/index.html` is the browser entry point; `report/README.md` has the same
+content as Markdown. `report --open` without a directory selects the latest recorded
+result for the selected run, which may be interrupted or belong to another suite.
+
+Read the page in this order:
+
+1. **Controller comparison:** completed/expected counts, success and collision rates,
+   and successful-episode time/distance. HTML rates are fractions, not percentages.
+2. **Status and identities:** confirm the checkpoint, workload and completion status.
+3. **Per-case table:** compare outcomes, goal gap and clearance on the same cases.
+4. **Individual episode sections:** inspect trajectory and motion plots, then follow
+   trace/episode JSON links for exact measurements. Profiling adds per-episode compute
+   tables and plots.
+
+The `gazebo` backend label means DWARL; `gazebo-mppi` and `gazebo-dwb` are the
+baselines. Plots are grouped by case and backend. This is a static report, without
+interactive filtering, a cross-run dashboard or an automatically selected winner.
+Successful-only averages can favour a controller that fails the difficult cases;
+compare shared successful cases before drawing efficiency conclusions.
+
+#### Running and interrupted evaluations
+
+`episodes.json` is updated as cases finish. The aggregate `summary.json` and report
+are written at completion or interruption, and plot rendering takes additional time.
+Controllers run sequentially: an interrupted report may contain a complete first
+controller, a partial second controller and no third controller. Missing episodes
+have no measured outcome; they must not be counted as successes or collisions.
+Check completion counts before comparing rates. Missing compute sections are expected
+when `--profile-compute` was not enabled.
+
+#### Copy a remote result for local viewing
+
+Copy the **whole test directory**, rather than just the HTML file: its images and JSON
+links point to sibling directories. For example, from your local repository:
+
+```bash
+mkdir -p runs/<run>/tests/<test-id>
+rsync -a user@host:/path/to/dwarl/runs/<run>/tests/<test-id>/ \
+  runs/<run>/tests/<test-id>/
+pixi run dwarl report runs/<run>/tests/<test-id> --open
+```
+
+A copy made during execution is only a snapshot and may lack the final report.
+Repeat the copy after completion to obtain the final results. Opening a remote browser
+through `--open` requires a graphical session on that machine; local copying avoids this.
+
 ### Gazebo controller and compute comparisons
 
 ```bash
