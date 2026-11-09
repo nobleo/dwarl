@@ -26,6 +26,18 @@ from pixi. No manual sourcing is needed. Supported environment: **Linux x86-64**
 **Using a coding agent?** Follow [agent-assisted setup](https://nobleo.github.io/dwarl/agent-setup/)
 for a copy-paste prompt and the included portable robot-setup skill.
 
+### Docker
+
+To keep ROS 2 Jazzy, Gazebo Harmonic and Nav2 off your host, use the image in
+[docker/](docker/README.md). It also contains an end-to-end demo: pick a robot (a
+TurtleBot3, or your own), train, compare with Nav2's DWB and Regulated Pure Pursuit in
+Gazebo, deploy, and watch the policy drive under Nav2:
+
+```bash
+cd docker && ./configure-host.sh && docker compose build
+docker compose run --rm demo
+```
+
 ## The workflow
 
 ```bash

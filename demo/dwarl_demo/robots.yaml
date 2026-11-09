@@ -1,0 +1,24 @@
+# Robots offered by the DWARL demo. Add a robot by adding an entry here (or in
+# /work/robots.yaml, which is merged over this file) once its integration is installed in the image.
+#
+#   profile:      DWARL robot profile: builtin name, path, or ROS package containing dwarl_robot.yaml.
+#                 Its directory is copied to /work/robots/<key>/ so `dwarl deploy` can install policies.
+#   label:        shown in the menu.
+#   baselines:    optional controller_params YAML for the DWB/RPP/MPPI comparison (robot-specific tuning).
+#   controllers:  Nav2 controllers compared against DWARL in Gazebo.
+#   num_envs:     parallel training environments (reduce on small machines).
+#   gazebo:       false if the profile has no ros.sim_launch adapter (MuJoCo only).
+#   default:      true to preselect this robot. A default set in /work/robots.yaml wins.
+robots:
+  turtlebot3:
+    label: TurtleBot3 Waffle - DWARL builtin `diffbot` profile (0.8 m/s)
+    profile: diffbot
+    controllers: [dwarl, dwb, rpp]
+    num_envs: 64
+    default: true
+
+# Training budgets. Iterations are PPO updates; wall time depends on CPU cores (MuJoCo) and GPU.
+presets:
+  quick:    {iterations: 400,  validation_interval: 100, max_cases: 10, label: pipeline check (~35 min on 22 CPU threads)}
+  standard: {iterations: 1500, validation_interval: 250, max_cases: 20, label: usable policy (~2 h)}
+  full:     {iterations: 3000, validation_interval: 250, max_cases: 32, label: DWARL default budget (~4 h)}
