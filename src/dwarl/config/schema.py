@@ -59,6 +59,8 @@ class TestConfig:
     controllers: list[str] = field(default_factory=lambda: ["dwarl"])
     profile_compute: bool = False
     controller_params: str | None = None
+    planner: str = "navfn"
+    unmapped_obstacles: int = 0
     startup_timeout: float = 120.0
     stall_timeout: float = 30.0
 

@@ -41,7 +41,7 @@ def execute(directory):
     command = ["ros2", "launch", "dwarl_bringup", "bench.launch.py", f"model_dir:={data['bundle']}",
                f"world:={directory / 'world.sdf'}", f"map:={directory / 'world.yaml'}",
                f"x:={x}", f"y:={y}", f"yaw:={yaw}", f"gui:={show}", f"rviz:={show}", "safety:=true",
-               f"controller:={data.get('controller', 'dwarl')}",
+               f"controller:={data.get('controller', 'dwarl')}", f"planner:={request.get('planner', 'navfn')}",
                f"params_output:={directory / 'nav2_params.yaml'}",
                f"profile_compute:={str(request.get('profile_compute', False)).lower()}"]
     processes = []
@@ -177,6 +177,8 @@ def execute(directory):
             compute.sample()
         trajectory, travelled, clearance, collision = [state["pose"][:2]], 0., float("inf"), False
         md = MapData.load(directory.parents[2] / case["map_file"])
+        unmapped = np.asarray(data.get("unmapped_obstacles") or [], np.float32).reshape(-1, 6)
+        obstacles = np.concatenate([md.primitives, unmapped])  # scored geometry: mapped + unmapped
         footprint = np.asarray(robot["footprint"]) if robot.get("footprint") else None
         trace = BehaviorTrace(case, pose_source="Gazebo ground truth in canonical map coordinates",
                               velocity_source=f"{ros['odom_topic']} odometry twist in its child frame",
@@ -186,7 +188,7 @@ def execute(directory):
         trace.data["sample_convention"] = "ground-truth pose samples with latest fresh ROS command/velocity"
         state["stops"], state["recoveries"] = 0, 0
         distance = float(footprint_clearance(np.asarray(state["pose"][:2]), state["pose"][2],
-                                           robot["footprint_radius"], footprint, md.primitives))
+                                           robot["footprint_radius"], footprint, obstacles))
         clearance = distance
         collision = distance <= 0.
         trace.sample(0., state["pose"], command=fresh("command"), velocity=fresh("velocity"), clearance=distance)
@@ -217,7 +219,7 @@ def execute(directory):
             travelled += math.dist(trajectory[-1], pose[:2])
             trajectory.append(pose[:2])
             distance = footprint_clearance(np.asarray(pose[:2]), pose[2], robot["footprint_radius"],
-                                           footprint, md.primitives)
+                                           footprint, obstacles)
             clearance = min(clearance, float(distance))
             collision |= distance <= 0.
             trace.sample(state["clock"] - start_time, pose, command=fresh("command"),
@@ -235,7 +237,7 @@ def execute(directory):
         travelled += math.dist(trajectory[-1], final_pose[:2])
         trajectory.append(final_pose[:2])
         final_clearance = float(footprint_clearance(np.asarray(final_pose[:2]), final_pose[2],
-                                                  robot["footprint_radius"], footprint, md.primitives))
+                                                  robot["footprint_radius"], footprint, obstacles))
         clearance = min(clearance, final_clearance)
         collision |= final_clearance <= 0.
         trace.sample(final_time - start_time, final_pose, command=fresh("command"),
@@ -257,7 +259,9 @@ def execute(directory):
         row["_trace"] = trace.data
         if compute is not None:
             row["compute"] = compute.result(state["clock"] - start_time)
-        row["diagnostics"] = {"localization": "spawn_transform_sim_odometry", "planner": "navfn",
+        row["unmapped_obstacles"] = unmapped.tolist()
+        row["diagnostics"] = {"localization": "spawn_transform_sim_odometry",
+                              "planner": request.get("planner", "navfn"),
                               "safety": True, "global_plans": state["plan"],
                               "collision_measurement": "ground_truth_2d_footprint_geometry",
                               "limitation": "sampled poses; not continuous contact reporting"}

@@ -15,7 +15,14 @@ import os
 import tempfile
 
 from ament_index_python.packages import get_package_share_directory
-from dwarl_bringup.nav import load_deploy, render_nav2_params, render_recovery, resolve_bundle, write_params
+from dwarl_bringup.nav import (
+    load_deploy,
+    render_nav2_params,
+    render_planner,
+    render_recovery,
+    resolve_bundle,
+    write_params,
+)
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, GroupAction, LogInfo, OpaqueFunction
 from launch.substitutions import LaunchConfiguration as LC
@@ -48,7 +55,8 @@ def _setup(context):
     recovery_monitor = False
     if safety and get("controller_params"):
         bt, recovery_monitor = render_recovery(bt, params + ".bt.xml", get("controller_params"))
-    planner = os.path.join(here, "config", f"planner_{get('planner')}.yaml")
+    planner = render_planner(os.path.join(here, "config", f"planner_{get('planner')}.yaml"), params + ".planner.yaml",
+                             get("controller_params") or None)
     args = ["--ros-args", "--log-level", get("log_level")]
     nodes = ["controller_server", "planner_server", "behavior_server", "bt_navigator"] + (
         ["collision_monitor"] if safety else []

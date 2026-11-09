@@ -129,7 +129,8 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
     overrides = {}
     if controller_params:
         overrides = yaml.safe_load(Path(controller_params).read_text())
-        allowed = {"mppi", "dwb", "rpp", "dwarl", "safety", "progress_checker", "recovery", "motion_limits", "goal_checker"}
+        allowed = {"mppi", "dwb", "rpp", "dwarl", "safety", "progress_checker", "recovery", "motion_limits",
+                   "goal_checker", "costmap", "planner"}
         if not isinstance(overrides, dict) or set(overrides) - allowed:
             raise ValueError("tuning YAML must contain controller, safety or progress_checker mappings")
         if any(not isinstance(value, dict) for value in overrides.values()):
@@ -139,6 +140,12 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
     scan = ros.get("scan_topic", "scan")
     fp = _footprint(deploy)
     max_range = float(deploy["lidar"]["max_range"])
+    costmap = overrides.get("costmap", {})
+    if set(costmap) - {"inflation_radius", "cost_scaling_factor", "footprint_padding"}:
+        raise ValueError("unsupported costmap tuning parameter")
+    costmap = {key: float(value) for key, value in costmap.items()}
+    if any(not math.isfinite(v) or v < 0 for v in costmap.values()) or costmap.get("cost_scaling_factor", 1) <= 0:
+        raise ValueError("costmap tuning values must be finite, nonnegative, with a positive cost_scaling_factor")
 
     cs = p["controller_server"]["ros__parameters"]
     cs["controller_frequency"] = round(1.0 / float(deploy["control"]["dt"]), 6)
@@ -244,6 +251,11 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
                                            obstacle_max_range=max_range - 0.5)  # fmt: skip
         c["inflation_layer"]["inflation_radius"] = max(c["inflation_layer"]["inflation_radius"],
                                                        float(deploy["robot"]["footprint_radius"]) + 0.25)  # fmt: skip
+        for key, value in costmap.items():
+            if key == "footprint_padding":
+                c[key] = value
+            else:
+                c["inflation_layer"][key] = value
     bs = p["behavior_server"]["ros__parameters"]
     bs.update(
         robot_base_frame=base_frame, local_frame=odom_frame, max_rotational_vel=float(deploy["action"]["w"]["max"])
@@ -270,6 +282,22 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
             "min_points": 2, "visualize": False, "enabled": True,
         }
     return p
+
+
+def render_planner(base: str | Path, out: str | Path, tuning: str | Path | None = None) -> str:
+    """Global planner parameters with the tuning YAML's ``planner`` section applied to ``GridBased``.
+
+    The planner itself (NavFn or Smac 2D) is chosen with the ``planner`` launch argument, so the
+    tuning may change its parameters but not its plugin.
+    """
+    options = (yaml.safe_load(Path(tuning).read_text()) or {}).get("planner", {}) if tuning else {}
+    if not isinstance(options, dict) or "plugin" in options:
+        raise ValueError("planner tuning must be a mapping of GridBased parameters without plugin")
+    if not options:
+        return str(base)
+    params = yaml.safe_load(Path(base).read_text())
+    params["planner_server"]["ros__parameters"]["GridBased"].update(options)
+    return write_params(params, out)
 
 
 def write_params(params: dict, out: str | Path) -> str:

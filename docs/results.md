@@ -123,7 +123,20 @@ recovery:
   retry_count: 1
   backup_required: true
   replan_after_backup: true
+costmap:              # local and global costmap
+  inflation_radius: 0.9
+  cost_scaling_factor: 3.0
+  footprint_padding: 0.01
+planner:              # parameters of the selected global planner (GridBased)
+  cost_travel_multiplier: 3.0
 ```
+
+`costmap.inflation_radius` replaces the default, footprint radius + 0.25 m. A lower
+`cost_scaling_factor` spreads the inflation cost further, so global plans keep away from
+walls. That matters for robots whose base frame is far from the footprint's centre (for
+example a long tail behind the drive axle), which sweep a large circle when turning in place.
+`planner` overrides parameters of the global planner selected with `test.planner`, but not
+its plugin.
 
 These are **experimental overrides**, not new defaults or universally optimal settings.
 The angular stopping envelope uses the bundle's angular acceleration limit, latency
@@ -140,6 +153,29 @@ To compare DWARL's latch against monitor-only control, use
 `dwarl: {safety_state_topic: ""}`: this disables only the plugin's stop-event latch;
 the external collision monitor still guards commands and the progress checker still
 requests recovery. Record this difference when reporting comparisons.
+
+#### Global planner
+
+`--set test.planner=smac2d` uses Nav2's Smac 2D planner instead of NavFn (default) for every
+controller in the test. NavFn caps path extraction at about four map widths of half-cell steps,
+so long routes on small maps can fail to plan; Smac 2D has no such cap. The planner is recorded
+in each episode's diagnostics.
+
+#### Obstacles that are not on the map
+
+```bash
+dwarl test --sim gazebo --controllers dwarl,mppi,dwb --set test.unmapped_obstacles=3
+```
+
+This adds up to three boxes or cylinders (0.4–0.7 m across) to the Gazebo world of each case,
+but not to the Nav2 map. The global plan therefore runs through them and only the local
+planner, from its lidar, can avoid them. They are spread along the case's reference path, at
+least 1.5 m from start and goal and 2 m apart, and never touch mapped geometry. With all of
+them added, the goal stays reachable for the robot's width plus 0.1 m on each side; on tight
+maps fewer obstacles are placed. Placement depends only on the case, so every controller
+meets the same obstacles. Collisions are scored against mapped and unmapped geometry, and the
+trajectory plots show unmapped obstacles in orange. The obstacles are stored per episode as
+`unmapped_obstacles` primitives `[type, x, y, yaw, half_x, half_y]` (type 1 = cylinder).
 
 Gazebo records a frozen terminal ground-truth pose for scoring and diagnostics, plus
 the latest Nav2 TF pose and its timestamp. Spawn-transform odometry can drift relative
