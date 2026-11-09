@@ -333,6 +333,18 @@ If your simulator calls them `x_pose`, `world_file`, etc., change the argument k
 passed to that included launch. Its implementation must still satisfy the entity,
 odometry, bridge and TF contract above.
 
+Some pitfalls when writing the adapter:
+
+- A ros2_control macro from your description package may clamp wheel velocity commands
+  (for example to ±1 rad/s, which is a few cm/s on small wheels). If so, write the
+  ros2_control block in the integration instead of including that macro.
+- If a caster or omni-wheel is missing from the URDF, add a frictionless collision sphere
+  for Gazebo, and a matching `collision.supports` sphere in the profile for MuJoCo.
+- `base_footprint` is not necessarily at the robot's centre. Express the footprint,
+  supports and lidar pose in the base frame the profile names.
+- Gazebo needs the drive and sensor plugins (`gz_ros2_control`, `gpu_lidar`) and bridges
+  for `/clock` and the scan topic; odometry and TF come from the diff drive controller.
+
 Add the adapter to the profile **before training** if you plan to use Gazebo:
 the run freezes its ROS settings too. If you add or change this interface after
 training, start a new run rather than editing the saved contract.
@@ -489,6 +501,30 @@ and [parameter renderer](https://github.com/nobleo/dwarl/blob/main/ros/src/pkgs/
 show which values the standard launch derives from the bundle. The controller
 already applies the trained action rate limits; account for any additional
 velocity smoothing in your stack.
+
+## Use your robot in the Docker image
+
+The [Docker image](https://github.com/nobleo/dwarl/tree/main/docker) builds an optional
+robots workspace next to DWARL, so your integration and description packages need no
+changes to the DWARL repository:
+
+1. Put your packages in a colcon workspace, for example `~/robots_ws/src/my_robot_dwarl`
+   and `~/robots_ws/src/my_robot_description`. Use plain copies, or `git archive` a
+   fixed ref of a private repository; symlinks to outside the workspace are not followed.
+2. Point the image at it and build:
+
+    ```bash
+    cd docker
+    ROBOTS_WS=$HOME/robots_ws ./configure-host.sh   # stored in docker/.env
+    docker compose build
+    docker compose run --rm shell dwarl robot check my_robot_dwarl
+    ```
+
+The build copies `$ROBOTS_WS/src` to `/opt/robots_ws/src`, installs dependencies with
+rosdep (keys it cannot resolve are skipped), and builds it with colcon. The container
+sources `/opt/robots_ws/install/setup.bash`, so `my_robot_dwarl` works as a profile name
+and `package://` URIs resolve. Without `ROBOTS_WS`, the empty `docker/robots_ws` is used.
+Rebuild the image after changing the packages.
 
 ## Troubleshooting the first integration
 

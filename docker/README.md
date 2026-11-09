@@ -61,6 +61,19 @@ Python changes without rebuilding, add a bind mount of this repository at
 `/opt/dwarl`. Changes to the C++ controller or the ROS packages need
 `docker compose build`.
 
+## Your own robot
+
+Put your robot's ROS packages (a DWARL integration with `dwarl_robot.yaml` and its
+description) in the `src/` folder of a colcon workspace, then:
+
+```bash
+ROBOTS_WS=$HOME/robots_ws ./configure-host.sh   # stored in docker/.env
+docker compose build                            # builds $ROBOTS_WS/src into /opt/robots_ws
+docker compose run --rm shell dwarl robot check my_robot_dwarl
+```
+
+See [Use your robot in the Docker image](../docs/integrate-robot.md#use-your-robot-in-the-docker-image).
+
 ## Troubleshooting
 
 | Symptom | Fix |
