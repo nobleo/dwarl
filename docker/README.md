@@ -39,7 +39,77 @@ docker compose build       # about 15 minutes and 15 GB the first time
 Re-run `./configure-host.sh` after installing the GPU toolkit, and after logging in
 again if windows stop opening (the X authority file changes per login).
 
-## Use
+## End-to-end demo
+
+```bash
+cd docker
+docker compose run --rm demo
+```
+
+1. **Pick a robot.** The default is Nobleo's Cindy; TurtleBot3 Waffle is the other built-in
+   choice. See [Switching robots](#switching-robots).
+2. **Pick a training budget**, or reuse a finished run for that robot (offered once one exists).
+3. Everything after that runs on its own in the terminal:
+
+| Stage | What happens | Output |
+| --- | --- | --- |
+| setup | Copies the robot integration to `work/robots/<robot>` and builds two demo worlds (office, warehouse) sized for its footprint | `work/demo_worlds/<robot>/previews/*.png` |
+| train | `dwarl train` in MuJoCo, headless, with the GPU for PyTorch when available. One status line shows iteration, success, collision and ETA | `work/runs/<run>`, `work/logs/train-*.log` |
+| evaluate | MuJoCo benchmark on DWARL's canonical cases (doorway, corridor, U-trap, clutter, …) | success/collision table, `report/README.md` |
+| compare | Gazebo + Nav2, headless: DWARL vs DWB vs Regulated Pure Pursuit on the canonical cases and on the demo worlds, same global planner, map and limits | comparison tables and reports |
+| deploy | `dwarl deploy` installs the exported ONNX bundle in the robot integration | `work/robots/<robot>/policies/` |
+| showcase | Gazebo and RViz windows open. Nav2 plans a global path from start to goal, and the DWARL controller plugin follows it around obstacles that are **not** on the map | goal reached / failed, per world |
+
+Keys while training runs:
+
+| Key | Action |
+| --- | --- |
+| `v` | Show or hide a live MuJoCo view of the training simulations (one shard). It slows training while open, so it is off by default |
+| `l` | Print the last lines of the training log |
+| `q` | Stop training early. Completed checkpoints are kept and the demo continues with them |
+
+During the showcase you can replay each world with `dwb` or `rpp` to see the difference.
+Press Enter to close a world and move on.
+
+Budgets (`demo/dwarl_demo/robots.yaml`, presets):
+
+| Preset | Iterations | Purpose |
+| --- | --- | --- |
+| quick | 400 | Pipeline check. The policy drives but is not presentation quality |
+| standard | 1500 | Usable policy for comparisons |
+| full | 3000 | DWARL's default budget |
+
+Run without prompts, or only some stages:
+
+```bash
+DEMO_ROBOT=cindy DEMO_PRESET=standard DEMO_YES=1 docker compose run --rm demo
+DEMO_ROBOT=cindy DEMO_PRESET=reuse DEMO_STAGES=deploy,showcase docker compose run --rm demo
+```
+
+The `compare` stage starts a fresh Gazebo + Nav2 stack for every case and controller, so
+expect about a minute per case per controller. Reports are Markdown files with images, next
+to `summary.json` in `work/runs/<run>/tests/<id>/`.
+
+## Switching robots
+
+A robot is selectable when the image contains its integration (a DWARL profile plus a Gazebo
+adapter) and `demo/dwarl_demo/robots.yaml` lists it. For example:
+
+```yaml
+robots:
+  my_robot:
+    label: My robot - what it is
+    profile: my_robot_dwarl          # ROS package with dwarl_robot.yaml, a path, or a builtin
+    baselines: package://my_robot_dwarl/config/baselines.yaml   # optional DWB/RPP tuning
+    controllers: [dwarl, dwb, rpp]
+    num_envs: 64
+```
+
+To keep local-only entries out of the repository, put them in `work/robots.yaml`, which is
+merged over the built-in list. How to add an integration package to the image is described in
+[integrations/README.md](../integrations/README.md).
+
+## Other commands
 
 ```bash
 docker compose run --rm shell                          # shell with ROS, DWARL and the venv ready
