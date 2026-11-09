@@ -50,6 +50,9 @@ def parser():
     p.add_argument("robot")
     p = commands.add_parser("stop", help="interrupt an owned training process")
     p.add_argument("run")
+    p = commands.add_parser("watch", help="toggle a live viewer on a running headless training")
+    p.add_argument("run", nargs="?", help="training run directory (default: latest)")
+    p.add_argument("--off", action="store_true", help="close the viewer instead of toggling")
     p = commands.add_parser("model-benchmark", help="replay recorded ONNX inputs without ROS/Gazebo")
     p.add_argument("bundle")
     p.add_argument("observations", help="observations.npz from a profiled DWARL Gazebo episode")
@@ -159,3 +162,7 @@ def utility(args):
         from dwarl.runs.process import stop
 
         stop(args.run)
+    elif args.command == "watch":
+        from dwarl.runs.process import watch
+
+        watch(args.run, args.off)

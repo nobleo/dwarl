@@ -214,7 +214,10 @@ dwarl train "$INTEGRATION" --name navigation --num-envs 64 --max-iterations 3000
 
 Reduce `--num-envs` for a smaller machine. Device selection is automatic, with
 `--device cpu` and `--device cuda` overrides. Add `--show` for a viewer or
-`--detached` for background training. The training budget is a starting point,
+`--detached` for background training. To peek at a headless run without restarting it,
+run `dwarl watch` (latest run) or `dwarl watch "$RUN"` from a second terminal: a viewer
+shows the first simulation shard while training continues. Repeat the command or close
+the window to return to full speed. The training budget is a starting point,
 not a guarantee of navigation quality.
 
 The command above explicitly enables intermediate validation so that the following

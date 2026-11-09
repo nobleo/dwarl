@@ -90,6 +90,9 @@ def execute(cfg, assignments=()):
 
             print(f"Training: creating {cfg.train.num_envs} environments on {contract.device}…", flush=True)
             env = NavVecEnv(contract)
+            if not cfg.train.show:
+                env.viewer_trigger = run / "live_view"
+                env.viewer_trigger.unlink(missing_ok=True)
             if cfg.train.deployment_ready:
                 deploy_spec(contract, env)  # fail before PPO starts
             runner = OnPolicyRunner(env, OmegaConf.to_container(contract.agent, resolve=True),
@@ -109,6 +112,8 @@ def execute(cfg, assignments=()):
                 checks.restore(checkpoint, infos)
             print(f"Training run: {run}", flush=True)
             print(f"TensorBoard: tensorboard --logdir {run / 'checkpoints'}", flush=True)
+            if not cfg.train.show:
+                print(f"Live view: dwarl watch {run}  (toggle; slows training while open)", flush=True)
             reason = "iteration_budget"
             try:
                 if cfg.train.early_stop.enabled and checks.state["stop_reason"]:

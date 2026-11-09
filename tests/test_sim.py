@@ -288,3 +288,65 @@ def test_lidar_history_and_spawn_yaw_curriculum(train_cfg):
     lo = env.spawn_yaw_noise()
     env.sampler.level = 1.0
     assert lo < env.spawn_yaw_noise() == float(env.cfg.env.spawn_yaw_noise)
+
+
+def test_live_view_follows_trigger_without_unsharding(train_cfg, monkeypatch, tmp_path):
+    from dwarl.simulation import viewer
+    from dwarl.simulation.world import ShardedWorld
+    from dwarl.training.environment.nav_env import NavVecEnv
+
+    opened = []
+
+    class Viewer:
+        def __init__(self, world, **kw):
+            self.world, self.episodes, self.syncs, self.running = world, set(), 0, True
+            opened.append(self)
+
+        def set_episode(self, env, *_):
+            self.episodes.add(env)
+
+        def set_lookahead(self, points):
+            assert len(points) % self.world.num_envs == 0
+
+        def sync(self, dt):
+            self.syncs += 1
+
+        def close(self):
+            self.running = False
+
+    monkeypatch.setattr(viewer, "SimViewer", Viewer)
+    train_cfg.sim.num_shards = 2
+    env = NavVecEnv(train_cfg)
+    env.viewer_trigger = tmp_path / "live_view"
+    env.reset()
+
+    def step():
+        env._viewer_poll = 0.0
+        env.step(torch.zeros(4, 2))
+
+    step()
+    assert env.viewer is None and not opened
+    env.viewer_trigger.touch()
+    step()
+    assert isinstance(env.world, ShardedWorld)  # training keeps its shards
+    view = opened[-1]
+    assert view.world is env.world.shards[0] and env._view_envs == 2
+    assert view.episodes == {0, 1} and view.syncs == 1  # current episodes replayed on open
+    env.viewer_trigger.unlink()
+    step()
+    assert env.viewer is None and not view.running
+    env.viewer_trigger.touch()
+    step()
+    opened[-1].running = False  # the user closes the window
+    step()
+    assert env.viewer is None and not env.viewer_trigger.exists()
+
+    def unavailable(*_, **__):
+        raise RuntimeError("no display")
+
+    monkeypatch.setattr(viewer, "SimViewer", unavailable)
+    env.viewer_trigger.touch()
+    with pytest.warns(UserWarning, match="live view unavailable"):
+        step()
+    assert env.viewer is None and not env.viewer_trigger.exists()
+    env.close()
