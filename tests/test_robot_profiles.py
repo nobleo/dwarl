@@ -35,6 +35,24 @@ def test_urdf_profile_geometry_and_upside_down_lidar():
     assert p.footprint_radius == pytest.approx(np.hypot(0.21, 0.16))
 
 
+def test_urdf_with_ros2_control_and_gazebo_blocks(tmp_path):
+    """<joint> entries inside <ros2_control>/<gazebo> are not kinematic joints."""
+    import shutil
+
+    shutil.copytree(TESTBOT, tmp_path / "bot")
+    urdf = tmp_path / "bot" / "testbot.urdf"
+    blocks = ('<ros2_control name="sim" type="system"><hardware><plugin>x/Y</plugin></hardware>'
+              '<joint name="left_joint"><command_interface name="velocity"/></joint>'
+              '<joint name="right_joint"><command_interface name="velocity"/></joint></ros2_control>'
+              '<gazebo reference="left_joint"><joint name="left_joint"/></gazebo>')
+    text = urdf.read_text()
+    head = text.index(">", text.index("<robot")) + 1
+    urdf.write_text(text[:head] + blocks + text[head:])  # before the real joints
+    expected = summarize(load_profile(TESTBOT), build_xml(load_profile(TESTBOT)))
+    p = load_profile(tmp_path / "bot")
+    assert summarize(p, build_xml(p)) == expected
+
+
 def test_urdf_robot_drives(tmp_path):
     from dwarl.simulation.world import TiledWorld
 
