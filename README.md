@@ -34,6 +34,18 @@ source .venv/bin/activate
 dwarl --help
 ```
 
+### Docker
+
+To keep ROS 2 Jazzy, Gazebo Harmonic, Nav2 and the Python environment off your host,
+use the image in [docker/](docker/README.md). It also contains an end-to-end demo: pick a
+robot (a TurtleBot3, or your own), train, compare with Nav2's DWB and Regulated Pure
+Pursuit in Gazebo, deploy, and watch the policy drive under Nav2:
+
+```sh
+cd docker && ./configure-host.sh && docker compose build
+docker compose run --rm demo
+```
+
 ## Workflow
 
 ```sh

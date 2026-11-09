@@ -526,6 +526,9 @@ sources `/opt/robots_ws/install/setup.bash`, so `my_robot_dwarl` works as a prof
 and `package://` URIs resolve. Without `ROBOTS_WS`, the empty `docker/robots_ws` is used.
 Rebuild the image after changing the packages.
 
+To offer the robot in the Docker demo (`docker compose run --rm demo`), add it to
+`work/robots.yaml`, which is merged over the built-in robot list; see `docker/README.md`.
+
 ## Troubleshooting the first integration
 
 | Symptom | Check |
