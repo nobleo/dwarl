@@ -32,6 +32,10 @@ The resume budget is **5,000 total iterations**. Resume uses the saved recipe.
 Use a new run to change the robot, observations or rewards.
 
 Add `--detached` for background training or `--show` for the simulator viewer.
+`--show` trains in one unsharded world, which is much slower. To look at a headless run
+instead, run `pixi run dwarl runs view` from a second terminal: a viewer shows the first
+simulation shard while training continues. Repeat the command or close the window to
+return to full speed.
 [Monitoring and resume](monitor.md) covers logs, TensorBoard and interruption.
 
 ??? info "Presets and configuration"

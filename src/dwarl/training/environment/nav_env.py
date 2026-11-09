@@ -8,6 +8,7 @@ Completed episodes reset individually before the next observation is returned.
 from __future__ import annotations
 
 import tempfile
+import time
 import warnings
 from copy import deepcopy
 from typing import Any
@@ -40,6 +41,11 @@ class NavVecEnv(VecEnv):
         self._robot_tmp = None
         self.world = None
         self.viewer = None
+        # Optional live view: while this file exists, a passive viewer shows the first world shard.
+        self.viewer_trigger = None
+        self._viewer_poll = 0.0
+        self._view_envs = 0
+        self._episode_paths = {}
         try:
             self._initialize(cfg, split, sequential, gui)
         except BaseException:
@@ -108,6 +114,7 @@ class NavVecEnv(VecEnv):
 
             self.viewer = SimViewer(self.world, render_fps=float(sc.render_fps), realtime=bool(sc.realtime),
                                     speed=float(sc.realtime_speed))
+            self._view_envs = self.num_envs
         self.reset()
 
     @property
@@ -173,8 +180,11 @@ class NavVecEnv(VecEnv):
             extras["log"].update(self._reset_idx(done_ids))
             self.world.forward(done_ids)
         self._obs = self._observe()
+        if self.viewer_trigger is not None:
+            self._poll_viewer()
         if self.viewer is not None:
-            points = self.path_command.command + self.world.env_origins[:, None]
+            n = self._view_envs
+            points = self.path_command.command[:n] + self.world.env_origins[:n, None]
             self.viewer.set_lookahead(points.reshape(-1, 2))
             self.viewer.sync(self.control_dt)
         return (self._obs, torch.as_tensor(reward, dtype=torch.float32, device=self.device),
@@ -254,7 +264,9 @@ class NavVecEnv(VecEnv):
             self.initial_sensor_state[i] = deepcopy(self.lidar._rng.bit_generator.state)
             starts.append(path[0])
             yaws.append(yaw)
-            if self.viewer is not None:
+            if self.viewer_trigger is not None:
+                self._episode_paths[int(i)] = path.copy()
+            if self.viewer is not None and i < self._view_envs:
                 self.viewer.set_episode(int(i), path[0], path[-1], path)
         self.world.set_robot_pose(ids, np.asarray(starts), np.asarray(yaws))
         self.action_manager.reset(ids)
@@ -264,6 +276,35 @@ class NavVecEnv(VecEnv):
         self.contacts[ids] = False
         self.episode_length_buf[torch.as_tensor(ids, device=self.device)] = 0
         return log
+
+    def _poll_viewer(self):
+        """Open or close the live view to follow ``viewer_trigger``; checked at most twice a second."""
+        now = time.monotonic()
+        if now < self._viewer_poll:
+            return
+        self._viewer_poll = now + 0.5
+        wanted = self.viewer_trigger.exists()
+        if self.viewer is not None and not (wanted and self.viewer.running):
+            self.viewer.close()
+            self.viewer, self._view_envs = None, 0
+            self.viewer_trigger.unlink(missing_ok=True)  # also when the user closed the window
+            print("Live view closed; training continues headless.", flush=True)
+        elif wanted and self.viewer is None:
+            # Sharded training keeps running at full speed; the view shows the first shard only.
+            world = self.world.shards[0] if isinstance(self.world, ShardedWorld) else self.world
+            try:
+                from dwarl.simulation.viewer import SimViewer
+
+                self.viewer = SimViewer(world, render_fps=float(self.cfg.sim.render_fps))
+            except Exception as exc:  # e.g. no display: never interrupt training for a view
+                self.viewer_trigger.unlink(missing_ok=True)
+                warnings.warn(f"live view unavailable: {exc}", stacklevel=2)
+                return
+            self._view_envs = world.num_envs
+            for i, path in self._episode_paths.items():
+                if i < self._view_envs:
+                    self.viewer.set_episode(i, path[0], path[-1], path)
+            print(f"Live view: showing {self._view_envs} of {self.num_envs} environments.", flush=True)
 
     def spawn_yaw_noise(self):
         ec = self.cfg.env

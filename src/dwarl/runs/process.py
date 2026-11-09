@@ -39,3 +39,19 @@ def stop(reference):
 def process_identity(pid):
     start = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[19]
     return Path("/proc/sys/kernel/random/boot_id").read_text().strip() + ":" + start
+
+
+def toggle_live_view(reference, off=False):
+    """Toggle the live view of a running training (``NavVecEnv.viewer_trigger``); returns (run, on)."""
+    from dwarl.runs.store import resolve_run
+
+    run = resolve_run(reference)
+    status = json.loads((run / "status.json").read_text())
+    if status["state"] != "running":
+        raise ValueError(f"{run} is not training (state: {status['state']})")
+    trigger = run / "live_view"
+    if off or trigger.exists():
+        trigger.unlink(missing_ok=True)
+        return run, False
+    trigger.touch()
+    return run, True
