@@ -79,6 +79,25 @@ def test_explicit_bundle_and_matched_dwb_limits(tmp_path):
     assert cs["goal_checker"]["stateful"] is True
 
 
+def test_matched_rpp_limits_and_reverse_policy(tmp_path):
+    bundle = _bundle(tmp_path)
+    rpp = render_nav2_params(BASE, bundle, controller="rpp")["controller_server"]["ros__parameters"]["FollowPath"]
+    assert rpp["plugin"] == "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
+    assert rpp["desired_linear_vel"] == DEPLOY["action"]["v"]["max"]
+    assert rpp["rotate_to_heading_angular_vel"] == DEPLOY["action"]["w"]["max"]
+    assert rpp["max_angular_accel"] == DEPLOY["action"]["rate_limit"]["alpha_max"]
+    assert rpp["allow_reversing"] is False and rpp["use_rotate_to_heading"] is True
+    tuning = tmp_path / "reverse.yaml"
+    tuning.write_text(f"motion_limits:\n  min_linear_velocity: {DEPLOY['action']['v']['min']}\n")
+    reverse = render_nav2_params(BASE, bundle, controller="rpp", controller_params=tuning)
+    follow = reverse["controller_server"]["ros__parameters"]["FollowPath"]
+    if DEPLOY["action"]["v"]["min"] < 0:
+        assert follow["allow_reversing"] is True and follow["use_rotate_to_heading"] is False
+    tuning.write_text("rpp:\n  desired_linear_vel: 0.1\n")
+    tuned = render_nav2_params(BASE, bundle, controller="rpp", controller_params=tuning)
+    assert tuned["controller_server"]["ros__parameters"]["FollowPath"]["desired_linear_vel"] == 0.1
+
+
 def test_mppi_limits_and_optional_profiling(tmp_path):
     bundle = _bundle(tmp_path)
     plain = render_nav2_params(BASE, bundle, controller="mppi")
@@ -89,7 +108,7 @@ def test_mppi_limits_and_optional_profiling(tmp_path):
     assert mppi["vx_min"] == DEPLOY["action"]["v"]["min"]
     assert mppi["ax_min"] == -DEPLOY["action"]["rate_limit"]["a_max"]
     assert mppi["model_dt"] == 1 / cs["controller_frequency"]
-    for controller in ("dwarl", "dwb", "mppi"):
+    for controller in ("dwarl", "dwb", "mppi", "rpp"):
         base = render_nav2_params(BASE, bundle, controller=controller)
         profiled = render_nav2_params(BASE, bundle, controller=controller, profile_compute=True)
         wrapped = profiled["controller_server"]["ros__parameters"]["FollowPath"]
@@ -193,7 +212,7 @@ def test_goal_margin_is_shared_and_cannot_relax_scoring(tmp_path):
     bundle = _bundle(tmp_path)
     tuning = tmp_path / "goal.yaml"
     tuning.write_text("goal_checker:\n  xy_goal_tolerance: 0.25\n")
-    for controller in ("dwarl", "mppi", "dwb"):
+    for controller in ("dwarl", "mppi", "dwb", "rpp"):
         params = render_nav2_params(BASE, bundle, controller=controller, controller_params=tuning)
         assert params["controller_server"]["ros__parameters"]["goal_checker"]["xy_goal_tolerance"] == .25
     tuning.write_text("goal_checker:\n  xy_goal_tolerance: 0.4\n")

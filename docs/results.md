@@ -27,13 +27,13 @@ and separate images for each simulator. There are no multi-case collages.
 ### Gazebo controller and compute comparisons
 
 ```bash
-dwarl test --checkpoint best --sim gazebo --controllers dwarl,mppi,dwb --profile-compute
+dwarl test --checkpoint best --sim gazebo --controllers dwarl,mppi,dwb,rpp --profile-compute
 ```
 
 This runs the same selected cases sequentially for each controller: the default
 cap means **32 cases per controller**, or 96 executions for all three. For a quick
-check add `--set test.max_cases=3`. MPPI and DWB require Gazebo; the default remains
-DWARL alone. Install the Nav2 MPPI and DWB packages and rebuild/source the ROS workspace.
+check add `--set test.max_cases=3`. MPPI, DWB and Regulated Pure Pursuit (`rpp`) require Gazebo; the default remains
+DWARL alone. Install the Nav2 MPPI, DWB and RPP packages and rebuild/source the ROS workspace.
 
 The robot footprint, velocity/acceleration limits, control rate, planner, goal
 tolerance, safety monitor and behavior tree are shared. MPPI uses a differential-drive
@@ -46,7 +46,7 @@ Each controller gets independent episode plots and JSON. Rendered controller and
 costmap parameters are saved in `gazebo/<controller>/<case-id>/nav2_params.yaml`.
 
 For reproducible baseline tuning, pass `--set test.controller_params=/path/to/tuning.yaml`.
-The YAML maps `mppi`, `dwb` and/or `dwarl` to their `FollowPath` parameters, for example
+The YAML maps `mppi`, `dwb`, `rpp` and/or `dwarl` to their `FollowPath` parameters, for example
 `mppi: {batch_size: 2000}`. The input YAML is frozen at test start, with its hash,
 and rendered parameters are saved per episode. Select settings on validation cases, then freeze them before testing;
 keep robot limits and the shared navigation stack matched between controllers.

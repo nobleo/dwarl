@@ -29,7 +29,7 @@ def prepare(manifest_path, deck):
     if summary['suite'] != 'test':
         raise ValueError('Presentation final evidence must come from held-out test cases')
     episodes = json.loads((final / 'episodes.json').read_text())
-    labels = {'dwarl': 'gazebo', 'mppi': 'gazebo-mppi', 'dwb': 'gazebo-dwb'}
+    labels = {'dwarl': 'gazebo', 'mppi': 'gazebo-mppi', 'dwb': 'gazebo-dwb', 'rpp': 'gazebo-rpp'}
     if set(episodes) != set(labels.values()):
         raise ValueError('Expected all three Gazebo controllers')
     cases = json.loads((final / 'cases.json').read_text())['cases']

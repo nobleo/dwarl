@@ -20,6 +20,7 @@
   <exec_depend>dwb_core</exec_depend>
   <exec_depend>dwb_plugins</exec_depend>
   <exec_depend>dwb_critics</exec_depend>
+  <exec_depend>nav2_regulated_pure_pursuit_controller</exec_depend>
   <exec_depend>nav2_lifecycle_manager</exec_depend>
   <exec_depend>nav2_map_server</exec_depend>
   <exec_depend>nav2_minimal_tb3_sim</exec_depend>

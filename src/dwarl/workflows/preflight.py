@@ -54,7 +54,8 @@ def execute(command, cfg):
 
         prerequisites()
         for controller in cfg.test.controllers:
-            package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core"}.get(controller)
+            package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core",
+                       "rpp": "nav2_regulated_pure_pursuit_controller"}.get(controller)
             if package and subprocess.run(["ros2", "pkg", "prefix", package], capture_output=True).returncode:
                 raise ValueError(f"ROS package {package} unavailable")
         adapter = contract.robot.ros.get("sim_launch")

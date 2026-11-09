@@ -37,7 +37,7 @@ def parser():
             p.add_argument("--case")
             p.add_argument("--repeats", type=int)
             p.add_argument("--controllers", type=lambda value: value.split(","),
-                           help="Gazebo controllers: dwarl,mppi,dwb (default: dwarl)")
+                           help="Gazebo controllers: dwarl,mppi,dwb,rpp (default: dwarl)")
             p.add_argument("--profile-compute", action="store_true", default=None)
         if name in ("train", "test"):
             p.add_argument("--show", action="store_true", default=None)
