@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!-- Cindy for DWARL: cindy_description geometry + caster + Gazebo Harmonic drive/lidar.
+     The same file is used for MuJoCo training (Gazebo tags are ignored there). -->
+<robot name="cindy" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="wheel_joint_type" default="continuous"/>
+  <xacro:arg name="controllers" default="$(find cindy_dwarl)/config/controllers.yaml"/>
+  <xacro:include filename="$(find cindy_description)/urdf/cindy_description.xacro"/>
+
+  <!-- cindy_description has no omni-wheel; without it the chassis box drags on the floor. -->
+  <link name="caster">
+    <inertial><mass value="0.05"/><inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5"/></inertial>
+    <collision><geometry><sphere radius="0.024"/></geometry></collision>
+    <visual><geometry><sphere radius="0.024"/></geometry></visual>
+  </link>
+  <joint name="caster_joint" type="fixed">
+    <parent link="base_link"/><child link="caster"/>
+    <origin xyz="-0.2775 0 -0.024" rpy="0 0 0"/>
+  </joint>
+
+  <ros2_control name="GazeboSimSystem" type="system">
+    <hardware><plugin>gz_ros2_control/GazeboSimSystem</plugin></hardware>
+    <joint name="wheel_left_joint">
+      <command_interface name="velocity"><param name="min">-10</param><param name="max">10</param></command_interface>
+      <state_interface name="position"/><state_interface name="velocity"/>
+    </joint>
+    <joint name="wheel_right_joint">
+      <command_interface name="velocity"><param name="min">-10</param><param name="max">10</param></command_interface>
+      <state_interface name="position"/><state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <gazebo reference="caster_joint"><preserveFixedJoint>true</preserveFixedJoint></gazebo>
+  <gazebo reference="caster"><mu1>0.0</mu1><mu2>0.0</mu2></gazebo>
+  <gazebo reference="wheel_left_rotation"><mu1>1.0</mu1><mu2>1.0</mu2><kp>1e6</kp><kd>100</kd></gazebo>
+  <gazebo reference="wheel_right_rotation"><mu1>1.0</mu1><mu2>1.0</mu2><kp>1e6</kp><kd>100</kd></gazebo>
+
+  <!-- RPLidar A2. The world provides gz-sim-sensors-system. -->
+  <gazebo reference="lidar">
+    <sensor name="lidar" type="gpu_lidar">
+      <topic>scan</topic>
+      <gz_frame_id>lidar</gz_frame_id>
+      <always_on>1</always_on>
+      <visualize>false</visualize>
+      <update_rate>10</update_rate>
+      <lidar>
+        <scan><horizontal><samples>360</samples><resolution>1</resolution>
+          <min_angle>-3.14159</min_angle><max_angle>3.14159</max_angle></horizontal></scan>
+        <range><min>0.15</min><max>12.0</max><resolution>0.01</resolution></range>
+        <noise><type>gaussian</type><mean>0.0</mean><stddev>0.01</stddev></noise>
+      </lidar>
+    </sensor>
+  </gazebo>
+
+  <gazebo>
+    <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(arg controllers)</parameters>
+      <ros>
+        <remapping>/diff_drive_base_controller/cmd_vel:=/cmd_vel</remapping>
+        <remapping>/diff_drive_base_controller/odom:=/odom</remapping>
+      </ros>
+    </plugin>
+  </gazebo>
+</robot>

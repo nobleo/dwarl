@@ -6,6 +6,10 @@ x-dwarl: &dwarl
   build:
     context: ..
     dockerfile: docker/Dockerfile
+    additional_contexts:
+      cindy_description: ${CINDY_DESCRIPTION_REPO:-../../cindy_description}
+    args:
+      CINDY_DESCRIPTION_REF: ${CINDY_DESCRIPTION_REF:-origin/feature/namespace}
   user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
   environment:
     HOME: /tmp/home

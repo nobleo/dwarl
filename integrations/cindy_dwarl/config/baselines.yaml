@@ -1,0 +1,52 @@
+# Cindy's own Nav2 controller tuning, used as baselines in `dwarl test --controllers dwarl,dwb,rpp`
+# (pass with --set test.controller_params=<this file>).
+#
+# Behaviour parameters come from cindy's robot configs:
+#   rpp: cindy main, src/pkgs/cindy_common_bringup/params/nav2_params.yaml (the controller cindy drives with)
+#   dwb: cindy feature/namespace, params/nav2_params.yaml (dwb_local_planner block)
+# Velocity and acceleration limits are NOT overridden here: DWARL renders them from the trained bundle so
+# that every controller gets the same motion limits. Reversing is disabled for RPP because cindy's policy
+# was trained with v_min = -0.1 m/s while RPP reverses at desired_linear_vel.
+rpp:
+  desired_linear_vel: 0.2
+  lookahead_dist: 0.3
+  min_lookahead_dist: 0.15
+  max_lookahead_dist: 0.45
+  lookahead_time: 1.5
+  rotate_to_heading_angular_vel: 0.3
+  transform_tolerance: 0.5
+  use_velocity_scaled_lookahead_dist: false
+  min_approach_linear_velocity: 0.05
+  approach_velocity_scaling_dist: 0.6
+  use_collision_detection: true
+  max_allowed_time_to_collision_up_to_carrot: 1.0
+  use_regulated_linear_velocity_scaling: true
+  use_fixed_curvature_lookahead: false
+  curvature_lookahead_dist: 0.2
+  use_cost_regulated_linear_velocity_scaling: false
+  regulated_linear_scaling_min_radius: 0.9
+  regulated_linear_scaling_min_speed: 0.25
+  use_rotate_to_heading: false
+  allow_reversing: false
+  rotate_to_heading_min_angle: 2.0944
+  max_robot_pose_search_dist: 10.0
+dwb:
+  vx_samples: 20
+  vtheta_samples: 20
+  sim_time: 1.7
+  linear_granularity: 0.05
+  angular_granularity: 0.025
+  transform_tolerance: 1.0
+  trans_stopped_velocity: 0.25
+  short_circuit_trajectory_evaluation: true
+  critics: [RotateToGoal, Oscillation, BaseObstacle, GoalAlign, PathAlign, PathDist, GoalDist]
+  BaseObstacle.scale: 0.02
+  PathAlign.scale: 32.0
+  GoalAlign.scale: 24.0
+  PathAlign.forward_point_distance: 0.1
+  GoalAlign.forward_point_distance: 0.1
+  PathDist.scale: 32.0
+  GoalDist.scale: 24.0
+  RotateToGoal.scale: 32.0
+  RotateToGoal.slowing_factor: 5.0
+  RotateToGoal.lookahead_time: -1.0

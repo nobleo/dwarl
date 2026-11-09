@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.8)
+project(cindy_dwarl)
+find_package(ament_cmake REQUIRED)
+install(FILES dwarl_robot.yaml DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config launch urdf DESTINATION share/${PROJECT_NAME})
+ament_package()

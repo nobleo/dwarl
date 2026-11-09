@@ -1,0 +1,54 @@
+# DWARL profile for Nobleo's Cindy (diff drive in front, free omni-wheel at the back, RPLidar A2).
+# Geometry comes from cindy_description (feature/namespace); limits from cindy's Nav2 velocity smoother.
+schema: dwarl_robot/1
+id: cindy
+
+description:
+  urdf: package://cindy_dwarl/urdf/cindy_gz.urdf.xacro
+  base_link: base_footprint
+
+drive:
+  type: diff
+  left_wheel_joint: wheel_left_joint
+  right_wheel_joint: wheel_right_joint
+  actuator: {kv: 1.0, max_wheel_speed: 10.0, max_torque: 3.0}
+
+limits:
+  v_min: -0.1      # small reverse to escape; cindy's smoother allows -0.26
+  v_max: 0.26      # m/s, cindy nav2 velocity_smoother / DWB max_vel_x
+  w_max: 1.0       # rad/s
+  a_max: 1.0       # m/s^2 (smoother allows 2.5; conservative for a 6 kg robot)
+  alpha_max: 2.0   # rad/s^2
+
+# Convex hull of cindy's Nav2 footprint (the real one has a small notch behind the wheels).
+footprint:
+  polygon: [[0.055, 0.140], [-0.055, 0.140], [-0.225, 0.103], [-0.375, 0.0],
+            [-0.225, -0.103], [-0.055, -0.140], [0.055, -0.140]]
+
+lidar:
+  link: lidar
+  num_rays: 180
+  fov_deg: 360.0
+  min_range: 0.15
+  max_range: 8.0
+  noise_std: 0.01
+  dropout_prob: 0.005
+
+collision:
+  remove_links: [caster]          # replaced by the frictionless support below
+  supports: [{pos: [-0.2775, 0.0, 0.024], radius: 0.024}]
+  chassis_z: [0.03, 0.21]
+
+ros:
+  base_frame: base_footprint
+  odom_frame: odom
+  map_frame: map
+  scan_topic: /scan
+  odom_topic: /odom
+  cmd_vel_topic: /cmd_vel
+  cmd_vel_stamped: true           # Jazzy diff_drive_controller takes TwistStamped
+  sim_launch: {package: cindy_dwarl, file: simulation.launch.py}
+
+deployment:
+  policy_directory: policies
+  selected_policy: selected_policy.yaml

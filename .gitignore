@@ -74,3 +74,4 @@ Thumbs.db
 site/
 .playwright-mcp/
 /work/
+docker/empty/

@@ -11,6 +11,16 @@ if [[ -f "$env_file" ]]; then  # keep user-chosen robot source settings
   done < "$env_file"
 fi
 
+if [[ -z "${keep[CINDY_DESCRIPTION_REPO]:-}" ]]; then  # find a cindy_description checkout near the repo
+  for candidate in ../../cindy_description ../../../cindy_description; do
+    if [[ -e "$here/$candidate/.git" ]]; then keep[CINDY_DESCRIPTION_REPO]="$candidate"; break; fi
+  done
+  if [[ -z "${keep[CINDY_DESCRIPTION_REPO]:-}" ]]; then
+    mkdir -p "$here/empty"; keep[CINDY_DESCRIPTION_REPO]="./empty"
+    echo "No cindy_description checkout found: building without Cindy (see integrations/README.md)"
+  fi
+fi
+
 files="compose.yaml"
 if docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q nvidia \
    || docker info 2>/dev/null | grep -q 'nvidia.com/gpu'; then

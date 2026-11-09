@@ -33,6 +33,30 @@ RUN . /opt/ros/jazzy/setup.sh && apt-get update \
          --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
     && rm -rf /tmp/build log
 
+# ---------------------------------------------------------------- robot integrations (/opt/robots_ws)
+# Description sources come from local checkouts (compose additional_contexts) at a fixed git ref;
+# see integrations/README.md. A context without a git repository skips that robot.
+ARG CINDY_DESCRIPTION_REF=origin/feature/namespace
+COPY --from=cindy_description . /tmp/sources/cindy_description
+COPY integrations /opt/robots_ws/src/integrations
+RUN set -e; \
+    if [ -e /tmp/sources/cindy_description/.git ]; then \
+      mkdir -p /opt/robots_ws/src/cindy_description; \
+      git -c safe.directory='*' -C /tmp/sources/cindy_description archive "$CINDY_DESCRIPTION_REF" \
+        | tar -x -C /opt/robots_ws/src/cindy_description; \
+      echo "cindy_description: $CINDY_DESCRIPTION_REF $(git -c safe.directory='*' -C /tmp/sources/cindy_description rev-parse "$CINDY_DESCRIPTION_REF")" \
+        > /opt/robots_ws/SOURCES; \
+    else \
+      echo "cindy_description not provided: building without cindy_dwarl"; \
+      touch /opt/robots_ws/src/integrations/cindy_dwarl/COLCON_IGNORE; \
+    fi; \
+    rm -rf /tmp/sources; \
+    . /opt/ros/jazzy/setup.sh && . /opt/dwarl_ws/install/setup.sh && apt-get update \
+    && rosdep install --from-paths /opt/robots_ws/src --ignore-src -r -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && colcon build --base-paths /opt/robots_ws/src --build-base /tmp/build --install-base /opt/robots_ws/install \
+    && rm -rf /tmp/build log
+
 # ---------------------------------------------------------------- DWARL itself (editable: a bind mount can override it)
 COPY . /opt/dwarl
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --group dev
