@@ -8,7 +8,7 @@ from dwarl.datasets.generation.geometry import border_primitives, rasterize
 from dwarl.datasets.generation.mapdata import BOX, MapData
 from dwarl.navigation.clearance import footprint_clearance
 from dwarl.testing.scenarios import export_gazebo
-from dwarl.testing.unmapped import place_unmapped
+from dwarl.testing.unmapped import narrow_points, place_unmapped
 
 ROBOT = {"footprint_radius": 0.3, "footprint": [[0.1, 0.15], [-0.3, 0.15], [-0.3, -0.15], [0.1, -0.15]]}
 
@@ -63,3 +63,14 @@ def test_unmapped_obstacles_and_planner_are_validated():
         compose_config(assignments=["test.sim=gazebo", "test.planner=astar"])
     cfg = compose_config(assignments=["test.sim=gazebo", "test.planner=smac2d", "test.unmapped_obstacles=2"])
     assert cfg.test.planner == "smac2d" and cfg.test.unmapped_obstacles == 2
+
+
+def test_obstacles_keep_clear_of_doorways():
+    # A wall across the room with a 1 m door at x=0; the path runs through the door.
+    walls = [[BOX, 0.0, 2.75, 0.0, 0.05, 2.25], [BOX, 0.0, -2.75, 0.0, 0.05, 2.25]]
+    md = _map(walls)
+    narrow = narrow_points(md, np.asarray(_case()["reference_path"]), ROBOT)
+    assert len(narrow) and np.abs(narrow[:, 0]).max() < 0.6  # only the doorway is narrow
+    for identifier in "abcdef":
+        for prim in place_unmapped(md, _case(identifier), 3, ROBOT, spacing=1.5):
+            assert abs(prim[1]) >= 2 * ROBOT["footprint_radius"] + prim[4] - 1e-6

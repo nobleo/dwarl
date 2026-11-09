@@ -176,7 +176,10 @@ dwarl test --sim gazebo --controllers dwarl,mppi,dwb --set test.unmapped_obstacl
 This adds up to three boxes or cylinders (0.4–0.7 m across) to the Gazebo world of each case,
 but not to the Nav2 map. The global plan therefore runs through them and only the local
 planner, from its lidar, can avoid them. They are spread along the case's reference path, at
-least 1.5 m from start and goal and 2 m apart, and never touch mapped geometry. With all of
+least 1.5 m from start and goal and 2 m apart, and never touch mapped geometry. They also keep
+two robot radii (circumscribed) plus their own size away from passages on the route that are
+narrower than two robot diameters, such as doorways: an obstacle right behind a door leaves no
+room to manoeuvre and tests the placement more than the controller. With all of
 them added, the goal stays reachable for the robot's width plus 0.1 m on each side; on tight
 maps fewer obstacles are placed. Placement depends only on the case, so every controller
 meets the same obstacles. Collisions are scored against mapped and unmapped geometry, and the
