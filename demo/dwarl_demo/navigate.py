@@ -2,8 +2,10 @@
 
 Uses DWARL's bench.launch.py (robot adapter, map server, spawn-pose localisation, Nav2) on a demo world
 whose Gazebo scene contains obstacles that are missing from the Nav2 map, then sends NavigateToPose.
+The scenes are the ones of the compare stage's unmapped-obstacle pass (same world files, same
+obstacles), or the demo worlds' fixed surprise obstacles if that pass has not run.
 
-    python -m dwarl_demo.navigate <bundle> <demo_worlds_dir> [world] [pair] [controller]
+    python -m dwarl_demo.navigate <bundle> <demo_worlds_dir> [world] [controller]
 """
 
 from __future__ import annotations
@@ -34,26 +36,63 @@ def _stop(process):
             continue
 
 
-def drive(bundle, worlds, world, pair=0, controller="dwarl", controller_params=None, timeout=None, gui=True):
-    """Launch the stack, send one goal, report the outcome. Returns a result dict."""
+def surprise_scenes(worlds):
+    """First start/goal pair of each demo world, with the world's fixed surprise obstacles."""
+    gazebo = Path(worlds) / "gazebo"
+    scenes = []
+    for meta_file in sorted(gazebo.glob("*_surprise.json")):
+        world = meta_file.name[:-len("_surprise.json")]
+        meta = json.loads((gazebo / f"{world}.json").read_text())["pairs"][0]
+        scenes.append({"world": world, "sdf": gazebo / f"{world}_surprise.sdf", "map": gazebo / f"{world}.yaml",
+                       "start": meta["start"], "goal": meta["goal"], "path_length": meta["path_length"]})
+    return scenes
+
+
+def unmapped_scenes(run_dir):
+    """First case per world of the latest Gazebo test of ``run_dir`` with unmapped obstacles."""
+    import yaml
+
+    tests = sorted(Path(run_dir).glob("tests/*/request.yaml"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for request_file in tests:
+        request = yaml.safe_load(request_file.read_text()) or {}
+        if request.get("sim") != "gazebo" or not request.get("unmapped_obstacles"):
+            continue
+        scenes = {}
+        for case_input in sorted(request_file.parent.glob("gazebo/dwarl/*/input.json")):
+            case = json.loads(case_input.read_text())["case"]
+            if case["pair"] != 0 or case["name"] in scenes:
+                continue
+            path = case["reference_path"]
+            (ax, ay), (bx, by) = path[-2], path[-1]
+            length = sum(math.dist(a, b) for a, b in zip(path, path[1:], strict=False))
+            scenes[case["name"]] = {"world": case["name"], "sdf": case_input.parent / "world.sdf",
+                                    "map": case_input.parent / "world.yaml", "start": case["start"],
+                                    "goal": [*case["goal"][:2], math.atan2(by - ay, bx - ax)],
+                                    "path_length": length}
+        if scenes:
+            return [scenes[name] for name in sorted(scenes)]
+    return []
+
+
+def drive(bundle, scene, controller="dwarl", controller_params=None, planner="smac2d", timeout=None, gui=True):
+    """Launch the stack on ``scene``, send one goal, report the outcome. Returns a result dict."""
     import rclpy
     from geometry_msgs.msg import PoseStamped
     from nav2_msgs.action import NavigateToPose
     from rclpy.action import ActionClient
     from std_srvs.srv import Trigger
 
-    gazebo = Path(worlds) / "gazebo"
-    meta = json.loads((gazebo / f"{world}.json").read_text())["pairs"][pair]
-    (x, y, yaw), (gx, gy, gyaw) = meta["start"], meta["goal"]
+    world = scene["world"]
+    (x, y, yaw), (gx, gy, gyaw) = scene["start"], scene["goal"]
     import yaml
 
     v_max = float(yaml.safe_load((Path(bundle) / "deploy.yaml").read_text())["action"]["v"]["max"])
-    budget = timeout or max(120.0, 4.0 * meta["path_length"] / v_max + 60.0)  # generous: includes recoveries
+    budget = timeout or max(120.0, 4.0 * scene["path_length"] / v_max + 60.0)  # generous: includes recoveries
     logs = Path(os.environ.get("DWARL_WORK", "/work")) / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     log = logs / f"showcase-{world}-{controller}-{time.strftime('%H%M%S')}.log"
     cmd = ["ros2", "launch", "dwarl_bringup", "bench.launch.py", f"model_dir:={bundle}",
-           f"world:={gazebo / (world + '_surprise.sdf')}", f"map:={gazebo / (world + '.yaml')}",
+           f"world:={scene['sdf']}", f"map:={scene['map']}", f"planner:={planner}",
            f"x:={x}", f"y:={y}", f"yaw:={yaw}", f"gui:={str(gui).lower()}", f"rviz:={str(gui).lower()}",
            f"controller:={controller}", "safety:=true"]
     if controller_params:
@@ -67,7 +106,7 @@ def drive(bundle, worlds, world, pair=0, controller="dwarl", controller_params=N
     os.environ["ROS_DOMAIN_ID"] = env["ROS_DOMAIN_ID"]
     rclpy.init()
     node = rclpy.create_node("dwarl_demo_goal")
-    result = {"world": world, "pair": pair, "controller": controller, "outcome": "infrastructure_failure"}
+    result = {"world": world, "controller": controller, "outcome": "infrastructure_failure"}
     try:
         client = ActionClient(node, NavigateToPose, "navigate_to_pose")
         active = node.create_client(Trigger, "lifecycle_manager_navigation/is_active")
@@ -93,7 +132,7 @@ def drive(bundle, worlds, world, pair=0, controller="dwarl", controller_params=N
         goal.pose.pose.orientation.z, goal.pose.pose.orientation.w = math.sin(gyaw / 2), math.cos(gyaw / 2)
         feedback = {}
         print(f"\n{BOLD}Goal sent{RESET}: ({x:.1f}, {y:.1f}) -> ({gx:.1f}, {gy:.1f}), "
-              f"reference route {meta['path_length']:.1f} m; obstacles not on the map are placed on that route.")
+              f"reference route {scene['path_length']:.1f} m; obstacles not on the map are placed on that route.")
         for _ in range(3):
             future = client.send_goal_async(goal, feedback_callback=lambda m: feedback.update(f=m.feedback))
             rclpy.spin_until_future_complete(node, future, timeout_sec=30)
@@ -146,21 +185,25 @@ def drive(bundle, worlds, world, pair=0, controller="dwarl", controller_params=N
         _stop(process)
 
 
-def showcase(bundle, worlds, entry, interactive=True):
-    from dwarl_demo.__main__ import resolve_optional
+def showcase(bundle, worlds, entry, run_dir=None, interactive=True):
+    from dwarl_demo.__main__ import controllers_for, planner_for, resolve_optional
 
-    baselines = resolve_optional(entry.get("baselines"))
-    names = sorted(p.stem for p in (Path(worlds) / "scenarios").glob("*.npz"))
+    baselines = resolve_optional(entry.get("baselines"))  # the comparison's shared tuning, for every controller
+    planner = planner_for(entry)
+    scenes = (unmapped_scenes(run_dir) if run_dir else []) or surprise_scenes(worlds)
+    others = [c for c in controllers_for(entry) if c != "dwarl"]
     gui = os.environ.get("DEMO_GUI", "1") != "0"
     results = []
-    for world in names:
-        print(f"\n{BOLD}World: {world}{RESET} — Gazebo shows the robot; RViz shows the map, global plan and costmap.")
-        results.append(drive(bundle, worlds, world, 0, "dwarl", gui=gui))
-        if interactive and gui:
-            answer = input("Replay this world with another controller? [n]/dwb/rpp: ").strip().lower()
-            while answer in ("dwb", "rpp", "mppi"):
-                results.append(drive(bundle, worlds, world, 0, answer, baselines, gui=gui))
-                answer = input("Another controller? [n]/dwb/rpp: ").strip().lower()
+    for scene in scenes:
+        print(f"\n{BOLD}World: {scene['world']}{RESET} — Gazebo shows the robot and the obstacles that are not on "
+              "the map; RViz shows the map, global plan and costmap.")
+        results.append(drive(bundle, scene, "dwarl", baselines, planner, gui=gui))
+        if interactive and gui and others:
+            prompt = f"Replay this world with another controller? [n]/{'/'.join(others)}: "
+            answer = input(prompt).strip().lower()
+            while answer in others:
+                results.append(drive(bundle, scene, answer, baselines, planner, gui=gui))
+                answer = input(prompt).strip().lower()
     print(f"\n{BOLD}Showcase results{RESET}")
     for r in results:
         print(f"  {r['world']:<10} {r['controller']:<6} {r['outcome']:<12} {r.get('wall_time_s', '-')}")
@@ -171,5 +214,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if len(args) < 2:
         raise SystemExit(__doc__)
-    drive(args[0], args[1], *(args[2:3] or ["office"]), *([int(args[3])] if len(args) > 3 else []),
-          *(args[4:5] or []))
+    name = args[2] if len(args) > 2 else "office"
+    chosen = [scene for scene in surprise_scenes(args[1]) if scene["world"] == name]
+    if not chosen:
+        raise SystemExit(f"no demo world {name!r} in {args[1]}")
+    drive(args[0], chosen[0], *(args[3:4] or []))

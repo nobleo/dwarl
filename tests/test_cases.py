@@ -89,3 +89,7 @@ def test_common_scoring_and_infrastructure_exclusion():
     assert interrupted["interrupted"] == 1
     assert interrupted["infrastructure_failures"] == 0
     assert interrupted["success_rate"] is None
+    assert result["mean_localization_error_m"] is None
+    success["diagnostics"] = {"final_pose_comparison": {"localization_difference_m": 0.3}}
+    timeout["diagnostics"] = {"final_pose_comparison": {"localization_difference_m": 0.1}}
+    assert abs(summarize(rows, 4)["mean_localization_error_m"] - 0.2) < 1e-9

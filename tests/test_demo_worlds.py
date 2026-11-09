@@ -10,7 +10,15 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "demo"))
 
-from dwarl_demo.__main__ import default_robot, load_registry  # noqa: E402
+from dwarl_demo.__main__ import (  # noqa: E402
+    CONTROLLERS,
+    controllers_for,
+    default_robot,
+    load_registry,
+    planner_for,
+    unmapped_for,
+)
+from dwarl_demo.navigate import surprise_scenes, unmapped_scenes  # noqa: E402
 from dwarl_demo.worlds import WORLDS, build_worlds  # noqa: E402
 
 from dwarl.datasets.generation.mapdata import MapData  # noqa: E402
@@ -50,3 +58,20 @@ def test_local_registry_can_add_the_default_robot(tmp_path):
     assert set(robots) == set(builtin) | {"my_robot"}
     assert default_robot(robots) == "my_robot"
     assert default_robot({"a": {}, "b": {}}) == "a"
+
+
+def test_comparison_settings_default_to_the_shared_setup():
+    entry = load_registry(Path("/nonexistent"))["robots"]["turtlebot3"]
+    assert controllers_for(entry) == CONTROLLERS and "mppi" in CONTROLLERS
+    assert planner_for(entry) == "smac2d"
+    assert unmapped_for(entry, {}) == 3
+    assert unmapped_for(entry, {"unmapped_obstacles": 1}) == 1
+    assert unmapped_for({"unmapped_obstacles": 0}, {"unmapped_obstacles": 1}) == 0
+
+
+def test_showcase_scenes(tmp_path):
+    out = build_worlds(tmp_path / "worlds", None, previews=False)
+    scenes = surprise_scenes(out)
+    assert [s["world"] for s in scenes] == sorted(WORLDS)
+    assert all(s["sdf"].is_file() and s["map"].is_file() and s["path_length"] > 0 for s in scenes)
+    assert unmapped_scenes(tmp_path / "no-run") == []

@@ -25,12 +25,16 @@ def summarize(rows, expected):
         return sum(values) / len(values) if values else None
 
     successful = [r for r in completed if r["success"]]
+    # Gazebo: Nav2's final map pose vs ground truth. Large values mean the comparison measured odometry drift.
+    drift = [r["diagnostics"]["final_pose_comparison"]["localization_difference_m"] for r in completed
+             if "final_pose_comparison" in (r.get("diagnostics") or {})]
     return {"expected": expected, "completed": count,
             "successful_mean_time_s": mean("completion_time", successful),
             "successful_mean_distance_m": mean("travelled_distance", successful),
             "mean_min_clearance_m": mean("clearance", completed),
             "mean_recovery_actions": mean("recovery_actions", completed),
             "mean_safety_stops": mean("safety_stops", completed),
+            "mean_localization_error_m": sum(drift) / len(drift) if drift else None,
             "infrastructure_failures": sum(r["status"] == "infrastructure_failure" for r in rows),
             "interrupted": sum(r["status"] == "interrupted" for r in rows),
             "success_rate": sum(r["success"] for r in completed) / count if count else None,

@@ -27,6 +27,9 @@ import yaml
 HERE = Path(__file__).resolve().parent
 WORK = Path(os.environ.get("DWARL_WORK", "/work"))
 STAGES = ["setup", "train", "evaluate", "compare", "deploy", "showcase"]
+CONTROLLERS = ["dwarl", "mppi", "dwb", "rpp"]  # Nav2 controllers compared under one shared setup
+PLANNER = "smac2d"                             # global planner for every controller
+UNMAPPED = 3                                   # obstacles per route that are not on the Nav2 map
 BOLD, DIM, GREEN, RED, YELLOW, RESET = "\033[1m", "\033[2m", "\033[32m", "\033[31m", "\033[33m", "\033[0m"
 
 
@@ -111,6 +114,19 @@ def prepare_robot(key, entry):
     say(f"Robot {key}: {source.id} from {source.path}")
     say(f"Integration copy: {target}")
     return profile, load_profile(profile)
+
+
+def controllers_for(entry):
+    return list(entry.get("controllers") or CONTROLLERS)
+
+
+def planner_for(entry):
+    return entry.get("planner", PLANNER)
+
+
+def unmapped_for(entry, preset):
+    """Robot setting first, then the preset, then the default."""
+    return int(entry.get("unmapped_obstacles", preset.get("unmapped_obstacles", UNMAPPED)))
 
 
 def resolve_optional(uri):
@@ -260,6 +276,12 @@ def table(summary, title):
         say(f"  {label:<14}{colour}{(s.get('success_rate') or 0):>9.2f}{RESET}{(s.get('collision_rate') or 0):>11.2f}"
             f"{(f'{t:.1f}' if t else '-'):>10}{(f'{c:.2f}' if c else '-'):>15}"
             f"{(s.get('mean_safety_stops') or 0):>7.1f}")
+    for name, s in summary["simulators"].items():
+        drift = s.get("mean_localization_error_m")
+        label = {"gazebo": "dwarl"}.get(name, name.replace("gazebo-", ""))
+        if drift is not None and drift > 0.1:
+            say(f"  warning: {label} ends {drift:.2f} m from ground truth on average; the bench localizes with "
+                "odometry, so this includes odometry drift (docs/manual-integration.md)", YELLOW)
 
 
 def evaluate(run_dir, checkpoint, preset):
@@ -273,24 +295,48 @@ def evaluate(run_dir, checkpoint, preset):
 
 
 def compare(run_dir, checkpoint, entry, worlds, preset):
-    controllers = ",".join(entry.get("controllers", ["dwarl", "dwb", "rpp"]))
-    extra = []
+    controllers = ",".join(controllers_for(entry))
+    planner, count = planner_for(entry), unmapped_for(entry, preset)
+    shared = ["--set", f"test.planner={planner}"]
     baselines = resolve_optional(entry.get("baselines"))
     if baselines:
-        extra = ["--set", f"test.controller_params={baselines}"]
-        say(f"Baseline tuning: {baselines}")
+        shared += ["--set", f"test.controller_params={baselines}"]
+        say(f"Shared tuning (costmap, planner, controllers): {baselines}")
+    say(f"Shared Nav2 setup: global planner {planner}, same map, costmaps, limits and safety for every controller.")
+    passes = []
+    if os.environ.get("DEMO_CANONICAL") == "1":
+        passes.append(("canonical", "canonical cases", ["--set", f"test.max_cases={preset['max_cases']}"]))
+    passes.append(("on the map", "demo worlds, all obstacles on the map", ["--set", f"test.dataset={worlds}"]))
+    if count:
+        passes.append(("not on the map", f"demo worlds + up to {count} obstacles per route that are not on the map",
+                       ["--set", f"test.dataset={worlds}", "--set", f"test.unmapped_obstacles={count}"]))
     results = {}
-    for title, workload in (("Gazebo: canonical benchmark cases", ["--set", f"test.max_cases={preset['max_cases']}"]),
-                            ("Gazebo: demo worlds (office, warehouse)", ["--set", f"test.dataset={worlds}"])):
-        say(f"\n{title} — {controllers}. Each case starts a fresh Gazebo + Nav2 stack (headless).")
+    for short, title, workload in passes:
+        say(f"\nGazebo: {title} — {controllers}. Each case starts a fresh Gazebo + Nav2 stack (headless).")
         log = WORK / "logs" / f"compare-{run_dir.name}.log"
         run(["dwarl", "test", "--run", run_dir, "--checkpoint", checkpoint, "--suite", "benchmark", "--sim", "gazebo",
-             "--controllers", controllers, *workload, *extra], log=log)
+             "--controllers", controllers, *shared, *workload], log=log)
         summary, directory = latest_test(run_dir)
-        table(summary, title)
+        table(summary, f"Gazebo: {title}")
         say(f"Report: {directory / 'report' / 'README.md'}", DIM)
-        results[title] = summary
+        results[short] = summary
+    if len(results) > 1:
+        overview(results)
     return results
+
+
+def overview(results):
+    """Success and collision rate per controller, one column pair per pass."""
+    names = list(dict.fromkeys(name for summary in results.values() for name in summary["simulators"]))
+    say("\nSummary: success / collision rate per pass", BOLD)
+    say("  " + f"{'controller':<14}" + "".join(f"{title:>18}" for title in results))
+    for name in names:
+        label = {"gazebo": "dwarl"}.get(name, name.replace("gazebo-", ""))
+        cells = []
+        for summary in results.values():
+            s = summary["simulators"].get(name) or {}
+            cells.append(f"{(s.get('success_rate') or 0):.2f} / {(s.get('collision_rate') or 0):.2f}")
+        say("  " + f"{label:<14}" + "".join(f"{cell:>18}" for cell in cells))
 
 
 def deploy(profile_path, run_dir, checkpoint):
@@ -307,8 +353,8 @@ def main():
     registry = load_registry()
     robots, presets = registry["robots"], registry["presets"]
     heading("DWARL demo: reinforcement-learned local planner for Nav2")
-    say("Train a robot-specific policy in MuJoCo, compare it with Nav2's DWB and Regulated Pure Pursuit in")
-    say("Gazebo, install it as the Nav2 controller and watch it drive from start to goal.")
+    say("Train a robot-specific policy in MuJoCo, compare it with Nav2's MPPI, DWB and Regulated Pure Pursuit")
+    say("in Gazebo, with obstacles that are not on the map, install it as the Nav2 controller and watch it drive.")
     key = os.environ.get("DEMO_ROBOT") or choose(
         "\nWhich robot?", [(k, v.get("label", "")) for k, v in robots.items()], default_robot(robots))
     if key not in robots:
@@ -357,7 +403,7 @@ def main():
         heading("6. Showcase: Nav2 + DWARL in Gazebo")
         from dwarl_demo.navigate import showcase
 
-        showcase(bundle, worlds, entry, interactive=interactive())
+        showcase(bundle, worlds, entry, run_dir, interactive=interactive())
     heading("Done")
     say(f"Everything is in {WORK}: runs/{run_dir.name}, robots/{key}, demo_worlds/{key}, logs/")
 

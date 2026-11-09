@@ -56,9 +56,9 @@ docker compose run --rm demo
 | setup | Copies the robot integration to `work/robots/<robot>` and builds two demo worlds (office, warehouse) sized for its footprint | `work/demo_worlds/<robot>/previews/*.png` |
 | train | `dwarl train` in MuJoCo, headless, with the GPU for PyTorch when available. One status line shows iteration, success, collision and ETA | `work/runs/<run>`, `work/logs/train-*.log` |
 | evaluate | MuJoCo benchmark on DWARL's canonical cases (doorway, corridor, U-trap, clutter, …) | success/collision table, `report/README.md` |
-| compare | Gazebo + Nav2, headless: DWARL vs DWB vs Regulated Pure Pursuit on the canonical cases and on the demo worlds, same global planner, map and limits | comparison tables and reports |
+| compare | Gazebo + Nav2, headless: DWARL vs MPPI vs DWB vs Regulated Pure Pursuit on the demo worlds, under one shared Nav2 setup (Smac 2D global planner, map, costmaps, limits, safety). A second pass adds obstacles on each route that are in Gazebo but **not** on the map | one table per pass and a summary |
 | deploy | `dwarl deploy` installs the exported ONNX bundle in the robot integration | `work/robots/<robot>/policies/` |
-| showcase | Gazebo and RViz windows open. Nav2 plans a global path from start to goal, and the DWARL controller plugin follows it around obstacles that are **not** on the map | goal reached / failed, per world |
+| showcase | Gazebo and RViz windows open. Nav2 plans a global path from start to goal, and the DWARL controller plugin follows it around obstacles that are **not** on the map. It uses the same worlds, obstacles, planner and tuning as the second compare pass | goal reached / failed, per world |
 
 Keys while training runs:
 
@@ -68,7 +68,8 @@ Keys while training runs:
 | `l` | Print the last lines of the training log |
 | `q` | Stop training early. Completed checkpoints are kept and the demo continues with them |
 
-During the showcase you can replay each world with `dwb` or `rpp` to see the difference.
+During the showcase you can replay each world with another compared controller (`mppi`,
+`dwb`, `rpp`) to see the difference.
 Press Enter to close a world and move on.
 
 Budgets (`demo/dwarl_demo/robots.yaml`, presets):
@@ -87,8 +88,13 @@ DEMO_ROBOT=turtlebot3 DEMO_PRESET=reuse DEMO_STAGES=deploy,showcase docker compo
 ```
 
 The `compare` stage starts a fresh Gazebo + Nav2 stack for every case and controller, so
-expect about a minute per case per controller. Reports are Markdown files with images, next
-to `summary.json` in `work/runs/<run>/tests/<id>/`.
+expect about a minute per case per controller (4 cases per pass). `DEMO_CANONICAL=1` adds a
+pass on DWARL's canonical cases. Unmapped obstacles are placed deterministically per case
+(fixed seed), so every controller meets the same ones; they leave a passage for the robot.
+Reports are Markdown files with images, next to `summary.json` in
+`work/runs/<run>/tests/<id>/`. If a report warns about localization error, read
+[Gazebo adapter pitfalls](../docs/manual-integration.md#gazebo-adapter-pitfalls): the bench
+localizes with odometry.
 
 ## Switching robots
 
@@ -102,11 +108,17 @@ robots:
   my_robot:
     label: My robot - what it is
     profile: my_robot_dwarl          # ROS package with dwarl_robot.yaml, a path, or a builtin
-    baselines: package://my_robot_dwarl/config/baselines.yaml   # optional DWB/RPP tuning
-    controllers: [dwarl, dwb, rpp]
+    baselines: package://my_robot_dwarl/config/baselines.yaml   # optional shared tuning
+    controllers: [dwarl, mppi, dwb, rpp]   # the default
+    planner: smac2d                  # global planner for every controller (or navfn)
+    unmapped_obstacles: 3            # per route in the second compare pass; 0 skips it
     num_envs: 64
     default: true                    # preselect it in the menu
 ```
+
+`baselines` is a `test.controller_params` file: `mppi`, `dwb`, `rpp` and `dwarl` sections
+for the controllers, plus shared `costmap` and `planner` sections that apply to all of them
+(see [Results](../docs/results.md)). The comparison and the showcase both use it.
 
 ## Other commands
 
@@ -123,7 +135,7 @@ packages are prebuilt (`DWARL_PREBUILT_ROS=1`), so nothing is rebuilt. For examp
 ```bash
 dwarl train diffbot --num-envs 32 --max-iterations 200
 dwarl runs view                   # toggle a live view of the running training
-dwarl test --sim gazebo --controllers dwarl,dwb,rpp --case doorway
+dwarl test --sim gazebo --controllers dwarl,mppi,dwb,rpp --case doorway
 ```
 
 Python dependencies are resolved from `pyproject.toml` when the image is built (the

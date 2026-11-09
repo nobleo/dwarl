@@ -52,6 +52,12 @@ interactive filtering, a cross-run dashboard or an automatically selected winner
 Successful-only averages can favour a controller that fails the difficult cases;
 compare shared successful cases before drawing efficiency conclusions.
 
+Gazebo summaries also report `mean_localization_error_m`: the mean distance between
+Nav2's final map pose and the simulator's ground truth. The bench localizes with
+odometry, so a large value means the episodes measured odometry drift as well as
+control. The report warns above 0.1 m; see
+[Gazebo adapter pitfalls](manual-integration.md#gazebo-adapter-pitfalls).
+
 #### Running and interrupted evaluations
 
 `episodes.json` is updated as cases finish. The aggregate `summary.json` and report

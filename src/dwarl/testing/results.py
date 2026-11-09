@@ -143,6 +143,9 @@ def compute_plot(plt, compute, destination):
     plt.close(fig)
 
 
+LOCALIZATION_WARNING_M = 0.1
+
+
 def write_report(directory, workload, rows, summary):
     import matplotlib
 
@@ -163,6 +166,13 @@ def write_report(directory, workload, rows, summary):
                           f"{number(stats.get('successful_mean_time_s'))} | "
                           f"{number(stats.get('successful_mean_distance_m'))} |")
     comparison.append("")
+    for name, stats in summary.get("simulators", {}).items():
+        drift = stats.get("mean_localization_error_m")
+        if drift is not None and drift > LOCALIZATION_WARNING_M:
+            comparison.extend([f"**Warning:** {name} ends {drift:.2f} m away from ground truth on average "
+                               "(Nav2 pose vs simulator). The bench localizes with odometry, so these results "
+                               "include odometry drift, not only control. See `final_pose_comparison` in the "
+                               "episode diagnostics.", ""])
     lines = ["# Navigation test", "", f"Checkpoint: `{summary['checkpoint']}`", "",
              f"Workload: `{summary['workload']}`", "", f"Status: **{summary['status']}**", "",
              "Each episode has its own images and JSON files. Missing measurements are null, not zero.",
