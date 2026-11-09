@@ -1,11 +1,11 @@
 # Compare controllers
 
-**Goal:** compare DWARL, MPPI and DWB on identical Gazebo cases.
+**Goal:** compare DWARL, MPPI, DWB and Regulated Pure Pursuit (RPP) on identical Gazebo cases.
 Use a checked Gazebo integration and an explicitly selected checkpoint.
 
 ```bash
 pixi run test --run runs/<run> --checkpoint <iteration> \
-  --suite validation --sim gazebo --controllers dwarl,mppi,dwb
+  --suite validation --sim gazebo --controllers dwarl,mppi,dwb,rpp
 ```
 
 The default cap is 32 cases per controller. For a shorter diagnostic workload,
@@ -23,7 +23,7 @@ pixi run dwarl report runs/<run>/tests/<test-id> --open
 
 The report starts with an aggregate **Controller comparison**, followed by a
 per-case table and individual trajectory/motion plots grouped by case and controller.
-`gazebo` labels DWARL; `gazebo-mppi` and `gazebo-dwb` label the baselines.
+`gazebo` labels DWARL; `gazebo-mppi`, `gazebo-dwb` and `gazebo-rpp` label the baselines.
 Rates in the HTML table are fractions (`0.75` means 75%).
 
 First check that every controller completed the expected number of cases. Controllers

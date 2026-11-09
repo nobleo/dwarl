@@ -54,7 +54,8 @@ def stop_owned(process):
 class GazeboBackend:
     def __init__(self, contract, bundle, workload, directory, request, controller="dwarl"):
         prerequisites()
-        package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core"}.get(controller)
+        package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core",
+                   "rpp": "nav2_regulated_pure_pursuit_controller"}.get(controller)
         if package and subprocess.run(["ros2", "pkg", "prefix", package], capture_output=True).returncode:
             raise ValueError(f"ROS package {package} unavailable; install the selected Nav2 controller")
         from dwarl.runs.store import sha256

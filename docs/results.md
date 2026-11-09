@@ -46,7 +46,7 @@ Read the page in this order:
    trace/episode JSON links for exact measurements. Profiling adds per-episode compute
    tables and plots.
 
-The `gazebo` backend label means DWARL; `gazebo-mppi` and `gazebo-dwb` are the
+The `gazebo` backend label means DWARL; `gazebo-mppi`, `gazebo-dwb` and `gazebo-rpp` are the
 baselines. Plots are grouped by case and backend. This is a static report, without
 interactive filtering, a cross-run dashboard or an automatically selected winner.
 Successful-only averages can favour a controller that fails the difficult cases;
@@ -81,13 +81,13 @@ through `--open` requires a graphical session on that machine; local copying avo
 ### Gazebo controller and compute comparisons
 
 ```bash
-dwarl test --checkpoint best --sim gazebo --controllers dwarl,mppi,dwb --profile-compute
+dwarl test --checkpoint best --sim gazebo --controllers dwarl,mppi,dwb,rpp --profile-compute
 ```
 
 This runs the same selected cases sequentially for each controller: the default
 cap means **32 cases per controller**, or 96 executions for all three. For a quick
-check add `--set test.max_cases=3`. MPPI and DWB require Gazebo; the default remains
-DWARL alone. The Nav2 MPPI and DWB packages are part of the pixi environment.
+check add `--set test.max_cases=3`. MPPI, DWB and Regulated Pure Pursuit (`rpp`) require Gazebo;
+the default remains DWARL alone. The Nav2 MPPI, DWB and RPP packages are part of the pixi environment.
 
 The robot footprint, velocity/acceleration limits, control rate, planner, goal
 tolerance, safety monitor and behavior tree are shared. MPPI uses a differential-drive
@@ -100,7 +100,7 @@ Each controller gets independent episode plots and JSON. Rendered controller and
 costmap parameters are saved in `gazebo/<controller>/<case-id>/nav2_params.yaml`.
 
 For reproducible baseline tuning, pass `--set test.controller_params=/path/to/tuning.yaml`.
-The YAML maps `mppi`, `dwb` and/or `dwarl` to their `FollowPath` parameters, for example
+The YAML maps `mppi`, `dwb`, `rpp` and/or `dwarl` to their `FollowPath` parameters, for example
 `mppi: {batch_size: 2000}`. The input YAML is frozen at test start, with its hash,
 and rendered parameters are saved per episode. Select settings on validation cases, then freeze them before testing;
 keep robot limits and the shared navigation stack matched between controllers.

@@ -94,11 +94,11 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
         raise ValueError("test.sim must be mujoco, gazebo or both")
     controllers = list(cfg.test.controllers)
     if not controllers or len(set(controllers)) != len(controllers) or any(
-        c not in ("dwarl", "mppi", "dwb") for c in controllers
+        c not in ("dwarl", "mppi", "dwb", "rpp") for c in controllers
     ):
-        raise ValueError("test.controllers must contain unique choices: dwarl, mppi, dwb")
+        raise ValueError("test.controllers must contain unique choices: dwarl, mppi, dwb, rpp")
     if controllers != ["dwarl"] and cfg.test.sim != "gazebo":
-        raise ValueError("MPPI/DWB comparisons require --sim gazebo")
+        raise ValueError("MPPI/DWB/RPP comparisons require --sim gazebo")
     if cfg.test.profile_compute and cfg.test.sim != "gazebo":
         raise ValueError("compute profiling requires --sim gazebo")
     if cfg.test.controller_params and cfg.test.sim != "gazebo":
