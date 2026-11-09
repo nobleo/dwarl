@@ -30,6 +30,8 @@ feature in `pyproject.toml` can be added with `pixi add --feature ros ros-jazzy-
 Run pixi from a terminal without another ROS workspace sourced.
 
 Gazebo testing and deployment with a launch adapter run incremental builds first.
+Where the ROS packages are already built and sourced, as in the [Docker image](https://github.com/nobleo/dwarl/tree/main/docker),
+`DWARL_PREBUILT_ROS=1` skips these builds.
 The same preparation runs from task shortcuts and direct CLI commands inside `pixi shell`.
 MuJoCo testing does not trigger a ROS build. Use `pixi run build-robot` for an explicit rebuild.
 `dwarl doctor --sim gazebo` (also part of `dwarl test --sim gazebo`) warns about Gazebo servers left

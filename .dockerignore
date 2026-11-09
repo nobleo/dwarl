@@ -1,0 +1,15 @@
+.git
+.venv
+.pixi
+.docs-venv
+**/__pycache__
+.pytest_cache
+.ruff_cache
+runs
+work
+data
+.dwarl
+site
+ros/build
+ros/install
+ros/log

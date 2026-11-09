@@ -76,3 +76,4 @@ Thumbs.db
 site/
 .playwright-mcp/
 .pixi/
+/work/
