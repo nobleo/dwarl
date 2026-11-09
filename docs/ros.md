@@ -13,12 +13,18 @@ Install ROS 2 Jazzy using its Ubuntu deb instructions, then install the native d
 sudo apt install python3-colcon-common-extensions python3-rosdep \
   ros-jazzy-navigation2 ros-jazzy-nav2-bringup ros-jazzy-ros-gz \
   ros-jazzy-xacro ros-jazzy-robot-state-publisher
+deactivate 2>/dev/null || true  # build with the system Python, not DWARL's .venv
 source /opt/ros/jazzy/setup.bash
 rosdep install --from-paths ros/src --ignore-src -r -y
 colcon build --symlink-install --base-paths ros/src \
   --build-base ros/build --install-base ros/install
 source ros/install/setup.bash
 ```
+
+Run colcon with DWARL's `.venv` **deactivated**. Otherwise CMake configures with the venv's
+Python, which has no `catkin_pkg`, and `dwarl_controller` fails with
+`ModuleNotFoundError: No module named 'catkin_pkg'`. If that already happened, remove
+`ros/build` and `ros/install` before rebuilding, because CMake caches the interpreter.
 
 The controller build downloads ONNX Runtime C++ 1.20.1. Build the robot repository
 and its dependencies with `--symlink-install`, following that repository's setup

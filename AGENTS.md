@@ -65,7 +65,7 @@ uv run ruff check .
 git diff --check
 ```
 
-For ROS changes, build from `ros/` with
+For ROS changes, build from `ros/` with DWARL's `.venv` deactivated, using
 `colcon build --packages-select dwarl_controller dwarl_bringup --symlink-install`,
 source `ros/install/setup.bash`, and run
 `uv run pytest -q ros/src/pkgs/dwarl_bringup/test/test_nav_params.py`.

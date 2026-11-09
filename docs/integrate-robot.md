@@ -337,6 +337,7 @@ training, start a new run rather than editing the saved contract.
 Build the integration after adding its launch file:
 
 ```bash
+deactivate 2>/dev/null || true  # colcon must use the system Python
 cd "$ROBOT_WS"
 colcon build --symlink-install --packages-up-to my_robot_dwarl
 source install/setup.bash
