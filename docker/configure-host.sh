@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Write docker/.env for this host: user ids, X11 access and GPU overlay.
+# Write docker/.env for this host: user ids, X11 access, GPU overlay and robot workspace.
 # Safe to re-run (for example after logging in again, when the X auth file changes).
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,9 +7,15 @@ env_file="$here/.env"
 declare -A keep=()
 if [[ -f "$env_file" ]]; then  # keep user-chosen settings
   while IFS='=' read -r key value; do
-    [[ "$key" =~ ^(DWARL_WORK)$ ]] && keep[$key]="$value"
+    [[ "$key" =~ ^(ROBOTS_WS|DWARL_WORK)$ ]] && keep[$key]="$value"
   done < "$env_file"
 fi
+
+if [[ -n "${ROBOTS_WS:-}" ]]; then  # ROBOTS_WS=/path/to/ws ./configure-host.sh
+  keep[ROBOTS_WS]="$(cd "$ROBOTS_WS" && pwd)"
+fi
+robots="no robot workspace (ROBOTS_WS)"
+if [[ -n "${keep[ROBOTS_WS]:-}" ]]; then robots="robot workspace ${keep[ROBOTS_WS]}"; fi
 
 files="compose.yaml"
 if docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q nvidia \
@@ -40,4 +46,4 @@ fi
   for key in "${!keep[@]}"; do echo "$key=${keep[$key]}"; done
 } > "$env_file"
 mkdir -p "${keep[DWARL_WORK]:-$here/../work}"
-echo "Wrote $env_file ($gpu)"
+echo "Wrote $env_file ($gpu; $robots)"

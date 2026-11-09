@@ -36,6 +36,22 @@ RUN . /opt/ros/jazzy/setup.sh && apt-get update \
          --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
     && rm -rf /tmp/build log
 
+# ---------------------------------------------------------------- your robots (/opt/robots_ws), optional
+# ROS packages from src/ of the `robots` build context (ROBOTS_WS in docker/.env; default
+# docker/robots_ws, empty). Dependencies that rosdep cannot resolve are skipped.
+RUN --mount=type=bind,from=robots,target=/tmp/robots_ws \
+    if [ -z "$(find /tmp/robots_ws/src -name package.xml 2>/dev/null | head -n 1)" ]; then \
+      echo "No robot packages in the robots context (ROBOTS_WS)"; \
+    else \
+      mkdir -p /opt/robots_ws && cp -r /tmp/robots_ws/src /opt/robots_ws/src \
+      && . /opt/ros/jazzy/setup.sh && . /opt/dwarl_ws/install/setup.sh && apt-get update \
+      && { rosdep install --from-paths /opt/robots_ws/src --ignore-src -r -y \
+           || echo "rosdep: some robot dependencies were not installed"; } \
+      && rm -rf /var/lib/apt/lists/* \
+      && colcon build --base-paths /opt/robots_ws/src --build-base /tmp/build --install-base /opt/robots_ws/install \
+      && rm -rf /tmp/build log; \
+    fi
+
 # ---------------------------------------------------------------- DWARL itself (editable: a bind mount can override it)
 COPY . /opt/dwarl
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --group dev
