@@ -68,7 +68,7 @@ git diff --check
 For ROS changes, build from `ros/` with DWARL's `.venv` deactivated, using
 `colcon build --packages-select dwarl_controller dwarl_bringup --symlink-install`,
 source `ros/install/setup.bash`, and run
-`uv run pytest -q ros/src/pkgs/dwarl_bringup/test/test_nav_params.py`.
+`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run pytest -q ros/src/pkgs/dwarl_bringup/test/`.
 Build docs with `mkdocs build --strict` in the documented docs environment.
 Run focused checks after subsequent changes; repeat broad checks when warranted.
 
