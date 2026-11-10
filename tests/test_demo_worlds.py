@@ -12,6 +12,8 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "demo"))
 
 from dwarl_demo.__main__ import (  # noqa: E402
     CONTROLLERS,
+    choose_stages,
+    comparison_minutes,
     controllers_for,
     default_robot,
     load_registry,
@@ -75,3 +77,21 @@ def test_showcase_scenes(tmp_path):
     assert [s["world"] for s in scenes] == sorted(WORLDS)
     assert all(s["sdf"].is_file() and s["map"].is_file() and s["path_length"] > 0 for s in scenes)
     assert unmapped_scenes(tmp_path / "no-run") == []
+
+
+def test_showcase_is_the_default_and_the_comparison_is_opt_in(tmp_path, monkeypatch):
+    gazebo = tmp_path / "gazebo"
+    gazebo.mkdir()
+    (gazebo / "office.json").write_text(json.dumps({"pairs": [{}, {}]}))
+    (gazebo / "office_surprise.json").write_text(json.dumps({"pairs": [{}]}))
+    preset = {"max_cases": 10}
+    monkeypatch.delenv("DEMO_STAGES", raising=False)
+    monkeypatch.setenv("DEMO_YES", "1")  # non-interactive: take the default
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    assert choose_stages({}, tmp_path, preset, train=False) == ["setup", "deploy", "showcase"]
+    monkeypatch.setenv("DEMO_MODE", "compare")
+    assert choose_stages({}, tmp_path, preset, train=True) == [
+        "setup", "train", "evaluate", "compare", "deploy", "showcase"]
+    assert comparison_minutes({}, tmp_path, preset) == 1 + 2 + 2 * 2 * len(CONTROLLERS)
+    monkeypatch.setenv("DEMO_STAGES", "deploy,showcase")
+    assert choose_stages({}, tmp_path, preset, train=True) == ["deploy", "showcase"]

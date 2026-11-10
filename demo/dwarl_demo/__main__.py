@@ -3,7 +3,10 @@
     docker compose run --rm demo                      # interactive (docker/README.md)
     DEMO_ROBOT=turtlebot3 DEMO_PRESET=quick DEMO_YES=1 docker compose run --rm demo
 
-Stages (DEMO_STAGES, comma separated): setup, train, evaluate, compare, deploy, showcase.
+After the robot and training choice the demo asks what to run (DEMO_MODE):
+    showcase  deploy the policy and open Gazebo + RViz on one demo scene right away (default)
+    compare   first the MuJoCo benchmark and the headless Gazebo comparison (long), then the showcase
+Stages (DEMO_STAGES, comma separated, overrides DEMO_MODE): setup, train, evaluate, compare, deploy, showcase.
 Everything is written below /work: robots/, runs/, demo_worlds/, logs/ and the .dwarl caches.
 """
 
@@ -127,6 +130,36 @@ def planner_for(entry):
 def unmapped_for(entry, preset):
     """Robot setting first, then the preset, then the default."""
     return int(entry.get("unmapped_obstacles", preset.get("unmapped_obstacles", UNMAPPED)))
+
+
+def comparison_minutes(entry, worlds, preset):
+    """Rough wall time of the evaluate + compare stages: about a minute per case per controller in Gazebo."""
+    cases = 0
+    for meta in Path(worlds, "gazebo").glob("*.json"):
+        if not meta.name.endswith("_surprise.json"):
+            cases += len(json.loads(meta.read_text()).get("pairs", []))
+    passes = 2 if unmapped_for(entry, preset) else 1
+    mujoco = 1 + int(preset.get("max_cases", 10)) // 4
+    return mujoco + passes * max(cases, 1) * len(controllers_for(entry))
+
+
+def choose_stages(entry, worlds, preset, train):
+    """Stages to run: DEMO_STAGES verbatim, else the showcase (default) or the full comparison first."""
+    if os.environ.get("DEMO_STAGES"):
+        return [s.strip() for s in os.environ["DEMO_STAGES"].split(",") if s.strip()]
+    others = ", ".join(c.upper() for c in controllers_for(entry) if c != "dwarl")
+    minutes = comparison_minutes(entry, worlds, preset)
+    options = [("showcase", "open Gazebo + RViz now and watch DWARL drive a demo scene (a minute to start)"),
+               ("compare", f"first benchmark in MuJoCo and compare with {others} in Gazebo: headless, "
+                           f"about {minutes} min without windows, then the showcase")]
+    mode = os.environ.get("DEMO_MODE") or choose("\nWhat should the demo run?", options, "showcase")
+    if mode not in dict(options):
+        raise SystemExit(f"unknown DEMO_MODE {mode!r}; use showcase or compare")
+    if mode == "compare":
+        say(f"The comparison takes about {minutes} min and opens no windows; progress is printed per pass.",
+            YELLOW)
+    stages = ["setup"] + (["train"] if train else [])
+    return stages + (["evaluate", "compare"] if mode == "compare" else []) + ["deploy", "showcase"]
 
 
 def resolve_optional(uri):
@@ -372,7 +405,7 @@ def main():
                                     f"iteration {status.get('iteration', '?')})"))
     preset_name = os.environ.get("DEMO_PRESET") or choose("\nTraining budget?", options, options[0][0])
     preset = presets.get(preset_name, presets["quick"])
-    stages = [s.strip() for s in os.environ.get("DEMO_STAGES", ",".join(STAGES)).split(",") if s.strip()]
+    stages = choose_stages(entry, worlds, preset, train=preset_name != "reuse")
     if preset_name == "reuse":
         stages = [s for s in stages if s != "train"]
 

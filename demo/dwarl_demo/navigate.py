@@ -185,6 +185,12 @@ def drive(bundle, scene, controller="dwarl", controller_params=None, planner="sm
         _stop(process)
 
 
+def _pick(title, names, default):
+    from dwarl_demo.__main__ import choose
+
+    return choose(title, [(name, "") for name in names], default)
+
+
 def showcase(bundle, worlds, entry, run_dir=None, interactive=True):
     from dwarl_demo.__main__ import controllers_for, planner_for, resolve_optional
 
@@ -194,7 +200,12 @@ def showcase(bundle, worlds, entry, run_dir=None, interactive=True):
     others = [c for c in controllers_for(entry) if c != "dwarl"]
     gui = os.environ.get("DEMO_GUI", "1") != "0"
     results = []
-    for scene in scenes:
+    names = [scene["world"] for scene in scenes]
+    pending = list(scenes)
+    if interactive and gui and len(scenes) > 1:  # one scene at a time, the user picks
+        pending = [scenes[names.index(_pick("Which world?", names, names[0]))]]
+    while pending:
+        scene = pending.pop(0)
         print(f"\n{BOLD}World: {scene['world']}{RESET} — Gazebo shows the robot and the obstacles that are not on "
               "the map; RViz shows the map, global plan and costmap.")
         results.append(drive(bundle, scene, "dwarl", baselines, planner, gui=gui))
@@ -204,6 +215,10 @@ def showcase(bundle, worlds, entry, run_dir=None, interactive=True):
             while answer in others:
                 results.append(drive(bundle, scene, answer, baselines, planner, gui=gui))
                 answer = input(prompt).strip().lower()
+        if interactive and gui and not pending and len(scenes) > 1:
+            answer = input(f"Drive another world? [n]/{'/'.join(names)}: ").strip().lower()
+            if answer in names:
+                pending.append(scenes[names.index(answer)])
     print(f"\n{BOLD}Showcase results{RESET}")
     for r in results:
         print(f"  {r['world']:<10} {r['controller']:<6} {r['outcome']:<12} {r.get('wall_time_s', '-')}")

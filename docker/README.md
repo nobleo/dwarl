@@ -49,7 +49,14 @@ docker compose run --rm demo
 1. **Pick a robot.** The built-in choice is a TurtleBot3 Waffle. To add your own, see
    [Switching robots](#switching-robots).
 2. **Pick a training budget**, or reuse a finished run for that robot (offered once one exists).
-3. Everything after that runs on its own in the terminal:
+3. **Pick what to run:**
+   - `showcase` (default): install the policy and open Gazebo and RViz on a demo world right away.
+     With a reused run, the windows open about a minute after you choose.
+   - `compare`: first the MuJoCo benchmark and the headless Gazebo comparison with MPPI, DWB and
+     Regulated Pure Pursuit, then the showcase. The menu shows the expected duration (about half
+     an hour to an hour), during which no windows open.
+
+The stages:
 
 | Stage | What happens | Output |
 | --- | --- | --- |
@@ -68,8 +75,8 @@ Keys while training runs:
 | `l` | Print the last lines of the training log |
 | `q` | Stop training early. Completed checkpoints are kept and the demo continues with them |
 
-During the showcase you can replay each world with another compared controller (`mppi`,
-`dwb`, `rpp`) to see the difference.
+During the showcase you pick a world, and afterwards you can replay it with another compared
+controller (`mppi`, `dwb`, `rpp`) or drive the other world.
 Press Enter to close a world and move on.
 
 Budgets (`demo/dwarl_demo/robots.yaml`, presets):
@@ -83,9 +90,12 @@ Budgets (`demo/dwarl_demo/robots.yaml`, presets):
 Run without prompts, or only some stages:
 
 ```bash
-DEMO_ROBOT=turtlebot3 DEMO_PRESET=standard DEMO_YES=1 docker compose run --rm demo
-DEMO_ROBOT=turtlebot3 DEMO_PRESET=reuse DEMO_STAGES=deploy,showcase docker compose run --rm demo
+DEMO_ROBOT=turtlebot3 DEMO_PRESET=reuse DEMO_MODE=showcase docker compose run --rm demo
+DEMO_ROBOT=turtlebot3 DEMO_PRESET=standard DEMO_MODE=compare DEMO_YES=1 docker compose run --rm demo
+DEMO_ROBOT=turtlebot3 DEMO_PRESET=reuse DEMO_STAGES=evaluate docker compose run --rm demo
 ```
+
+`DEMO_MODE` answers the "what to run" question; `DEMO_STAGES` (comma separated) picks stages directly.
 
 The `compare` stage starts a fresh Gazebo + Nav2 stack for every case and controller, so
 expect about a minute per case per controller (4 cases per pass). `DEMO_CANONICAL=1` adds a
