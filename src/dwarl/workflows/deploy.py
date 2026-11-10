@@ -26,11 +26,48 @@ def check_compatibility(checkpoint, profile):
         materialize(contract, Path(temp) / "robot")
         frozen = checkpoint.run / "robot"
         expected = json.loads((frozen / "manifest.json").read_text())["files"]
-        for name, digest in expected.items():
-            if name == "robot.xml" or name.startswith("assets/"):
-                path = Path(temp) / "robot" / name
-                if not path.is_file() or sha256(path) != digest:
-                    raise ValueError(f"target model geometry changed since training: {name}")
+        changed = [name for name, digest in expected.items()
+                   if (name == "robot.xml" or name.startswith("assets/"))
+                   and not ((Path(temp) / "robot" / name).is_file() and sha256(Path(temp) / "robot" / name) == digest)]
+        if changed:  # the text differs; a newer MuJoCo may write the same model differently
+            difference = model_difference(frozen / "robot.xml", Path(temp) / "robot" / "robot.xml")
+            if difference:
+                raise ValueError(f"target model geometry changed since training: {difference}")
+
+
+# Compiled-model fields that label a model without changing its physics. MuJoCo 4 writes input="vel" for
+# velocity actuators (actuator_ctrlspec); models written by MuJoCo 3 leave it out, with the same gain and bias.
+_LABELS = {"actuator_ctrlspec"}
+
+
+def model_difference(trained, target, tolerance=1e-9):
+    """First compiled-model field that differs between two MJCF files, or None if they are the same model.
+
+    Both files are compiled with the installed MuJoCo, so differences in how a MuJoCo version writes the XML
+    (number formatting, defaults written out) do not count; geometry, inertia, joints and actuators do.
+    """
+    import mujoco
+    import numpy as np
+
+    if not target.is_file():
+        return target.name
+    a, b = (mujoco.MjModel.from_xml_path(str(path)) for path in (trained, target))
+    fields = [(name, getattr(a, name), getattr(b, name)) for name in sorted(dir(a))
+              if not name.startswith("_") and name not in _LABELS]
+    fields += [(f"opt.{name}", getattr(a.opt, name), getattr(b.opt, name)) for name in sorted(dir(a.opt))
+               if not name.startswith("_")]  # timestep, gravity, solver
+    for name, x, y in fields:
+        if isinstance(x, np.ndarray):
+            numeric = x.dtype.kind in "biuf"
+            same = x.shape == y.shape and (np.allclose(x, y, rtol=tolerance, atol=tolerance) if numeric
+                                           else np.array_equal(x, y))
+        elif isinstance(x, (bool, int, float)):
+            same = np.isclose(x, y, rtol=tolerance, atol=tolerance)
+        else:
+            continue
+        if not same:
+            return name
+    return None
 
 
 def execute(cfg):
