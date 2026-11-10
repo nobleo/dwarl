@@ -74,8 +74,28 @@ def unmapped_scenes(run_dir):
     return []
 
 
+STARTUP_S = 90   # Nav2 is normally active within ~15 s; a hung bring-up is restarted after this
+ATTEMPTS = 3
+
+
 def drive(bundle, scene, controller="dwarl", controller_params=None, planner="smac2d", timeout=None, gui=True):
-    """Launch the stack on ``scene``, send one goal, report the outcome. Returns a result dict."""
+    """Launch the stack on ``scene``, send one goal, report the outcome. Returns a result dict.
+
+    Nav2's lifecycle bring-up occasionally hangs when a service reply is lost during DDS discovery
+    ("failed to send response to /controller_server/change_state"); the stack is then restarted.
+    """
+    for attempt in range(1, ATTEMPTS + 1):
+        result = _drive_once(bundle, scene, controller, controller_params, planner, timeout, gui)
+        if result["outcome"] != "not_started":
+            return result
+        if attempt < ATTEMPTS:
+            print(f"{YELLOW}Nav2 did not become active within {STARTUP_S} s (a start-up race); "
+                  f"restarting the stack ({attempt + 1}/{ATTEMPTS}){RESET}")
+    result["outcome"] = "infrastructure_failure"
+    return result
+
+
+def _drive_once(bundle, scene, controller, controller_params, planner, timeout, gui):
     import rclpy
     from geometry_msgs.msg import PoseStamped
     from nav2_msgs.action import NavigateToPose
@@ -111,7 +131,7 @@ def drive(bundle, scene, controller="dwarl", controller_params=None, planner="sm
         client = ActionClient(node, NavigateToPose, "navigate_to_pose")
         active = node.create_client(Trigger, "lifecycle_manager_navigation/is_active")
         print(f"Starting Gazebo, Nav2 and {controller}…", end="", flush=True)
-        deadline = time.monotonic() + 240
+        deadline = time.monotonic() + STARTUP_S
         while True:  # Nav2 accepts goals only once every lifecycle node is active
             if active.wait_for_service(timeout_sec=1.0):
                 answer = active.call_async(Trigger.Request())
@@ -121,6 +141,7 @@ def drive(bundle, scene, controller="dwarl", controller_params=None, planner="sm
             print(".", end="", flush=True)
             if process.poll() is not None or time.monotonic() > deadline:
                 print(f"\n{RED}Navigation stack did not come up; see {log}{RESET}")
+                result["outcome"] = "not_started"
                 return result
             time.sleep(1.0)
         time.sleep(3.0)  # let costmaps receive the first scans
@@ -177,7 +198,7 @@ def drive(bundle, scene, controller="dwarl", controller_params=None, planner="sm
     finally:
         node.destroy_node()
         rclpy.shutdown()
-        if gui and sys.stdin.isatty() and os.environ.get("DEMO_YES") != "1":
+        if gui and result["outcome"] != "not_started" and sys.stdin.isatty() and os.environ.get("DEMO_YES") != "1":
             try:
                 input("Press Enter to close this simulation… ")
             except EOFError:
