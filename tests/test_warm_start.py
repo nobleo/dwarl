@@ -3,7 +3,7 @@
 import torch
 
 
-def test_warm_start_copies_matching_weights_but_not_exploration_noise(tmp_path):
+def test_warm_start_copies_matching_weights_and_exploration_noise(tmp_path):
     from types import SimpleNamespace
 
     from dwarl.training.checkpoint import warm_start
@@ -27,7 +27,7 @@ def test_warm_start_copies_matching_weights_but_not_exploration_noise(tmp_path):
     runner = SimpleNamespace(alg=SimpleNamespace(_raw_actor=actor, _raw_critic=critic))
     warm_start(runner, tmp_path / "model.pt", "cpu")
     assert (actor.layer.weight == 7).all() and (actor.obs_normalizer_std == 3).all()
-    assert (actor.distribution.std_param == 0.6).all()      # fresh exploration noise
+    assert (actor.distribution.std_param == 0.1).all()      # learned exploration noise kept
     assert not (critic.layer.weight == 7).all()             # shape changed: fresh layer
 
 

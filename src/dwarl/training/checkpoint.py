@@ -67,8 +67,9 @@ def warm_start(runner, path, device):
     """Copy actor and critic weights whose names and shapes match from checkpoint ``path``.
 
     Layers whose input changed (for example a critic with more privileged observations) keep their
-    fresh initialization, as do the exploration noise (``init_std``), the optimizer and the iteration
-    counter, so the new recipe trains from the old policy's behaviour rather than resuming its run.
+    fresh initialization, as do the optimizer and the iteration counter, so the new recipe trains from
+    the old policy's behaviour rather than resuming its run. The learned exploration noise is kept:
+    resetting it to ``init_std`` perturbed a converged policy and its steering grew jerkier.
     """
     saved = torch.load(path, weights_only=False, map_location=device)
     summary = []
@@ -76,7 +77,7 @@ def warm_start(runner, path, device):
         own = model.state_dict()
         source = saved.get(f"{name}_state_dict") or {}
         copied = {key: value for key, value in source.items()
-                  if key in own and own[key].shape == value.shape and not key.startswith("distribution.")}
+                  if key in own and own[key].shape == value.shape}
         model.load_state_dict({**own, **copied})
         summary.append(f"{name} {len(copied)}/{len(own)} tensors")
     return ", ".join(summary)
