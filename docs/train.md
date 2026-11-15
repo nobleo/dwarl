@@ -31,6 +31,19 @@ pixi run train --resume runs/<run> --max-iterations 5000
 The resume budget is **5,000 total iterations**. Resume uses the saved recipe.
 Use a new run to change the robot, observations or rewards.
 
+## Start from another run's policy
+
+```bash
+pixi run train --preset navigation --set train.init_from=runs/<run>
+```
+
+A new run starts from the weights of another run's best checkpoint (its latest if none
+was selected), for example to train a changed reward on top of a policy that already
+drives. Weights whose names and shapes match are copied; layers whose input changed,
+the exploration noise, the optimizer and the iteration count start fresh. The robot and
+the actor's observations should match the source run. Unlike `--resume`, the new run has
+its own recipe and history.
+
 Add `--detached` for background training or `--show` for the simulator viewer.
 `--show` trains in one unsharded world, which is much slower. To look at a headless run
 instead, run `pixi run dwarl runs view` from a second terminal: a viewer shows the first
