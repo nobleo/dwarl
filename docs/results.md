@@ -186,6 +186,10 @@ meets the same obstacles. Collisions are scored against mapped and unmapped geom
 trajectory plots show unmapped obstacles in orange. The obstacles are stored per episode as
 `unmapped_obstacles` primitives `[type, x, y, yaw, half_x, half_y]` (type 1 = cylinder).
 
+`--sim mujoco` accepts the same setting and places the same obstacles per case. MuJoCo has
+no Nav2 safety stop, recovery or replanning, so it shows what the policy does on its own,
+in seconds per case.
+
 Gazebo records a frozen terminal ground-truth pose for scoring and diagnostics, plus
 the latest Nav2 TF pose and its timestamp. Spawn-transform odometry can drift relative
 to ground truth; a Nav2 success outside the scored tolerance remains a failure.

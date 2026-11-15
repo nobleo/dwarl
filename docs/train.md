@@ -20,6 +20,18 @@ pixi run train --preset navigation --num-envs 8
 The CLI shows model preparation, dataset creation/reuse, training progress and
 the completed checkpoint. Data and robot assets are frozen into the run.
 
+## Obstacles that are not on the map
+
+`recipe.env.surprise_obstacles` adds random boxes and cylinders to the reference path of a
+share of training episodes (`probability`, 0 by default). The map and the path stay as they
+were, so the robot only sees them in its lidar, like obstacles that appear on a real
+route. They avoid start, goal and mapped geometry, and a detour stays open for a disc of the
+robot's turning radius. Training maps only: test cases place their own (`test.unmapped_obstacles`).
+
+```bash
+pixi run train --preset navigation --set recipe.env.surprise_obstacles.probability=0.6
+```
+
 ## Inspect or resume
 
 ```bash
