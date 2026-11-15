@@ -49,6 +49,14 @@ while the path is blocked a detour costs only progress, and the proximity and co
 penalties keep their full weight. Behind the obstacle the level decays over `release_time`
 and the policy is rewarded for rejoining the path.
 
+Two more terms keep the detours usable on a robot. `safety_zone` costs as much as a short
+collision whenever a lidar return lies inside the stop zone of a collision monitor (the
+footprint plus 3.5 cm, stretched forward by the braking distance). On the robot such an entry
+stops it and starts recoveries, so passing an obstacle with millimetres to spare is not a
+success. `angular_effort` penalises angular acceleration; with the `window` action mode the
+action is the command change, so `action_rate` does not see weaving. The preset also lowers
+the entropy bonus, so the exploration noise does not grow into bang-bang steering.
+
 Only the critic sees the avoidance level. The actor's observations do not change, so the
 exported policy and the Nav2 plugin are the same as for path following. Validation of such a
 recipe places unmapped obstacles in its cases, so the selected checkpoint reflects both skills.

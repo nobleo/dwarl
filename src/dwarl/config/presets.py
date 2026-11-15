@@ -15,5 +15,9 @@ PRESETS = {
         "env": {"surprise_obstacles": {"probability": 0.6}},
         "observations": {"privileged": {"terms": {
             "avoidance": {"func": "dwarl.navigation.observations:avoidance"}}}},
+        "rewards": {
+            "angular_effort": {"func": "dwarl.navigation.rewards:angular_effort", "weight": 2.0},
+            "safety_zone": {"func": "dwarl.navigation.rewards:safety_zone", "weight": 30.0}},
+        "agent": {"algorithm": {"entropy_coef": 0.001}},
     }},
 }

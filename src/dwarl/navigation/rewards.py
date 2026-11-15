@@ -91,3 +91,39 @@ def reverse(env, deadband: float = 0.02, power: float = 1.0) -> np.ndarray:
     # penalise measured backward speed beyond a deadband, normalised by v_max: -((|v_rev| - db) / v_max)^power
     rev = np.clip(-c.speed - deadband, 0.0, None) / c.v_max
     return -(rev**power)
+
+
+def angular_effort(env, action_name="drive") -> np.ndarray:
+    """Squared angular acceleration, normalised by the limit: weaving uses it constantly, smooth driving rarely.
+
+    With the default ``window`` action mode the policy's action is the command change, so a penalty on action
+    changes (``action_rate``) misses weaving made of long runs of full acceleration; this term does not.
+    """
+    term = env.action_manager.get_term(action_name)
+    limit = max(env.alpha_max * env.control_dt, 1e-9)
+    return -((term.command_delta[:, 1] / limit) ** 2)
+
+
+def safety_zone(env, padding: float = 0.035, reaction_time: float = 0.15) -> np.ndarray:
+    """-1 while a lidar return lies inside a collision monitor's STOP zone, as the deployed stack builds it.
+
+    The zone is the footprint grown by ``padding``, stretched forward by the braking distance
+    v^2 / (2 a_max) + v * reaction_time (dwarl_bringup's collision_monitor polygons). On the robot an entry
+    stops it and triggers recoveries; in training it otherwise costs nothing, so the policy learns to pass
+    obstacles with millimetres to spare.
+    """
+    from dwarl.navigation.clearance import polygon_distance
+
+    c = env.reward_context
+    rays = np.stack([np.cos(env.lidar.angles), np.sin(env.lidar.angles)], -1)
+    points = env.lidar_origin + env.ranges[..., None] * rays
+    if env.footprint is None:
+        near = np.linalg.norm(points, axis=-1) <= env.radius + padding
+        front, half = env.radius, env.radius
+    else:
+        near = polygon_distance(points, env.footprint) <= padding
+        front, half = float(env.footprint[:, 0].max()), float(np.abs(env.footprint[:, 1]).max())
+    speed = np.clip(c.speed, 0.0, None)
+    reach = front + padding + speed**2 / (2 * env.a_max) + speed * reaction_time
+    ahead = (points[..., 0] >= front) & (points[..., 0] <= reach[:, None]) & (np.abs(points[..., 1]) <= half + padding)
+    return -(near | ahead).any(-1).astype(np.float64)
