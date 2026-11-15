@@ -49,12 +49,17 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
     ConfigStore.instance().store(name="dwarl_public", node=Config)
     with initialize_config_module("dwarl.config.recipes", version_base="1.3"):
         cfg = compose(config_name="public")
+    from dwarl.config.managers import MANAGER_GROUPS
+
+    for group in MANAGER_GROUPS:  # presets and config files may add terms; apply_manager_schemas validates them
+        OmegaConf.set_struct(cfg.recipe[group], False)
     if preset:
         from .presets import PRESETS
 
         if preset not in PRESETS:
             raise ValueError(f"unknown preset {preset!r}; choose {', '.join(PRESETS)}")
-        cfg = OmegaConf.merge(cfg, {"train": PRESETS[preset]})
+        settings = dict(PRESETS[preset])
+        cfg = OmegaConf.merge(cfg, {"train": settings, "recipe": settings.pop("recipe", {})})
     source = (cwd / config).resolve() if config else cwd / "dwarl.yaml"
     if config or source.exists():
         supplied = OmegaConf.load(source)
