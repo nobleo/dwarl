@@ -27,6 +27,12 @@ class SurpriseObstacles:
     spacing: float = 1.2
     margin: float = .1
     tries: int = 12
+    horizon_time: float = 5.
+    horizon: list[float] = field(default_factory=lambda: [1.5, 3.])
+    near: float = .6
+    clear: float = .35
+    ramp: float = .25
+    release_time: float = 1.5
 
 
 @dataclass

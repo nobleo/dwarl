@@ -1,8 +1,18 @@
-"""Obstacles on the reference path that are not on the map.
+"""Obstacles on the reference path that are not on the map, and the avoidance signal they create.
 
 The reference path is planned on the map, so obstacles that the map does not contain lie on it: the
 robot only sees them in its lidar, like a box left in an aisle. Training places them at random on the
-path of a share of episodes (never in test layouts); test cases place their own, deterministically.
+path of a share of episodes (never in test layouts) and measures, with privileged geometry, how much
+the path ahead is blocked. That measure, the avoidance level, relaxes the path-adherence rewards:
+
+* far from obstacles the level is 0 and the policy is rewarded for following the path closely;
+* as the robot approaches a blocked stretch the level rises towards 1 and leaving the path costs only
+  progress, while proximity and collision penalties keep full weight (avoidance takes precedence);
+* once the obstacle is behind the robot the level decays over ``release_time``, so path adherence
+  returns smoothly and the robot converges back onto the path.
+
+In potential-field terms the obstacle switches the path's attraction off locally instead of adding a
+repulsion of its own; repulsion comes from the proximity reward, which already sees every obstacle.
 """
 
 from __future__ import annotations
@@ -23,6 +33,12 @@ DEFAULTS = {
     "spacing": 1.2,              # minimum distance between obstacle centres [m]
     "margin": 0.1,               # extra half width a detour must leave for the robot [m]
     "tries": 12,                 # placement candidates per obstacle
+    "horizon_time": 5.0,         # look this far ahead along the path, at full speed [s] ...
+    "horizon": [1.5, 3.0],       # ... clipped to this distance range [m]
+    "near": 0.6,                 # full avoidance level for blockages within this fraction of the horizon
+    "clear": 0.35,               # path is blocked when it passes closer than this to an obstacle [m] ...
+    "ramp": 0.25,                # ... with the level rising linearly over this distance
+    "release_time": 1.5,         # decay time constant once the path is clear [s]
 }
 
 
@@ -45,6 +61,22 @@ def settings(cfg) -> dict:
 
 
 # ------------------------------------------------------------------------------------------- geometry
+def primitive_distance(points: np.ndarray, prims: np.ndarray, valid: np.ndarray) -> np.ndarray:
+    """Signed distance from points (N, P, 2) to the nearest valid primitive surface of (N, K, 6).
+
+    Negative inside an obstacle; ``inf`` where an environment has no valid primitive.
+    """
+    delta = points[:, :, None, :] - prims[:, None, :, 1:3]  # (N, P, K, 2)
+    c, s = np.cos(prims[:, None, :, 3]), np.sin(prims[:, None, :, 3])
+    local = np.stack([c * delta[..., 0] + s * delta[..., 1], -s * delta[..., 0] + c * delta[..., 1]], -1)
+    half = prims[:, None, :, 4:6]
+    q = np.abs(local) - half
+    box = np.linalg.norm(np.maximum(q, 0.0), axis=-1) + np.minimum(q.max(-1), 0.0)
+    cylinder = np.linalg.norm(delta, axis=-1) - prims[:, None, :, 4]
+    distance = np.where(prims[:, None, :, 0] == CYLINDER, cylinder, box)
+    return np.where(valid[:, None, :], distance, np.inf).min(-1)
+
+
 def dilate(grid: np.ndarray, cells: int) -> np.ndarray:
     out = grid.copy()
     for dr in range(-cells, cells + 1):
@@ -146,7 +178,9 @@ def sample_on_path(md, path: np.ndarray, robot: dict, rng: np.random.Generator, 
 
 # ------------------------------------------------------------------------------------------- runtime
 class SurpriseObstacles:
-    """Per-environment obstacles that are not on the map."""
+    """Per-environment obstacles that are not on the map, and the avoidance level they cause."""
+
+    POINTS = 32
 
     def __init__(self, cfg, env):
         self.env = env
@@ -158,9 +192,18 @@ class SurpriseObstacles:
         self.prims = np.zeros((n, self.capacity, 6))
         self.valid = np.zeros((n, self.capacity), bool)
         self.fixed: dict[int, np.ndarray] = {}  # explicit obstacles for test cases
+        self.level = np.zeros(n)
+        self.gap = np.full(n, np.inf)        # closest path-to-obstacle gap in the horizon [m]
+        self.ahead = np.full(n, np.inf)      # arc distance to that blockage [m]
         robot = {"footprint": env.footprint.tolist() if env.footprint is not None else None,
                  "footprint_radius": env.radius}
         self.robot = robot
+        self.width = half_width(robot)
+        lo, hi = (float(v) for v in self.s["horizon"])
+        self.horizon = float(np.clip(env.v_max * float(self.s["horizon_time"]), lo, hi))
+        self.offsets = np.linspace(-env.radius, self.horizon, self.POINTS)
+        near = float(self.s["near"]) * self.horizon
+        self.weight = np.clip((self.horizon - self.offsets) / max(self.horizon - near, 1e-6), 0.0, 1.0)
 
     @property
     def active(self) -> bool:
@@ -192,8 +235,33 @@ class SurpriseObstacles:
         self.valid[env_id] = False
         self.prims[env_id, :len(prims)] = prims
         self.valid[env_id, :len(prims)] = True
+        self.level[env_id] = 0.0
+        self.gap[env_id], self.ahead[env_id] = np.inf, np.inf
         return np.asarray(prims, np.float32)
 
     def obstacles(self, env_id: int) -> np.ndarray:
         return self.prims[env_id, self.valid[env_id]].astype(np.float32)
 
+    def update(self, dt: float) -> None:
+        """Measure the blockage of the path ahead and update the avoidance level (after each step)."""
+        decay = np.exp(-dt / float(self.s["release_time"])) if dt > 0 else 1.0
+        if not self.valid.any():
+            self.level *= decay
+            self.gap[:], self.ahead[:] = np.inf, np.inf
+            return
+        path = self.env.path_command
+        points = np.stack([path.point_at(path.s + d) for d in self.offsets], 1)  # (N, P, 2)
+        gap = primitive_distance(points, self.prims, self.valid) - self.width       # (N, P)
+        clear, ramp = float(self.s["clear"]), float(self.s["ramp"])
+        blocked = np.clip((clear - gap) / ramp, 0.0, 1.0) * self.weight              # (N, P)
+        self.level = np.maximum(blocked.max(-1), self.level * decay)
+        closest = gap.argmin(-1)
+        rows = np.arange(len(gap))
+        self.gap = gap[rows, closest]
+        self.ahead = np.where(np.isfinite(self.gap), self.offsets[closest], np.inf)
+
+    def features(self) -> np.ndarray:
+        """Privileged critic features: avoidance level, path gap and distance to the blockage."""
+        gap = np.where(np.isfinite(self.gap), np.clip(self.gap, -0.5, 2.0) / 2.0, 1.0)
+        ahead = np.where(np.isfinite(self.ahead), np.clip(self.ahead / self.horizon, -1.0, 1.0), 1.0)
+        return np.stack([self.level, gap, ahead], -1)

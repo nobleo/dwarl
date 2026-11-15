@@ -50,7 +50,7 @@ def parser():
             p.add_argument("--run", help="run directory (default: selected robot's navigation run, then smoke)")
             p.add_argument("--checkpoint", help="latest, best or iteration (default: latest)")
         if name == "train":
-            p.add_argument("--preset", choices=("smoke", "navigation"), help="explicit starter recipe")
+            p.add_argument("--preset", choices=("smoke", "navigation", "avoidance"), help="explicit starter recipe")
             for flag in ("num-envs", "seed", "max-iterations"):
                 p.add_argument(f"--{flag}", type=int)
             for flag in ("device", "name", "resume"):

@@ -75,3 +75,9 @@ def path_features(env, command_name="path", lookahead=(.5, 1., 2., 3.)):
         np.stack([np.clip(path.cross_track, -1, 1), np.sin(heading), np.cos(heading), remaining,
                   np.minimum(distance, 20.) / 20.], -1), points.reshape(env.num_envs, -1),
     ], -1)
+
+
+def avoidance(env):
+    """Privileged: avoidance level, gap between the path ahead and the nearest unmapped obstacle, and how
+    far ahead that is (dwarl.navigation.surprises). Constant when no such obstacles are configured."""
+    return env.surprises.features()

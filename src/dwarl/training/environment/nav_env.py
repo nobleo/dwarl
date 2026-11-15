@@ -160,6 +160,7 @@ class NavVecEnv(VecEnv):
         self.contacts = self.world.step(self.decimation)
         self.episode_length_buf += 1
         self.command_manager.compute(self.control_dt)
+        self.surprises.update(self.control_dt)
         dones = self.termination_manager.compute()
         xy, yaw = self.world.robot_pose()
         speed, omega = self.world.robot_velocity(yaw)
@@ -198,6 +199,7 @@ class NavVecEnv(VecEnv):
         _, yaw = self.world.robot_pose()
         self.ranges = self.lidar.scan(yaw)
         self.command_manager.compute(0.)
+        self.surprises.update(0.)
         return self.observation_manager.compute()
 
     def _measure_rewards(self, yaw, speed):
@@ -214,7 +216,7 @@ class NavVecEnv(VecEnv):
             success=self.termination_manager.get_outcome("success"),
             collision=self.termination_manager.get_outcome("collision"),
             stuck=self.termination_manager.get_outcome("stuck"), v_max=self.v_max, dt=self.control_dt,
-            footprint_radius=self.radius,
+            footprint_radius=self.radius, adherence=1.0 - self.surprises.level,
         )
 
     def _episode_clearance(self, xy, yaw):

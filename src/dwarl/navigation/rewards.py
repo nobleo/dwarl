@@ -28,6 +28,13 @@ class RewardContext:
     footprint_radius: float
     stuck: np.ndarray | None = None  # bool: terminated for lack of progress
     clearance: np.ndarray | None = None  # footprint -> closest lidar return [m] (None: min_range - radius)
+    # 1 - avoidance level: path-adherence weight, < 1 while obstacles that are not on the map block the path
+    # ahead (dwarl.navigation.surprises). None or 1: follow the path.
+    adherence: np.ndarray | float | None = None
+
+
+def _adherence(c) -> np.ndarray | float:
+    return 1.0 if c.adherence is None else c.adherence
 
 
 def progress(env) -> np.ndarray:
@@ -37,13 +44,14 @@ def progress(env) -> np.ndarray:
 
 def cross_track(env) -> np.ndarray:
     c = env.reward_context
-    return -np.minimum(c.cross_track, 1.0)
+    # relaxed while the path ahead is blocked, so a detour costs only progress
+    return -np.minimum(c.cross_track, 1.0) * _adherence(c)
 
 
 def heading(env) -> np.ndarray:
     c = env.reward_context
-    # only rewarded while moving forward, so spinning in place is not a reward source
-    return np.cos(c.heading_error) * np.clip(c.speed / c.v_max, 0.0, 1.0)
+    # only rewarded while moving forward, so spinning in place is not a reward source; relaxed like cross_track
+    return np.cos(c.heading_error) * np.clip(c.speed / c.v_max, 0.0, 1.0) * _adherence(c)
 
 
 def goal(env) -> np.ndarray:
