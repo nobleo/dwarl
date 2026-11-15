@@ -12,7 +12,7 @@ PRESETS = {
     # random obstacles on the reference path of 60 % of the episodes, path adherence relaxed while they
     # block the path ahead, and the avoidance level as privileged critic input.
     "avoidance": {"name": "avoidance", "preset": "avoidance", "validation_interval": 200, "recipe": {
-        "env": {"surprise_obstacles": {"probability": 0.6}},
+        "env": {"surprise_obstacles": {"probability": 0.6}, "safety_layer": {"enabled": True}},
         "observations": {"privileged": {"terms": {
             "avoidance": {"func": "dwarl.navigation.observations:avoidance"}}}},
         "rewards": {

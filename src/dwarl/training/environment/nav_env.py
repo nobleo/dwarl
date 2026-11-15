@@ -28,6 +28,7 @@ from dwarl.navigation.managers import (
     TerminationManager,
 )
 from dwarl.navigation.rewards import RewardContext
+from dwarl.navigation.safety import SafetyLayer
 from dwarl.navigation.surprises import SurpriseObstacles
 from dwarl.robot.config import is_materialized, materialize, validate_effective
 from dwarl.simulation.lidar import Lidar2D
@@ -83,6 +84,7 @@ class NavVecEnv(VecEnv):
         self.a_max, self.alpha_max = float(rc.a_max), float(rc.alpha_max)
         self._check_dataset()
         self.surprises = SurpriseObstacles(ec.get("surprise_obstacles"), self)
+        self.safety = SafetyLayer(ec.get("safety_layer"), self)
         gui = bool(sc.gui) if gui is None else gui
         self.world = self._build_world(sc, rc, gui)
         robot = self.world.robot

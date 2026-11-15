@@ -50,12 +50,20 @@ penalties keep their full weight. Behind the obstacle the level decays over `rel
 and the policy is rewarded for rejoining the path.
 
 Two more terms keep the detours usable on a robot. `safety_zone` costs as much as a short
-collision whenever a lidar return lies inside the stop zone of a collision monitor (the
-footprint plus 3.5 cm, stretched forward by the braking distance). On the robot such an entry
-stops it and starts recoveries, so passing an obstacle with millimetres to spare is not a
+collision whenever the collision monitor of the deployed stack would stop the robot. Its STOP
+zone follows the commanded velocity: the footprint plus 3.5 cm, stretched forward by the braking
+distance when driving, and an octagon around the footprint when turning on the spot. On the robot
+such a stop starts recoveries, so passing an obstacle with millimetres to spare is not a
 success. `angular_effort` penalises angular acceleration; with the `window` action mode the
 action is the command change, so `action_rate` does not see weaving. The preset also lowers
 the entropy bonus, so the exploration noise does not grow into bang-bang steering.
+
+The preset also enables `recipe.env.safety_layer`: training then stops the robot like the
+monitor does, and the command restarts from rest, as it does after Nav2's recovery. The policy
+learns that a pose too close to an obstacle leaves it standing, for instance unable to turn
+away, instead of only paying for it. MuJoCo tests of such a run apply the same layer.
+`margin`, `latency` and `min_points` must match the robot's collision monitor
+(`dwarl_bringup` builds it with the defaults).
 
 Only the critic sees the avoidance level. The actor's observations do not change, so the
 exported policy and the Nav2 plugin are the same as for path following. Validation of such a

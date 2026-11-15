@@ -104,26 +104,12 @@ def angular_effort(env, action_name="drive") -> np.ndarray:
     return -((term.command_delta[:, 1] / limit) ** 2)
 
 
-def safety_zone(env, padding: float = 0.035, reaction_time: float = 0.15) -> np.ndarray:
-    """-1 while a lidar return lies inside a collision monitor's STOP zone, as the deployed stack builds it.
+def safety_zone(env) -> np.ndarray:
+    """-1 while the deployed collision monitor would stop the robot (``env.safety``, dwarl.navigation.safety).
 
-    The zone is the footprint grown by ``padding``, stretched forward by the braking distance
-    v^2 / (2 a_max) + v * reaction_time (dwarl_bringup's collision_monitor polygons). On the robot an entry
-    stops it and triggers recoveries; in training it otherwise costs nothing, so the policy learns to pass
-    obstacles with millimetres to spare.
+    The STOP zone follows the commanded velocity: the footprint plus a margin, stretched by the braking
+    distance when driving, an octagon around the footprint when turning on the spot. On the robot an entry
+    stops it and triggers recoveries; without this term training charges nothing for passing obstacles with
+    millimetres to spare. With ``recipe.env.safety_layer.enabled`` the robot is also stopped in training.
     """
-    from dwarl.navigation.clearance import polygon_distance
-
-    c = env.reward_context
-    rays = np.stack([np.cos(env.lidar.angles), np.sin(env.lidar.angles)], -1)
-    points = env.lidar_origin + env.ranges[..., None] * rays
-    if env.footprint is None:
-        near = np.linalg.norm(points, axis=-1) <= env.radius + padding
-        front, half = env.radius, env.radius
-    else:
-        near = polygon_distance(points, env.footprint) <= padding
-        front, half = float(env.footprint[:, 0].max()), float(np.abs(env.footprint[:, 1]).max())
-    speed = np.clip(c.speed, 0.0, None)
-    reach = front + padding + speed**2 / (2 * env.a_max) + speed * reaction_time
-    ahead = (points[..., 0] >= front) & (points[..., 0] <= reach[:, None]) & (np.abs(points[..., 1]) <= half + padding)
-    return -(near | ahead).any(-1).astype(np.float64)
+    return -env.safety.blocked.astype(np.float64)

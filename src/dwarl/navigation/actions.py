@@ -25,6 +25,13 @@ class DifferentialDriveAction(ActionTerm):
 
     def apply_actions(self):
         e = self.env
+        safety = getattr(e, "safety", None)
+        if safety is not None:
+            # the collision monitor decides on the commanded velocity and the latest scan
+            safety.blocked[:] = safety.stops(self.command)
+            if safety.enabled:
+                # it sends zero instead; Nav2 then fails FollowPath and the controller restarts from rest
+                self.command[safety.blocked] = 0.
         v, w = self.command.T
         half = 0.5 * e.wheel_sep
         e.world.set_ctrl(np.stack([(v - w * half) / e.wheel_r, (v + w * half) / e.wheel_r], -1))

@@ -36,6 +36,15 @@ class SurpriseObstacles:
 
 
 @dataclass
+class SafetyLayer:
+    """The deployed collision monitor's STOP zones in training (dwarl.navigation.safety)."""
+    enabled: bool = False                 # stop the robot like the monitor does; off: only measure entries
+    margin: float = .035
+    latency: float = .15
+    min_points: int = 2
+
+
+@dataclass
 class Environment:
     control_dt: float = .1
     episodes_per_map: int = 1
@@ -44,6 +53,7 @@ class Environment:
     spawn_yaw_min: float = .5
     spawn_yaw_full_level: float = .6
     surprise_obstacles: SurpriseObstacles = field(default_factory=SurpriseObstacles)
+    safety_layer: SafetyLayer = field(default_factory=SafetyLayer)
 
 
 @dataclass
