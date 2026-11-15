@@ -1,6 +1,10 @@
 # Configuration
 
 Precedence: built-in typed defaults → explicit `--preset` → `./dwarl.yaml` → command-line assignments.
+A preset sets `train` values and may also set recipe values. Presets and configuration
+files may add manager terms (rewards, observations, terminations); they are validated
+like the built-in terms, and the run's saved `config.yaml` composes again for validation,
+testing and deployment.
 `--config experiment.yaml` replaces the workspace file. YAML paths are relative to
 that file; command-line paths are relative to the invoking directory. Duplicate CLI
 assignments are errors. `--set` uses the actual schema key.
