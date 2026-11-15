@@ -32,6 +32,28 @@ robot's turning radius. Training maps only: test cases place their own (`test.un
 pixi run train --preset navigation --set recipe.env.surprise_obstacles.probability=0.6
 ```
 
+### Learn to avoid them: `--preset avoidance`
+
+```bash
+pixi run train --preset avoidance
+pixi run train --preset avoidance --set train.init_from=runs/<path-following run>
+```
+
+The path rewards (cross-track error and heading along the path) punish every deviation, so a
+path-following policy collides with or stops at an obstacle on its path. The avoidance
+preset places obstacles on the path in 60 % of the episodes and computes an avoidance level
+between 0 and 1 from privileged geometry: how close the path within the next few metres
+(`horizon`, `horizon_time`) passes to such an obstacle (`clear`, `ramp`), weighted up as the robot
+gets nearer (`near`). Cross-track and heading rewards are scaled by one minus that level, so
+while the path is blocked a detour costs only progress, and the proximity and collision
+penalties keep their full weight. Behind the obstacle the level decays over `release_time`
+and the policy is rewarded for rejoining the path.
+
+Only the critic sees the avoidance level. The actor's observations do not change, so the
+exported policy and the Nav2 plugin are the same as for path following. Validation of such a
+recipe places unmapped obstacles in its cases, so the selected checkpoint reflects both skills.
+Check the result with `dwarl test --set test.unmapped_obstacles=3`, in MuJoCo and in Gazebo.
+
 ## Inspect or resume
 
 ```bash

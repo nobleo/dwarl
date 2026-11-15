@@ -35,7 +35,8 @@ workspace and DWARL's `ros/install`, and adds `$DWARL_ROBOT_WS/src` to `DWARL_RO
   `$DWARL_ROBOT_PACKAGES`, into `.pixi/robot/`), `ros-test`, `doctor`.
 - Workflow preparation builds ROS for Gazebo and deployment launch adapters only; MuJoCo
   does not build ROS. Direct CLI commands and pixi shortcuts share preparation.
-- `train --preset smoke|navigation` opts into a recipe; plain training defaults stay unchanged.
+- `train --preset smoke|navigation|avoidance` opts into a recipe; plain training defaults stay unchanged.
+  `avoidance` adds obstacles on the path that are not on the map and relaxes the path rewards around them.
   Explicit config/CLI inputs beat saved selections. Smoke and navigation runs have separate pointers.
 - `status`, `next`, `runs list|show|watch`, and `report --open` read existing evidence.
   Findings go to stderr; JSON results to stdout. Use `dwarl.cli.ui` for human output.
