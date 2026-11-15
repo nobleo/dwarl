@@ -98,6 +98,8 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
     validate_training(cfg.train)
     if cfg.train.init_from and cfg.train.resume:
         raise ValueError("train.init_from starts a new run; it cannot be combined with train.resume")
+    if not (cfg.train.init_checkpoint in ("best", "latest") or str(cfg.train.init_checkpoint).isdigit()):
+        raise ValueError("train.init_checkpoint must be best, latest or an iteration number")
     if cfg.test.sim not in ("mujoco", "gazebo", "both"):
         raise ValueError("test.sim must be mujoco, gazebo or both")
     controllers = list(cfg.test.controllers)

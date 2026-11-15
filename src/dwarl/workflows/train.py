@@ -115,10 +115,12 @@ def execute(cfg, assignments=()):
             if cfg.train.init_from and not checkpoint:
                 from dwarl.training.checkpoint import warm_start
 
-                origin = resolve_run(cfg.train.init_from)
-                try:  # the source run's selected (best validated) checkpoint, else its latest
-                    source = resolve_checkpoint(origin, "best")
+                origin, selector = resolve_run(cfg.train.init_from), str(cfg.train.init_checkpoint)
+                try:  # best: the source run's selected (validated) checkpoint, else its latest
+                    source = resolve_checkpoint(origin, selector)
                 except ValueError:
+                    if selector != "best":
+                        raise
                     source = resolve_checkpoint(origin)
                 summary = warm_start(runner, source.path, contract.device)
                 print(f"Initialized from {source.path} (iteration {source.iteration}): {summary}", flush=True)

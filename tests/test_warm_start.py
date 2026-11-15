@@ -29,3 +29,13 @@ def test_warm_start_copies_matching_weights_but_not_exploration_noise(tmp_path):
     assert (actor.layer.weight == 7).all() and (actor.obs_normalizer_std == 3).all()
     assert (actor.distribution.std_param == 0.6).all()      # fresh exploration noise
     assert not (critic.layer.weight == 7).all()             # shape changed: fresh layer
+
+
+def test_init_checkpoint_is_validated():
+    import pytest
+
+    from dwarl.config import compose_config
+
+    assert compose_config(assignments=["train.init_checkpoint=350"]).train.init_checkpoint == "350"
+    with pytest.raises(ValueError, match="init_checkpoint"):
+        compose_config(assignments=["train.init_checkpoint=newest"])

@@ -38,7 +38,7 @@ pixi run train --preset navigation --set train.init_from=runs/<run>
 ```
 
 A new run starts from the weights of another run's best checkpoint (its latest if none
-was selected), for example to train a changed reward on top of a policy that already
+was selected; `--set train.init_checkpoint=<iteration>` picks another), for example to train a changed reward on top of a policy that already
 drives. Weights whose names and shapes match are copied; layers whose input changed,
 the exploration noise, the optimizer and the iteration count start fresh. The robot and
 the actor's observations should match the source run. Unlike `--resume`, the new run has

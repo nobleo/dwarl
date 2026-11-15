@@ -35,6 +35,7 @@ class TrainConfig:
     # Start a new run from another run's selected checkpoint: weights whose shapes match are copied
     # (optimizer, iteration and exploration noise start fresh). Lets a recipe change build on a policy.
     init_from: str | None = None
+    init_checkpoint: str = "best"  # checkpoint of init_from: best (falls back to latest), latest or an iteration
     show: bool = False
     detached: bool = False
     save_interval: int = 50
