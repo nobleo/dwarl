@@ -65,6 +65,10 @@ class TestConfig:
     controller_params: str | None = None
     planner: str = "navfn"
     unmapped_obstacles: int = 0
+    unmapped_near_doorways: bool = False  # also place them right behind narrow passages such as doors
+    # Gazebo: place them on Nav2's first global plan recorded per case in this earlier test directory
+    # (a run without unmapped obstacles), instead of on the dataset path, which Nav2 may not follow.
+    unmapped_route: str | None = None
     startup_timeout: float = 120.0
     stall_timeout: float = 30.0
 

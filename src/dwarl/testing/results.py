@@ -39,7 +39,14 @@ def trajectory_plot(plt, md, case, row, trace, destination):
         if label and label not in [h.get_label() for h in ax.patches]:
             patch.set_label(label)
         ax.add_patch(patch)
-    ax.plot(*zip(*case["reference_path"], strict=True), "--", color="#85858f", lw=1.4, label="Reference path")
+    plans = (row.get("diagnostics") or {}).get("global_plans") or []
+    if plans and len(plans[0]) > 1:
+        # Nav2 may route differently from the dataset path (another aisle): show the route it gave the controller.
+        ax.plot(*zip(*case["reference_path"], strict=True), ":", color="#b4b4bb", lw=1.0, label="Dataset path")
+        ax.plot(*zip(*[p[:2] for p in plans[0]], strict=True), "--", color="#5f5f6a", lw=1.4,
+                label="Nav2 global plan (first)")
+    else:
+        ax.plot(*zip(*case["reference_path"], strict=True), "--", color="#85858f", lw=1.4, label="Reference path")
     samples = trace.get("samples", [])
     points = np.array([[s["x_m"], s["y_m"]] for s in samples]) if samples else np.array(row.get("trajectory") or [])
     if len(points):

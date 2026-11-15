@@ -35,7 +35,7 @@ def narrow_points(md, path: np.ndarray, robot: dict) -> np.ndarray:
 
 def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, float] = (0.2, 0.35),
                    margin: float = 0.1, keepout: float = 1.5, spacing: float = 2.0,
-                   tries: int = 40) -> np.ndarray:
+                   tries: int = 40, doorways: bool = False) -> np.ndarray:
     """Return up to ``count`` obstacle primitives (N, 6) on the case's reference path.
 
     Obstacles are spread along the path, at least ``keepout`` from start and goal and
@@ -46,6 +46,8 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
     added the goal must stay reachable for a robot of ``passage_radius`` (half its width
     plus ``margin``). Candidates that fail are resampled; an obstacle is skipped after
     ``tries`` failed candidates, so fewer than ``count`` may be returned on tight maps.
+    ``doorways=True`` drops the doorway rule (a harder test: obstacles may sit right behind a door); the
+    rule only rejects candidates after they are drawn, so the other obstacles stay where they were.
     """
     if count <= 0:
         return np.zeros((0, 6), np.float32)
@@ -88,7 +90,7 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
                 continue
             if any(np.linalg.norm(centre - other[1:3]) < spacing for other in placed):
                 continue
-            if len(narrow) and np.linalg.norm(narrow - centre, axis=1).min() < turn_clearance + radius:
+            if not doorways and len(narrow) and np.linalg.norm(narrow - centre, axis=1).min() < turn_clearance + radius:
                 continue
             footprint = rasterize(prim[None], n, res, md.size)
             if (footprint & mapped).any():
@@ -99,3 +101,25 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
             placed.append(prim)
             break
     return np.stack(placed).astype(np.float32) if placed else np.zeros((0, 6), np.float32)
+
+
+def recorded_routes(test_dir) -> dict[str, list]:
+    """Nav2's first global plan per case id from an earlier Gazebo test (any controller: the plan is made
+    before the controller moves, on the same map, so it is the same for all of them)."""
+    import json
+    from pathlib import Path
+
+    episodes = Path(test_dir) / "episodes.json"
+    if not episodes.is_file():
+        raise ValueError(f"test.unmapped_route: no episodes.json in {test_dir}")
+    routes: dict[str, list] = {}
+    for simulator, rows in json.loads(episodes.read_text()).items():
+        if not simulator.startswith("gazebo"):
+            continue
+        for row in rows:
+            plans = (row.get("diagnostics") or {}).get("global_plans") or []
+            if plans and len(plans[0]) > 1 and not row.get("unmapped_obstacles"):
+                routes.setdefault(row["case_id"], [p[:2] for p in plans[0]])
+    if not routes:
+        raise ValueError(f"test.unmapped_route: {test_dir} has no Gazebo global plans without unmapped obstacles")
+    return routes

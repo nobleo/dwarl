@@ -262,6 +262,7 @@ def execute(directory):
         row["unmapped_obstacles"] = unmapped.tolist()
         row["diagnostics"] = {"localization": "spawn_transform_sim_odometry",
                               "planner": request.get("planner", "navfn"),
+                              "unmapped_placement": data.get("unmapped_placement", {"route": "dataset_path"}),
                               "safety": True, "global_plans": state["plan"],
                               "collision_measurement": "ground_truth_2d_footprint_geometry",
                               "limitation": "sampled poses; not continuous contact reporting"}

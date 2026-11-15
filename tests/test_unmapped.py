@@ -75,3 +75,52 @@ def test_obstacles_keep_clear_of_doorways():
     for identifier in "abcdef":
         for prim in place_unmapped(md, _case(identifier), 3, ROBOT, spacing=1.5):
             assert abs(prim[1]) >= 2 * ROBOT["footprint_radius"] + prim[4] - 1e-6
+
+
+def test_doorway_option_also_places_obstacles_behind_doors():
+    walls = [[BOX, 0.0, 2.75, 0.0, 0.05, 2.25], [BOX, 0.0, -2.75, 0.0, 0.05, 2.25]]
+    md = _map(walls)
+    near = []
+    for identifier in "abcdefghijklmnopqrst":
+        aware = place_unmapped(md, _case(identifier), 1, ROBOT)
+        anywhere = place_unmapped(md, _case(identifier), 1, ROBOT, doorways=True)
+        assert len(anywhere) >= len(aware)
+        near += [p for p in anywhere if abs(p[1]) < 2 * ROBOT["footprint_radius"] + p[4]]
+    assert near  # some obstacles now sit close to the door
+    cfg = compose_config(assignments=["test.sim=gazebo", "test.unmapped_obstacles=3",
+                                      "test.unmapped_near_doorways=true"])
+    assert cfg.test.unmapped_near_doorways
+
+
+def test_obstacles_can_follow_nav2s_recorded_route(tmp_path):
+    import json
+
+    from dwarl.testing.unmapped import recorded_routes
+
+    plan = [[-4.0, 0.0], *[[x, 2.0] for x in np.linspace(-3, 3, 61)], [4.0, 0.0]]  # another "aisle"
+    rows = [{"case_id": "a", "unmapped_obstacles": [], "diagnostics": {"global_plans": [plan, plan[:3]]}},
+            {"case_id": "b", "unmapped_obstacles": [[1, 0, 0, 0, .2, .2]], "diagnostics": {"global_plans": [plan]}}]
+    (tmp_path / "episodes.json").write_text(json.dumps({"gazebo-mppi": rows}))
+    routes = recorded_routes(tmp_path)
+    assert list(routes) == ["a"] and routes["a"][1] == [-3.0, 2.0]  # first plan; runs with obstacles ignored
+    md = _map()
+    for prim in place_unmapped(md, dict(_case(), reference_path=routes["a"]), 2, ROBOT, spacing=1.5):
+        assert abs(prim[2] - 2.0) < prim[4]  # on Nav2's route, not on the dataset path at y = 0
+    with pytest.raises(ValueError, match="unmapped_route"):
+        compose_config(assignments=["test.sim=mujoco", "test.unmapped_obstacles=2",
+                                    f"test.unmapped_route={tmp_path}"])
+
+
+def test_trajectory_plot_shows_nav2s_first_plan(tmp_path):
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from dwarl.testing.results import trajectory_plot
+
+    case = dict(_case(), name="corridor")
+    row = {"outcome": "success", "simulator": "gazebo", "trajectory": [[-4, 0], [4, 0]],
+           "diagnostics": {"global_plans": [[[-4, 0, 0], [0, 1, 0], [4, 0, 0]]]}}
+    trajectory_plot(plt, _map(), case, row, {}, tmp_path / "t.png")
+    assert (tmp_path / "t.png").stat().st_size > 0

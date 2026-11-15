@@ -9,7 +9,7 @@ from omegaconf import OmegaConf
 from .schema import Config
 
 PATHS = ("robot", "train.resume", "train.init_from", "train.data.path", "test.run", "test.dataset",
-         "test.controller_params", "deploy.run")
+         "test.controller_params", "test.unmapped_route", "deploy.run")
 
 
 def _paths(cfg, base):
@@ -122,6 +122,9 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
         raise ValueError("test.unmapped_obstacles must be zero or positive")
     if cfg.test.unmapped_obstacles and cfg.test.sim not in ("gazebo", "mujoco"):
         raise ValueError("unmapped obstacles require --sim gazebo or --sim mujoco")
+    if cfg.test.unmapped_route and (cfg.test.sim != "gazebo" or not cfg.test.unmapped_obstacles):
+        raise ValueError("test.unmapped_route places Gazebo unmapped obstacles: needs --sim gazebo and "
+                         "test.unmapped_obstacles")
     if cfg.test.suite not in ("benchmark", "validation", "test"):
         raise ValueError("test.suite must be benchmark, validation or test")
     for key in ("recipe.env.control_dt", "recipe.env.episodes_per_map", "recipe.sim.timestep",

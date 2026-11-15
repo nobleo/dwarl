@@ -54,6 +54,7 @@ def stop_owned(process):
 class GazeboBackend:
     def __init__(self, contract, bundle, workload, directory, request, controller="dwarl"):
         prerequisites()
+        self._routes = None  # Nav2 first plans per case, when test.unmapped_route is set
         package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core",
                    "rpp": "nav2_regulated_pure_pursuit_controller"}.get(controller)
         if package and subprocess.run(["ros2", "pkg", "prefix", package], capture_output=True).returncode:
@@ -114,10 +115,23 @@ class GazeboBackend:
         out.mkdir(parents=True)
         md = MapData.load(self.directory / case["map_file"])
         robot = OmegaConf.to_container(self.contract.robot, resolve=True)
-        unmapped = place_unmapped(md, case, int(self.request.get("unmapped_obstacles", 0)), robot)
+        route, placement = case, {"route": "dataset_path"}
+        source = self.request.get("unmapped_route")
+        if source and int(self.request.get("unmapped_obstacles", 0)):
+            if self._routes is None:
+                from dwarl.testing.unmapped import recorded_routes
+
+                self._routes = recorded_routes(source)
+            if case["id"] in self._routes:  # place them where Nav2 will actually drive
+                route = dict(case, reference_path=self._routes[case["id"]])
+                placement = {"route": "nav2_first_plan", "source": str(source)}
+            else:
+                placement = {"route": "dataset_path", "missing_from": str(source)}
+        unmapped = place_unmapped(md, route, int(self.request.get("unmapped_obstacles", 0)), robot,
+                                  doorways=bool(self.request.get("unmapped_near_doorways", False)))
         export_gazebo(md, out, "world", unmapped)
         write_json(out / "input.json", {"case": case, "bundle": str(self.bundle), "controller": self.controller,
-                   "unmapped_obstacles": unmapped.tolist(),
+                   "unmapped_obstacles": unmapped.tolist(), "unmapped_placement": placement,
                    "request": OmegaConf.to_container(self.request),
                    "robot": robot})
         environment = dict(os.environ, ROS_DOMAIN_ID=str(self.domain), GZ_PARTITION=uuid4().hex,

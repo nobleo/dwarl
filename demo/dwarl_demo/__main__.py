@@ -343,13 +343,17 @@ def compare(run_dir, checkpoint, entry, worlds, preset):
     if count:
         passes.append(("not on the map", f"demo worlds + up to {count} obstacles per route that are not on the map",
                        ["--set", f"test.dataset={worlds}", "--set", f"test.unmapped_obstacles={count}"]))
-    results = {}
+    results, routes = {}, None
     for short, title, workload in passes:
         say(f"\nGazebo: {title} — {controllers}. Each case starts a fresh Gazebo + Nav2 stack (headless).")
         log = WORK / "logs" / f"compare-{run_dir.name}.log"
+        if short == "not on the map" and routes:  # on the routes Nav2 planned in the pass without them
+            workload = [*workload, "--set", f"test.unmapped_route={routes}"]
         run(["dwarl", "test", "--run", run_dir, "--checkpoint", checkpoint, "--suite", "benchmark", "--sim", "gazebo",
              "--controllers", controllers, *shared, *workload], log=log)
         summary, directory = latest_test(run_dir)
+        if short == "on the map":
+            routes = directory
         table(summary, f"Gazebo: {title}")
         say(f"Report: {directory / 'report' / 'README.md'}", DIM)
         results[short] = summary

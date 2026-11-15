@@ -63,7 +63,7 @@ The stages:
 | setup | Copies the robot integration to `work/robots/<robot>` and builds two demo worlds (office, warehouse) sized for its footprint | `work/demo_worlds/<robot>/previews/*.png` |
 | train | `dwarl train` in MuJoCo, headless, with the GPU for PyTorch when available. One status line shows iteration, success, collision and ETA | `work/runs/<run>`, `work/logs/train-*.log` |
 | evaluate | MuJoCo benchmark on DWARL's canonical cases (doorway, corridor, U-trap, clutter, …) | success/collision table, `report/README.md` |
-| compare | Gazebo + Nav2, headless: DWARL vs MPPI vs DWB vs Regulated Pure Pursuit on the demo worlds, under one shared Nav2 setup (Smac 2D global planner, map, costmaps, limits, safety). A second pass adds obstacles on each route that are in Gazebo but **not** on the map | one table per pass and a summary |
+| compare | Gazebo + Nav2, headless: DWARL vs MPPI vs DWB vs Regulated Pure Pursuit on the demo worlds, under one shared Nav2 setup (Smac 2D global planner, map, costmaps, limits, safety). A second pass adds obstacles that are in Gazebo but **not** on the map, on the route Nav2 planned for each case in the first pass | one table per pass and a summary |
 | deploy | `dwarl deploy` installs the exported ONNX bundle in the robot integration | `work/robots/<robot>/policies/` |
 | showcase | Gazebo and RViz windows open. Nav2 plans a global path from start to goal, and the DWARL controller plugin follows it around obstacles that are **not** on the map. It uses the same worlds, obstacles, planner and tuning as the second compare pass | goal reached / failed, per world |
 

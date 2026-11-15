@@ -16,6 +16,7 @@ class MujocoBackend:
         if "surprise_obstacles" in cfg.env:
             cfg.env.surprise_obstacles.probability = 0.0  # test cases place their own (request.unmapped_obstacles)
         self.unmapped = int(request.get("unmapped_obstacles", 0) or 0)
+        self.doorways = bool(request.get("unmapped_near_doorways", False))
         self.robot = {"footprint": list(map(list, contract.robot.footprint)) if contract.robot.get("footprint")
                       else None, "footprint_radius": float(contract.robot.footprint_radius)}
         cfg.dataset.path, cfg.dataset.split = str(directory / "maps"), workload["split"]
@@ -41,7 +42,8 @@ class MujocoBackend:
         if self.unmapped:
             from dwarl.testing.unmapped import place_unmapped
 
-            unmapped = place_unmapped(env.dataset.maps[case["map"]], case, self.unmapped, self.robot)
+            unmapped = place_unmapped(env.dataset.maps[case["map"]], case, self.unmapped, self.robot,
+                                      doorways=self.doorways)
         obs = env.reset_case(case["map"], case["pair"], case["start"][2], case["seed"], unmapped=unmapped)
         xy, yaw = env.world.robot_pose()
         speed, omega = env.world.robot_velocity(yaw)

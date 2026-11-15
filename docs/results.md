@@ -186,6 +186,17 @@ meets the same obstacles. Collisions are scored against mapped and unmapped geom
 trajectory plots show unmapped obstacles in orange. The obstacles are stored per episode as
 `unmapped_obstacles` primitives `[type, x, y, yaw, half_x, half_y]` (type 1 = cylinder).
 
+`--set test.unmapped_route=<earlier test directory>` places them on Nav2's first global plan of each
+case in that test (run it without unmapped obstacles, same planner and tuning) instead of on the
+dataset path: Nav2 may choose another route, such as a parallel warehouse aisle, and obstacles on the
+dataset path would then never be met. The demo's comparison does this for its second pass. Trajectory
+plots of Gazebo episodes show Nav2's first global plan, with the dataset path dotted.
+Note that Nav2's global costmap also marks obstacles the lidar already sees at the start, so
+the first plan can go around an obstacle in plain view.
+
+`--set test.unmapped_near_doorways=true` drops the doorway rule: a harder test in which an obstacle
+may sit right behind a narrow passage. The other obstacles stay where they were.
+
 `--sim mujoco` accepts the same setting and places the same obstacles per case. MuJoCo has
 no Nav2 safety stop, recovery or replanning, so it shows what the policy does on its own,
 in seconds per case.
