@@ -8,7 +8,8 @@ from omegaconf import OmegaConf
 
 from .schema import Config
 
-PATHS = ("robot", "train.resume", "train.data.path", "test.run", "test.dataset", "test.controller_params", "deploy.run")
+PATHS = ("robot", "train.resume", "train.init_from", "train.data.path", "test.run", "test.dataset",
+         "test.controller_params", "deploy.run")
 
 
 def _paths(cfg, base):
@@ -95,6 +96,8 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
     if cfg.test.max_cases is not None and cfg.test.max_cases <= 0:
         raise ValueError("test.max_cases must be positive")
     validate_training(cfg.train)
+    if cfg.train.init_from and cfg.train.resume:
+        raise ValueError("train.init_from starts a new run; it cannot be combined with train.resume")
     if cfg.test.sim not in ("mujoco", "gazebo", "both"):
         raise ValueError("test.sim must be mujoco, gazebo or both")
     controllers = list(cfg.test.controllers)

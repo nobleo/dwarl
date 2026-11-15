@@ -61,3 +61,22 @@ def attach(runner, env, training_state=None):
         return result
 
     RunnerAdapter.for_runner(runner).checkpoint_state.append(state)
+
+
+def warm_start(runner, path, device):
+    """Copy actor and critic weights whose names and shapes match from checkpoint ``path``.
+
+    Layers whose input changed (for example a critic with more privileged observations) keep their
+    fresh initialization, as do the exploration noise (``init_std``), the optimizer and the iteration
+    counter, so the new recipe trains from the old policy's behaviour rather than resuming its run.
+    """
+    saved = torch.load(path, weights_only=False, map_location=device)
+    summary = []
+    for name, model in (("actor", runner.alg._raw_actor), ("critic", runner.alg._raw_critic)):
+        own = model.state_dict()
+        source = saved.get(f"{name}_state_dict") or {}
+        copied = {key: value for key, value in source.items()
+                  if key in own and own[key].shape == value.shape and not key.startswith("distribution.")}
+        model.load_state_dict({**own, **copied})
+        summary.append(f"{name} {len(copied)}/{len(own)} tensors")
+    return ", ".join(summary)

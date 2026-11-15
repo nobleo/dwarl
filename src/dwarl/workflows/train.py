@@ -112,6 +112,16 @@ def execute(cfg, assignments=()):
             from dwarl.training.diagnostics import attach_diagnostics
 
             attach_diagnostics(runner, env, cfg, checks)
+            if cfg.train.init_from and not checkpoint:
+                from dwarl.training.checkpoint import warm_start
+
+                origin = resolve_run(cfg.train.init_from)
+                try:  # the source run's selected (best validated) checkpoint, else its latest
+                    source = resolve_checkpoint(origin, "best")
+                except ValueError:
+                    source = resolve_checkpoint(origin)
+                summary = warm_start(runner, source.path, contract.device)
+                print(f"Initialized from {source.path} (iteration {source.iteration}): {summary}", flush=True)
             if checkpoint:
                 infos = runner.load(str(checkpoint.path), map_location=contract.device)
                 runner.current_learning_iteration += 1

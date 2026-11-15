@@ -32,6 +32,9 @@ class TrainConfig:
     device: str = "auto"
     max_iterations: int = 3000
     resume: str | None = None
+    # Start a new run from another run's selected checkpoint: weights whose shapes match are copied
+    # (optimizer, iteration and exploration noise start fresh). Lets a recipe change build on a policy.
+    init_from: str | None = None
     show: bool = False
     detached: bool = False
     save_interval: int = 50
