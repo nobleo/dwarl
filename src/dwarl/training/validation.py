@@ -8,6 +8,8 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
+from omegaconf import OmegaConf
+
 from dwarl.runs.store import lock, sha256, write_json
 from dwarl.training.runner_adapter import RunnerAdapter
 
@@ -73,7 +75,8 @@ class TrainingChecks:
                    "--run", str(self.run), "--checkpoint", str(iteration), "--sim", "mujoco",
                    "--suite", suite, "--set", f"test.max_cases={cases}",
                    "--set", "test.case=null", "--set", "test.dataset=null", "--set", "test.show=false",
-                   "--set", "test.repeats=1", "--set", f"test.seed={self.cfg.train.seed}"]
+                   "--set", "test.repeats=1", "--set", f"test.seed={self.cfg.train.seed}",
+                   "--set", f"test.unmapped_obstacles={unmapped_obstacles(self.cfg)}"]
         directory = self.run / suite
         directory.mkdir(exist_ok=True)
         previous = set((self.run / "tests").glob("*/summary.json"))
@@ -148,3 +151,15 @@ def attach_validation(runner, run, cfg):
     checks = TrainingChecks(runner, run, cfg)
     RunnerAdapter.for_runner(runner).after_save.append(checks.after_save)
     return checks
+
+
+def unmapped_obstacles(cfg) -> int:
+    """Obstacles per validation case that are not on the map: as many as training may place, when it does.
+
+    A recipe that trains avoidance (recipe.env.surprise_obstacles) is then also selected on it; cases
+    without room for a detour keep none, so validation still covers plain path following.
+    """
+    surprises = OmegaConf.select(cfg, "recipe.env.surprise_obstacles")
+    if not surprises or float(surprises.get("probability", 0) or 0) <= 0:
+        return 0
+    return int(surprises["count"][1])

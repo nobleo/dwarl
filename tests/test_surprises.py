@@ -171,3 +171,11 @@ def test_saved_avoidance_config_composes_again(tmp_path):
     cfg = compose_config(config=saved)  # what validation and dwarl test do with a run's config.yaml
     assert "avoidance" in cfg.recipe.observations.privileged.terms
     assert cfg.recipe.env.surprise_obstacles.probability == 0.6
+
+
+def test_validation_places_unmapped_obstacles_only_for_avoidance_recipes():
+    from dwarl.config import compose_config
+    from dwarl.training.validation import unmapped_obstacles
+
+    assert unmapped_obstacles(compose_config(assignments=["robot=diffbot"])) == 0
+    assert unmapped_obstacles(compose_config(assignments=["robot=diffbot"], preset="avoidance")) == 3
