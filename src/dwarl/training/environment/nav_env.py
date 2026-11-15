@@ -28,6 +28,7 @@ from dwarl.navigation.managers import (
     TerminationManager,
 )
 from dwarl.navigation.rewards import RewardContext
+from dwarl.navigation.surprises import SurpriseObstacles
 from dwarl.robot.config import is_materialized, materialize, validate_effective
 from dwarl.simulation.lidar import Lidar2D
 from dwarl.simulation.world import ShardedWorld, TiledWorld, default_num_shards
@@ -81,6 +82,7 @@ class NavVecEnv(VecEnv):
         self.v_min, self.v_max, self.w_max = float(rc.v_min), float(rc.v_max), float(rc.w_max)
         self.a_max, self.alpha_max = float(rc.a_max), float(rc.alpha_max)
         self._check_dataset()
+        self.surprises = SurpriseObstacles(ec.get("surprise_obstacles"), self)
         gui = bool(sc.gui) if gui is None else gui
         self.world = self._build_world(sc, rc, gui)
         robot = self.world.robot
@@ -99,6 +101,7 @@ class NavVecEnv(VecEnv):
         self.initial_yaw = np.zeros(n)
         self.initial_sensor_state = [None] * n
         self.contacts = np.zeros(n, bool)
+        self.extra_written = np.zeros(n, bool)  # tile holds obstacles that are not on the map
         self.episode_length_buf = torch.zeros(n, dtype=torch.long, device=self.device)
         self.last_episode_info: list[EpisodeInfo] = []
         self.command_manager = CommandManager(cfg.commands, self)
@@ -220,16 +223,21 @@ class NavVecEnv(VecEnv):
             return self.reward_context.clearance
         clearance = np.array([
             footprint_clearance(xy[i], yaw[i], self.radius, self.footprint,
-                                self.dataset.maps[self.map_idx[i]].primitives)
+                                np.concatenate([self.dataset.maps[self.map_idx[i]].primitives,
+                                                self.surprises.obstacles(i)]))
             for i in range(self.num_envs)
         ])
         clearance[self.contacts] = 0.
         return clearance
 
-    def reset_case(self, map_index, pair_index, yaw, seed):
-        """Start one explicit, materialized test case, independent of sampler order."""
+    def reset_case(self, map_index, pair_index, yaw, seed, unmapped=None):
+        """Start one explicit, materialized test case, independent of sampler order.
+
+        ``unmapped``: obstacles (M, 6) placed in the world for this case but absent from its path.
+        """
         if self.num_envs != 1:
             raise ValueError("reset_case requires a single-environment test backend")
+        self.surprises.set_fixed(0, np.zeros((0, 6)) if unmapped is None else unmapped)
         self.rng = np.random.default_rng(seed)
         self.lidar._rng = np.random.default_rng(seed)
         self._reset_idx(np.array([0]), selection=(map_index, pair_index), initial_yaw=yaw)
@@ -240,6 +248,7 @@ class NavVecEnv(VecEnv):
 
     def _reset_idx(self, ids, selection=None, initial_yaw=None):
         log = self.reward_manager.reset(ids)
+        self._map_changed = getattr(self, "_map_changed", np.zeros(self.num_envs, bool))
         for i in ids:
             keep = self.map_idx[i] >= 0 and self.episodes_on_map[i] < int(self.cfg.env.episodes_per_map)
             mi, pair = selection if selection is not None else self.sampler.sample(
@@ -248,15 +257,22 @@ class NavVecEnv(VecEnv):
             count = self.episode_visits.get((mi, pair), 0)
             self.episode_visits[(mi, pair)] = count + 1
             self.episode_repeat[i] = count
-            if mi != self.map_idx[i]:
-                self.world.write_map(int(i), md.primitives, md.height)
+            changed = mi != self.map_idx[i]
+            if changed:
                 self.episodes_on_map[i] = 0
             self.map_idx[i], self.pair_idx[i] = mi, pair
             self.episodes_on_map[i] += 1
+            self._map_changed[i] = changed
         self.command_manager.reset(ids)
         starts, yaws = [], []
         for i in ids:
             path = self.path_command.path[i, :self.path_command.path_len[i]]
+            md = self.dataset.maps[self.map_idx[i]]
+            extra = self.surprises.sample(int(i), md, path, self.rng)
+            if self._map_changed[i] or len(extra) or self.extra_written[i]:
+                primitives = np.concatenate([md.primitives, extra]) if len(extra) else md.primitives
+                self.world.write_map(int(i), primitives, md.height)
+                self.extra_written[i] = bool(len(extra))
             direction = path[min(5, len(path) - 1)] - path[0]
             yaw = (initial_yaw if initial_yaw is not None else
                    np.arctan2(direction[1], direction[0]) + self.rng.uniform(-1, 1) * self.spawn_yaw_noise())
@@ -321,8 +337,10 @@ class NavVecEnv(VecEnv):
             raise ValueError("static_map datasets must contain exactly one map")
         if fixed_map is None and self.dataset.max_primitives > int(sc.pool_size):
             raise ValueError(f"dataset needs pool_size >= {self.dataset.max_primitives}")
+        # Room for obstacles that are not on the map: training samples, or a test case's (a few).
+        pool = max(int(sc.pool_size), self.dataset.max_primitives + max(self.surprises.max_count, 8))
         kwargs = dict(tile_size=float(self.dataset.maps[0].size), tile_gap=float(sc.tile_gap),
-                      pool_size=int(sc.pool_size), robot_xml=rc.xml, timestep=float(sc.timestep))
+                      pool_size=pool, robot_xml=rc.xml, timestep=float(sc.timestep))
         if fixed_map is not None:
             kwargs["fixed_map"] = (fixed_map.primitives, fixed_map.height)
         shards = int(sc.get("num_shards", 0) or 0) or default_num_shards(self.num_envs)

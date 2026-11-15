@@ -13,6 +13,11 @@ class MujocoBackend:
         cfg.env.num_envs, cfg.device = 1, "cpu"
         cfg.sim.gui, cfg.sim.realtime = request.show, request.show
         cfg.curriculum.enabled = False
+        if "surprise_obstacles" in cfg.env:
+            cfg.env.surprise_obstacles.probability = 0.0  # test cases place their own (request.unmapped_obstacles)
+        self.unmapped = int(request.get("unmapped_obstacles", 0) or 0)
+        self.robot = {"footprint": list(map(list, contract.robot.footprint)) if contract.robot.get("footprint")
+                      else None, "footprint_radius": float(contract.robot.footprint_radius)}
         cfg.dataset.path, cfg.dataset.split = str(directory / "maps"), workload["split"]
         self.env = NavVecEnv(cfg, split=workload["split"], sequential=True)
         try:
@@ -32,7 +37,12 @@ class MujocoBackend:
                               clearance_source="2D footprint geometry; physical contact clamps clearance to zero")
         self.partial = {"case_id": case["id"], "trajectory": [case["start"][:2]], "_trace": trace.data,
                         "safety_stops": 0, "recovery_actions": 0}
-        obs = env.reset_case(case["map"], case["pair"], case["start"][2], case["seed"])
+        unmapped = None
+        if self.unmapped:
+            from dwarl.testing.unmapped import place_unmapped
+
+            unmapped = place_unmapped(env.dataset.maps[case["map"]], case, self.unmapped, self.robot)
+        obs = env.reset_case(case["map"], case["pair"], case["start"][2], case["seed"], unmapped=unmapped)
         xy, yaw = env.world.robot_pose()
         speed, omega = env.world.robot_velocity(yaw)
         trace.sample(0., [*xy[0].tolist(), float(yaw[0])], velocity=(float(speed[0]), float(omega[0])),
@@ -53,6 +63,8 @@ class MujocoBackend:
                                   safety_stops=0, recoveries=0, stuck=episode.stuck,
                                   termination_reason=",".join(k for k, v in episode.termination_terms.items() if v))
                     row["_trace"] = trace.data
+                    if unmapped is not None:
+                        row["unmapped_obstacles"] = unmapped.tolist()
                     return row
                 raw = env.recorder.traces[0][-1]
                 elapsed = float(env.episode_length_buf[0]) * env.control_dt

@@ -57,8 +57,9 @@ def test_unmapped_obstacles_are_in_the_world_only(tmp_path):
 
 
 def test_unmapped_obstacles_and_planner_are_validated():
-    with pytest.raises(ValueError, match="gazebo"):
-        compose_config(assignments=["test.unmapped_obstacles=2"])
+    with pytest.raises(ValueError, match="gazebo or --sim mujoco"):
+        compose_config(assignments=["test.sim=both", "test.unmapped_obstacles=2"])
+    assert compose_config(assignments=["test.unmapped_obstacles=2"]).test.unmapped_obstacles == 2  # MuJoCo
     with pytest.raises(ValueError, match="planner"):
         compose_config(assignments=["test.sim=gazebo", "test.planner=astar"])
     cfg = compose_config(assignments=["test.sim=gazebo", "test.planner=smac2d", "test.unmapped_obstacles=2"])

@@ -100,6 +100,9 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
         raise ValueError("train.init_from starts a new run; it cannot be combined with train.resume")
     if not (cfg.train.init_checkpoint in ("best", "latest") or str(cfg.train.init_checkpoint).isdigit()):
         raise ValueError("train.init_checkpoint must be best, latest or an iteration number")
+    from dwarl.navigation.surprises import settings
+
+    settings(cfg.recipe.env.surprise_obstacles)  # validates
     if cfg.test.sim not in ("mujoco", "gazebo", "both"):
         raise ValueError("test.sim must be mujoco, gazebo or both")
     controllers = list(cfg.test.controllers)
@@ -117,8 +120,8 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
         raise ValueError("test.planner must be navfn or smac2d")
     if cfg.test.unmapped_obstacles < 0:
         raise ValueError("test.unmapped_obstacles must be zero or positive")
-    if cfg.test.unmapped_obstacles and cfg.test.sim != "gazebo":
-        raise ValueError("unmapped obstacles require --sim gazebo")
+    if cfg.test.unmapped_obstacles and cfg.test.sim not in ("gazebo", "mujoco"):
+        raise ValueError("unmapped obstacles require --sim gazebo or --sim mujoco")
     if cfg.test.suite not in ("benchmark", "validation", "test"):
         raise ValueError("test.suite must be benchmark, validation or test")
     for key in ("recipe.env.control_dt", "recipe.env.episodes_per_map", "recipe.sim.timestep",

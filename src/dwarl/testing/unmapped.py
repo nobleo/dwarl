@@ -8,12 +8,13 @@ same obstacles, and every obstacle set leaves a passage that the robot fits thro
 from __future__ import annotations
 
 import hashlib
-from collections import deque
 
 import numpy as np
 
 from dwarl.datasets.generation.geometry import rasterize
 from dwarl.datasets.generation.mapdata import BOX, CYLINDER
+from dwarl.navigation.surprises import dilate as _dilate
+from dwarl.navigation.surprises import reachable as _reachable
 
 
 def passage_radius(robot: dict, margin: float) -> float:
@@ -21,37 +22,6 @@ def passage_radius(robot: dict, margin: float) -> float:
     footprint = robot.get("footprint")
     half_width = max(abs(float(y)) for _, y in footprint) if footprint else float(robot["footprint_radius"])
     return half_width + margin
-
-
-def _reachable(blocked: np.ndarray, start: tuple[int, int], goal: tuple[int, int]) -> bool:
-    if blocked[start] or blocked[goal]:
-        return False
-    seen = np.zeros_like(blocked)
-    seen[start] = True
-    queue = deque([start])
-    rows, cols = blocked.shape
-    while queue:
-        r, c = queue.popleft()
-        if (r, c) == goal:
-            return True
-        for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
-            if 0 <= nr < rows and 0 <= nc < cols and not seen[nr, nc] and not blocked[nr, nc]:
-                seen[nr, nc] = True
-                queue.append((nr, nc))
-    return False
-
-
-def _dilate(grid: np.ndarray, cells: int) -> np.ndarray:
-    out = grid.copy()
-    for dr in range(-cells, cells + 1):
-        for dc in range(-cells, cells + 1):
-            if dr * dr + dc * dc > cells * cells:
-                continue
-            shifted = np.zeros_like(grid)
-            shifted[max(dr, 0):grid.shape[0] + min(dr, 0), max(dc, 0):grid.shape[1] + min(dc, 0)] = \
-                grid[max(-dr, 0):grid.shape[0] + min(-dr, 0), max(-dc, 0):grid.shape[1] + min(-dc, 0)]
-            out |= shifted
-    return out
 
 
 def narrow_points(md, path: np.ndarray, robot: dict) -> np.ndarray:

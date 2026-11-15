@@ -17,6 +17,19 @@ class Simulation:
 
 
 @dataclass
+class SurpriseObstacles:
+    """Obstacles on the reference path that are not on the map (dwarl.navigation.surprises)."""
+    probability: float = 0.               # share of training episodes with such obstacles (0 disables)
+    count: list[int] = field(default_factory=lambda: [1, 3])
+    size: list[float] = field(default_factory=lambda: [.1, .4])
+    lateral: float = 1.
+    keepout: float = 1.
+    spacing: float = 1.2
+    margin: float = .1
+    tries: int = 12
+
+
+@dataclass
 class Environment:
     control_dt: float = .1
     episodes_per_map: int = 1
@@ -24,6 +37,7 @@ class Environment:
     spawn_yaw_curriculum: bool = True
     spawn_yaw_min: float = .5
     spawn_yaw_full_level: float = .6
+    surprise_obstacles: SurpriseObstacles = field(default_factory=SurpriseObstacles)
 
 
 @dataclass
