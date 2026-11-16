@@ -41,3 +41,17 @@ def surprise_obstacles(cfg) -> dict:
     if float(values["size"][0]) <= 0 or float(values["size"][1]) < float(values["size"][0]):
         raise ValueError("surprise_obstacles.size must be [min, max] with 0 < min <= max")
     return values
+
+
+SAFETY_LAYER = {"enabled": False, "margin": 0.035, "latency": 0.15, "min_points": 2}
+
+
+def safety_layer(cfg) -> dict:
+    """Validated safety-layer settings merged over :data:`SAFETY_LAYER`."""
+    s = {**SAFETY_LAYER, **({} if cfg is None else dict(cfg))}
+    unknown = set(s) - set(SAFETY_LAYER)
+    if unknown:
+        raise ValueError(f"unknown safety_layer settings: {sorted(unknown)}")
+    if s["margin"] < 0 or s["latency"] < 0 or int(s["min_points"]) < 1:
+        raise ValueError("safety_layer: margin and latency must be nonnegative, min_points at least 1")
+    return s
