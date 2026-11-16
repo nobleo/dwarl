@@ -331,7 +331,7 @@ If your simulator calls them `x_pose`, `world_file`, etc., change the argument k
 passed to that included launch. Its implementation must still satisfy the entity,
 odometry, bridge and TF contract above.
 
-Some pitfalls when writing the adapter:
+### Gazebo adapter pitfalls
 
 - A ros2_control macro from your description package may clamp wheel velocity commands
   (for example to ±1 rad/s, which is a few cm/s on small wheels). If so, write the
@@ -341,7 +341,94 @@ Some pitfalls when writing the adapter:
 - `base_footprint` is not necessarily at the robot's centre. Express the footprint,
   supports and lidar pose in the base frame the profile names.
 - Gazebo needs the drive and sensor plugins (`gz_ros2_control`, `gpu_lidar`) and bridges
-  for `/clock` and the scan topic; odometry and TF come from the diff drive controller.
+  for `/clock` and the scan topic.
+- `diff_drive_controller` averages the odometry twist over `velocity_rolling_window_size`
+  samples (default 10, which is 0.2 s at 50 Hz). DWARL observes the measured velocity
+  every control step, so the delay can make the policy oscillate. Set
+  `velocity_rolling_window_size: 1`.
+- The Gazebo bench localizes with odometry: `map → odom` is the spawn transform, there
+  is no AMCL. If the simulated wheel odometry drifts, every controller drives off its
+  path and a comparison measures localization error, not control. Check
+  `final_pose_comparison.localization_difference_m` in the episode diagnostics (the
+  summary reports its mean as `mean_localization_error_m`). For controller benchmarks,
+  publish `/odom` and the `odom → base` TF from simulator ground truth instead: add
+  Gazebo's `OdometryPublisher` system to the model, bridge its topic, and relay it with
+  the spawn pose as origin. Keep wheel odometry on another topic and set
+  `enable_odom_tf: false` in the diff drive controller.
+
+A minimal ground-truth relay (about 50 lines; subscribe to the bridged world-frame
+odometry and publish odometry relative to the first message):
+
+```python
+import math
+
+import rclpy
+from geometry_msgs.msg import TransformStamped
+from nav_msgs.msg import Odometry
+from rclpy.node import Node
+from tf2_ros import TransformBroadcaster
+
+
+def yaw_of(q):
+    return math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z))
+
+
+class GroundTruthOdometry(Node):
+    """Publish /odom and odom -> base from simulator ground truth, zero at spawn."""
+
+    def __init__(self):
+        super().__init__("ground_truth_odometry")
+        self.odom_frame = self.declare_parameter("odom_frame", "odom").value
+        self.base_frame = self.declare_parameter("base_frame", "base_footprint").value
+        self.origin = None
+        self.publisher = self.create_publisher(Odometry, "odom", 10)
+        self.tf = TransformBroadcaster(self)
+        self.create_subscription(Odometry, "ground_truth_odom", self.relay, 50)
+
+    def relay(self, msg):
+        p, yaw = msg.pose.pose.position, yaw_of(msg.pose.pose.orientation)
+        if self.origin is None:  # the first message is the spawn pose, as for wheel odometry
+            self.origin = (p.x, p.y, yaw)
+        x0, y0, yaw0 = self.origin
+        c, s, dx, dy = math.cos(yaw0), math.sin(yaw0), p.x - x0, p.y - y0
+        th = math.atan2(math.sin(yaw - yaw0), math.cos(yaw - yaw0))
+        out = Odometry()
+        out.header.stamp, out.header.frame_id = msg.header.stamp, self.odom_frame
+        out.child_frame_id = self.base_frame
+        out.pose.pose.position.x, out.pose.pose.position.y = c * dx + s * dy, -s * dx + c * dy
+        out.pose.pose.orientation.z, out.pose.pose.orientation.w = math.sin(th / 2), math.cos(th / 2)
+        out.twist = msg.twist  # already in the body frame
+        self.publisher.publish(out)
+        t = TransformStamped()
+        t.header, t.child_frame_id = out.header, self.base_frame
+        t.transform.translation.x = out.pose.pose.position.x
+        t.transform.translation.y = out.pose.pose.position.y
+        t.transform.rotation = out.pose.pose.orientation
+        self.tf.sendTransform(t)
+
+
+def main():
+    rclpy.init()
+    rclpy.spin(GroundTruthOdometry())
+```
+
+The matching model plugin and bridge:
+
+```xml
+<gazebo>
+  <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher">
+    <odom_frame>odom</odom_frame>
+    <robot_base_frame>base_footprint</robot_base_frame>
+    <odom_topic>ground_truth_odom</odom_topic>
+    <tf_topic>ground_truth_tf</tf_topic>
+    <odom_publish_frequency>50</odom_publish_frequency>
+    <dimensions>2</dimensions>
+  </plugin>
+</gazebo>
+```
+
+Bridge it with `ros_gz_bridge` (`/ground_truth_odom@nav_msgs/msg/Odometry[gz.msgs.Odometry`)
+and start the relay with `use_sim_time:=true` in the adapter launch.
 
 Add the adapter to the profile **before training** if you plan to use Gazebo:
 the run freezes its ROS settings too. If you add or change this interface after

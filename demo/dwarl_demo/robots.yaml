@@ -4,8 +4,12 @@
 #   profile:      DWARL robot profile: builtin name, path, or ROS package containing dwarl_robot.yaml.
 #                 Its directory is copied to /work/robots/<key>/ so `dwarl deploy` can install policies.
 #   label:        shown in the menu.
-#   baselines:    optional controller_params YAML for the DWB/RPP/MPPI comparison (robot-specific tuning).
-#   controllers:  Nav2 controllers compared against DWARL in Gazebo.
+#   baselines:    optional controller_params YAML (test.controller_params): controller sections and the shared
+#                 costmap/planner tuning, used by the Gazebo comparison and the showcase alike.
+#   controllers:  controllers compared in Gazebo (default: dwarl, mppi, dwb, rpp).
+#   planner:      Nav2 global planner for every controller: smac2d (default) or navfn.
+#   unmapped_obstacles: obstacles per route that are in Gazebo but not on the Nav2 map, for the second
+#                 comparison pass (default 3; 0 skips it). A preset can set it too; the robot's value wins.
 #   num_envs:     parallel training environments (reduce on small machines).
 #   gazebo:       false if the profile has no ros.sim_launch adapter (MuJoCo only).
 #   default:      true to preselect this robot. A default set in /work/robots.yaml wins.
@@ -13,7 +17,6 @@ robots:
   turtlebot3:
     label: TurtleBot3 Waffle - DWARL builtin `diffbot` profile (0.8 m/s)
     profile: diffbot
-    controllers: [dwarl, dwb, rpp]
     num_envs: 64
     default: true
 
