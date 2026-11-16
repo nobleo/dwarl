@@ -36,6 +36,7 @@ services:
       DEMO_ROBOT: ${DEMO_ROBOT:-}
       DEMO_PRESET: ${DEMO_PRESET:-}
       DEMO_STAGES: ${DEMO_STAGES:-}
+      DEMO_MODE: ${DEMO_MODE:-}
       DEMO_YES: ${DEMO_YES:-}
     command: python -m dwarl_demo
 
