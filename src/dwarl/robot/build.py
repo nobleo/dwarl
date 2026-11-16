@@ -125,7 +125,7 @@ def _origin(el: ET.Element | None) -> np.ndarray:
 
 def link_transform(root: ET.Element, base: str, link: str) -> np.ndarray:
     """4x4 pose of ``link`` in ``base`` from the URDF joint origins (zero joint positions)."""
-    parent_of = {j.find("child").get("link"): j for j in root.iter("joint")}  # type: ignore[union-attr]
+    parent_of = {j.find("child").get("link"): j for j in root.findall("joint")}  # type: ignore[union-attr]
     T, cur, visited = np.eye(4), link, set()
     while cur != base:
         if cur in visited:
@@ -141,7 +141,7 @@ def link_transform(root: ET.Element, base: str, link: str) -> np.ndarray:
 
 def _subtree(root: ET.Element, link: str) -> set[str]:
     children: dict[str, list[str]] = {}
-    for j in root.iter("joint"):
+    for j in root.findall("joint"):
         children.setdefault(j.find("parent").get("link"), []).append(j.find("child").get("link"))  # type: ignore
     out, stack = set(), [link]
     while stack:
@@ -154,7 +154,7 @@ def _subtree(root: ET.Element, link: str) -> set[str]:
 
 
 def _joint(root: ET.Element, name: str) -> ET.Element:
-    for j in root.iter("joint"):
+    for j in root.findall("joint"):
         if j.get("name") == name:
             return j
     raise ProfileError(f"joint '{name}' not found in the URDF")
@@ -188,7 +188,7 @@ def prepare_urdf(profile: RobotProfile, urdf: str) -> tuple[str, UrdfInfo]:
     root = ET.fromstring(urdf)
     desc, drive, col = profile.raw["description"], profile.raw["drive"], profile.raw.get("collision") or {}
     base = desc.get("base_link", "base_link")
-    links = {lk.get("name"): lk for lk in root.iter("link")}
+    links = {lk.get("name"): lk for lk in root.findall("link")}
     if base not in links:
         raise ProfileError(f"base link '{base}' not in URDF (links: {sorted(links)})")
     jl, jr = _joint(root, drive["left_wheel_joint"]), _joint(root, drive["right_wheel_joint"])
