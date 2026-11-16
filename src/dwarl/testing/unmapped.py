@@ -54,13 +54,25 @@ def _dilate(grid: np.ndarray, cells: int) -> np.ndarray:
     return out
 
 
+def narrow_points(md, path: np.ndarray, robot: dict) -> np.ndarray:
+    """Reference-path points in passages narrower than two robot diameters (circumscribed):
+    doorways and tight gaps, where there is no room to manoeuvre around an obstacle."""
+    cells = int(np.ceil(2 * float(robot["footprint_radius"]) / md.resolution))
+    tight = _dilate(md.occupancy, cells)
+    rc = md.xy_to_cell(path)
+    return path[tight[rc[:, 0], rc[:, 1]]]
+
+
 def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, float] = (0.2, 0.35),
                    margin: float = 0.1, keepout: float = 1.5, spacing: float = 2.0,
                    tries: int = 40) -> np.ndarray:
     """Return up to ``count`` obstacle primitives (N, 6) on the case's reference path.
 
     Obstacles are spread along the path, at least ``keepout`` from start and goal and
-    ``spacing`` apart. Each one must not touch mapped geometry, and with all of them
+    ``spacing`` apart. Each one must not touch mapped geometry and must keep two robot
+    radii (circumscribed) plus its own size away from passages on the path that are narrower
+    than two robot diameters, such as doorways: there is no room there to manoeuvre around
+    an obstacle that appears right behind the passage. With all of them
     added the goal must stay reachable for a robot of ``passage_radius`` (half its width
     plus ``margin``). Candidates that fail are resampled; an obstacle is skipped after
     ``tries`` failed candidates, so fewer than ``count`` may be returned on tight maps.
@@ -83,6 +95,8 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
     # Starts close to a wall: require no more passage than the mapped route itself has.
     while cells > 0 and not _reachable(_dilate(mapped, cells), start, goal):
         cells -= 1
+    narrow = narrow_points(md, path, robot)
+    turn_clearance = 2 * float(robot["footprint_radius"])
     placed: list[np.ndarray] = []
     usable = length - 2 * keepout
     for k in range(count):
@@ -103,6 +117,8 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
                    np.linalg.norm(centre - np.asarray(case["goal"][:2]))) < keepout:
                 continue
             if any(np.linalg.norm(centre - other[1:3]) < spacing for other in placed):
+                continue
+            if len(narrow) and np.linalg.norm(narrow - centre, axis=1).min() < turn_clearance + radius:
                 continue
             footprint = rasterize(prim[None], n, res, md.size)
             if (footprint & mapped).any():
