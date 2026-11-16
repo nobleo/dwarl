@@ -61,7 +61,7 @@ def parser():
             p.add_argument("--suite", choices=("benchmark", "validation", "test"))
             p.add_argument("--case")
             p.add_argument("--repeats", type=int)
-            p.add_argument("--controllers", type=lambda value: value.split(","), help="dwarl,mppi,dwb (Gazebo)")
+            p.add_argument("--controllers", type=lambda value: value.split(","), help="dwarl,mppi,dwb,rpp (Gazebo)")
             p.add_argument("--profile-compute", action="store_true", default=None)
         if name in ("train", "test"):
             p.add_argument("--show", action="store_true", default=None)

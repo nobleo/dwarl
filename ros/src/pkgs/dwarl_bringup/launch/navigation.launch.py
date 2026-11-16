@@ -120,7 +120,7 @@ def generate_launch_description():
         ("use_sim_time", "false", ""),
         ("safety", "true", "collision_monitor stop + back-up-and-retry behavior tree"),
         ("planner", "navfn", "global planner: navfn | smac2d"),
-        ("controller", "rl", "local controller: dwarl | mppi | dwb (matched bundle limits)"),
+        ("controller", "rl", "local controller: dwarl | mppi | dwb | rpp (matched bundle limits)"),
         ("profile_compute", "false", "publish wall-clock controller call timings"),
         ("controller_params", "", "optional controller tuning YAML"),
         ("params_output", "", "optional rendered parameter snapshot path"),

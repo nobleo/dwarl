@@ -112,7 +112,7 @@ def generate_launch_description():
         ("robot_sim_package", "", "override the profile's ros.sim_launch package"),
         ("robot_sim_file", "", "override the profile's ros.sim_launch file"),
         ("planner", "navfn", "global planner: navfn | smac2d"),
-        ("controller", "rl", "local controller: dwarl | mppi | dwb"),
+        ("controller", "rl", "local controller: dwarl | mppi | dwb | rpp"),
         ("profile_compute", "false", "publish wall-clock controller call timings"),
         ("controller_params", "", "optional controller tuning YAML"),
         ("params_output", "", "optional rendered parameter snapshot path"),

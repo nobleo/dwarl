@@ -129,7 +129,7 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
     overrides = {}
     if controller_params:
         overrides = yaml.safe_load(Path(controller_params).read_text())
-        allowed = {"mppi", "dwb", "dwarl", "safety", "progress_checker", "recovery", "motion_limits", "goal_checker"}
+        allowed = {"mppi", "dwb", "rpp", "dwarl", "safety", "progress_checker", "recovery", "motion_limits", "goal_checker"}
         if not isinstance(overrides, dict) or set(overrides) - allowed:
             raise ValueError("tuning YAML must contain controller, safety or progress_checker mappings")
         if any(not isinstance(value, dict) for value in overrides.values()):
@@ -183,8 +183,25 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
                         "PathAlignCritic", "PathFollowCritic", "PathAngleCritic", "PreferForwardCritic"],
             "CostCritic.consider_footprint": True,
         }
+    elif controller == "rpp":
+        a = deploy["action"]
+        v_max, w_max = float(a["v"]["max"]), float(a["w"]["max"])
+        dt = float(deploy["control"]["dt"])
+        cs["FollowPath"] = {
+            "plugin": "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController",
+            "desired_linear_vel": v_max, "lookahead_time": 1.5, "use_velocity_scaled_lookahead_dist": True,
+            "lookahead_dist": max(0.3, 1.5 * v_max), "min_lookahead_dist": max(0.15, 3 * v_max * dt),
+            "max_lookahead_dist": max(0.45, 3.0 * v_max), "rotate_to_heading_angular_vel": w_max,
+            "max_angular_accel": float(a["rate_limit"]["alpha_max"]), "transform_tolerance": 0.2,
+            "min_approach_linear_velocity": min(0.05, 0.5 * v_max), "approach_velocity_scaling_dist": 0.6,
+            "use_collision_detection": True, "max_allowed_time_to_collision_up_to_carrot": 1.0,
+            "use_regulated_linear_velocity_scaling": True, "use_cost_regulated_linear_velocity_scaling": False,
+            "regulated_linear_scaling_min_radius": 0.9, "regulated_linear_scaling_min_speed": min(0.25, v_max),
+            "use_rotate_to_heading": True, "rotate_to_heading_min_angle": 0.785, "allow_reversing": False,
+            "max_robot_pose_search_dist": 10.0,
+        }
     elif controller not in ("rl", "dwarl"):
-        raise ValueError("controller must be dwarl, mppi or dwb")
+        raise ValueError("controller must be dwarl, mppi, dwb or rpp")
     if controller_params:
         selected = overrides.get(controller, {})
         if not isinstance(selected, dict):
@@ -206,8 +223,12 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
         minimum = float(limits["min_linear_velocity"])
         if not math.isfinite(minimum) or not float(deploy["action"]["v"]["min"]) <= minimum <= 0:
             raise ValueError("runtime minimum velocity must be between trained minimum and zero")
-        key = {"mppi": "vx_min", "dwb": "min_vel_x"}.get(controller, "min_linear_velocity")
-        cs["FollowPath"][key] = minimum
+        if controller == "rpp":
+            # RPP has no minimum speed; it can only be prevented from or allowed to reverse.
+            cs["FollowPath"].update(allow_reversing=minimum < 0, use_rotate_to_heading=minimum >= 0)
+        else:
+            key = {"mppi": "vx_min", "dwb": "min_vel_x"}.get(controller, "min_linear_velocity")
+            cs["FollowPath"][key] = minimum
     if profile_compute:
         cs["FollowPath"]["profile_compute"] = True
         cs["FollowPath"]["wrapped_plugin"] = cs["FollowPath"]["plugin"]

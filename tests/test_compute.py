@@ -7,10 +7,11 @@ from dwarl.testing.compute import ComputeProfile, distribution
 
 
 def test_controller_configuration():
-    cfg = compose_config(assignments=["test.sim=gazebo", "test.controllers=[dwarl,mppi,dwb]",
+    cfg = compose_config(assignments=["test.sim=gazebo", "test.controllers=[dwarl,mppi,dwb,rpp]",
                                       "test.profile_compute=true"])
-    assert list(cfg.test.controllers) == ["dwarl", "mppi", "dwb"]
-    for assignment in ("test.controllers=[mppi]", "test.controllers=[dwarl,dwarl]", "test.profile_compute=true"):
+    assert list(cfg.test.controllers) == ["dwarl", "mppi", "dwb", "rpp"]
+    for assignment in ("test.controllers=[mppi]", "test.controllers=[rpp]", "test.controllers=[teb]",
+                       "test.controllers=[dwarl,dwarl]", "test.profile_compute=true"):
         with pytest.raises(ValueError):
             compose_config(assignments=[assignment])
 
