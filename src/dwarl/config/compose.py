@@ -100,9 +100,9 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
         raise ValueError("train.init_from starts a new run; it cannot be combined with train.resume")
     if not (cfg.train.init_checkpoint in ("best", "latest") or str(cfg.train.init_checkpoint).isdigit()):
         raise ValueError("train.init_checkpoint must be best, latest or an iteration number")
-    from dwarl.navigation.surprises import settings
+    from dwarl.navigation.options import surprise_obstacles
 
-    settings(cfg.recipe.env.surprise_obstacles)  # validates
+    surprise_obstacles(cfg.recipe.env.surprise_obstacles)  # validates
     if cfg.test.sim not in ("mujoco", "gazebo", "both"):
         raise ValueError("test.sim must be mujoco, gazebo or both")
     controllers = list(cfg.test.controllers)
