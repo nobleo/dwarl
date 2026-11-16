@@ -13,6 +13,10 @@ def ros(robot=None):
     from dwarl.ros_env import overlay
     from dwarl.workflows.setup import load_saved
 
+    if os.environ.get("DWARL_PREBUILT_ROS"):  # e.g. the Docker image: packages are built and sourced
+        overlay()
+        ui.finding("pass", "ROS packages prebuilt in this environment (DWARL_PREBUILT_ROS)")
+        return None
     pixi = os.environ.get("PIXI_EXE") or shutil.which("pixi")
     root = Path(__file__).resolve().parents[3]
     if not pixi or not (root / "pyproject.toml").is_file():

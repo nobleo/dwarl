@@ -1,0 +1,36 @@
+# DWARL in Docker. Usage: docker/README.md. GPU: add compose.gpu.yaml (docker/configure-host.sh does this).
+name: dwarl
+
+x-dwarl: &dwarl
+  image: dwarl:jazzy
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+  environment:
+    HOME: /tmp/home
+    DISPLAY: ${DISPLAY:-:0}
+    XAUTHORITY: /tmp/.Xauthority
+    QT_X11_NO_MITSHM: "1"
+    ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+  volumes:
+    - ${DWARL_WORK:-../work}:/work
+    - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    - ${XAUTH_FILE:-/dev/null}:/tmp/.Xauthority:ro
+  ipc: host          # shared memory for DDS, Gazebo and the MuJoCo viewer
+  shm_size: 2gb
+  stdin_open: true
+  tty: true
+
+services:
+  shell:
+    <<: *dwarl
+    command: bash
+
+  tensorboard:
+    <<: *dwarl
+    profiles: [monitor]
+    stdin_open: false
+    tty: false
+    ports: ["127.0.0.1:6006:6006"]
+    command: tensorboard --logdir /work/runs --host 0.0.0.0 --port 6006
