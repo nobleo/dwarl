@@ -13,3 +13,4 @@ site
 ros/build
 ros/install
 ros/log
+docker/robots_ws

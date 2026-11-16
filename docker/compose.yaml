@@ -6,6 +6,8 @@ x-dwarl: &dwarl
   build:
     context: ..
     dockerfile: docker/Dockerfile
+    additional_contexts:
+      robots: ${ROBOTS_WS:-robots_ws}   # colcon workspace with your robot packages in src/
   user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
   environment:
     HOME: /tmp/home

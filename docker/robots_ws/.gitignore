@@ -1,0 +1,3 @@
+# Default robots workspace for the image (ROBOTS_WS): put your packages in src/.
+*
+!.gitignore
