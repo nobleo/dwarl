@@ -108,13 +108,18 @@ class GazeboBackend:
         self.partial = {}
         from dwarl.datasets.generation.mapdata import MapData
         from dwarl.testing.scenarios import export_gazebo
+        from dwarl.testing.unmapped import place_unmapped
 
         out = self.directory / "gazebo" / self.controller / case["id"]
         out.mkdir(parents=True)
-        export_gazebo(MapData.load(self.directory / case["map_file"]), out, "world")
+        md = MapData.load(self.directory / case["map_file"])
+        robot = OmegaConf.to_container(self.contract.robot, resolve=True)
+        unmapped = place_unmapped(md, case, int(self.request.get("unmapped_obstacles", 0)), robot)
+        export_gazebo(md, out, "world", unmapped)
         write_json(out / "input.json", {"case": case, "bundle": str(self.bundle), "controller": self.controller,
+                   "unmapped_obstacles": unmapped.tolist(),
                    "request": OmegaConf.to_container(self.request),
-                   "robot": OmegaConf.to_container(self.contract.robot, resolve=True)})
+                   "robot": robot})
         environment = dict(os.environ, ROS_DOMAIN_ID=str(self.domain), GZ_PARTITION=uuid4().hex,
                            ROS_AUTOMATIC_DISCOVERY_RANGE="LOCALHOST")
         with (out / "launch.log").open("w") as log:

@@ -26,13 +26,19 @@ def trajectory_plot(plt, md, case, row, trace, destination):
     from matplotlib.patches import Circle, Polygon
 
     fig, ax = plt.subplots(figsize=(8, 7), layout="constrained")
-    for kind, x, y, angle, hx, hy in md.primitives:
+    unmapped = row.get("unmapped_obstacles") or []
+    shapes = [(p, "#c9c9ce", None) for p in md.primitives]
+    shapes += [(p, "#e0a458", "Not on the map") for p in unmapped]
+    for (kind, x, y, angle, hx, hy), color, label in shapes:
         if int(kind) == 1:
-            ax.add_patch(Circle((x, y), hx, color="#c9c9ce"))
+            patch = Circle((x, y), hx, color=color)
         else:
             c, s = math.cos(angle), math.sin(angle)
             corners = [(x+c*u-s*v, y+s*u+c*v) for u, v in ((-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy))]
-            ax.add_patch(Polygon(corners, color="#c9c9ce"))
+            patch = Polygon(corners, color=color)
+        if label and label not in [h.get_label() for h in ax.patches]:
+            patch.set_label(label)
+        ax.add_patch(patch)
     ax.plot(*zip(*case["reference_path"], strict=True), "--", color="#85858f", lw=1.4, label="Reference path")
     samples = trace.get("samples", [])
     points = np.array([[s["x_m"], s["y_m"]] for s in samples]) if samples else np.array(row.get("trajectory") or [])

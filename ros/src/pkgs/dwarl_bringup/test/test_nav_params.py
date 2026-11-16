@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from dwarl_bringup.nav import load_deploy, render_nav2_params, resolve_bundle, safety_zones
+from dwarl_bringup.nav import load_deploy, render_nav2_params, render_planner, resolve_bundle, safety_zones
 
 BASE = Path(__file__).parents[1] / "config" / "nav2_params.yaml"
 DEPLOY = {
@@ -231,3 +231,28 @@ def test_predictive_approach_retains_stop_guard(tmp_path):
     assert cm["polygons"] == ["SafetyStop", "FootprintApproach"]
     assert cm["FootprintApproach"]["action_type"] == "approach"
     assert cm["FootprintApproach"]["time_before_collision"] == 1.2
+
+
+def test_shared_costmap_and_planner_tuning(tmp_path):
+    bundle = _bundle(tmp_path)
+    tuning = tmp_path / "tuning.yaml"
+    tuning.write_text("costmap:\n  inflation_radius: 1.2\n  cost_scaling_factor: 2.0\n  footprint_padding: 0.03\n"
+                      "planner:\n  cost_travel_multiplier: 3.0\n")
+    for controller in ("dwarl", "dwb", "mppi", "rpp"):
+        p = render_nav2_params(BASE, bundle, controller=controller, controller_params=tuning)
+        for name in ("local_costmap", "global_costmap"):
+            c = p[name][name]["ros__parameters"]
+            inflation = c["inflation_layer"]
+            assert inflation["inflation_radius"] == 1.2 and inflation["cost_scaling_factor"] == 2.0
+            assert c["footprint_padding"] == 0.03
+    smac = Path(__file__).parents[1] / "config" / "planner_smac2d.yaml"
+    rendered = yaml.safe_load(Path(render_planner(smac, tmp_path / "planner.yaml", tuning)).read_text())
+    grid = rendered["planner_server"]["ros__parameters"]["GridBased"]
+    assert grid["plugin"] == "nav2_smac_planner::SmacPlanner2D" and grid["cost_travel_multiplier"] == 3.0
+    assert render_planner(smac, tmp_path / "unused.yaml") == str(smac)
+    tuning.write_text("planner:\n  plugin: nav2_navfn_planner::NavfnPlanner\n")
+    with pytest.raises(ValueError):
+        render_planner(smac, tmp_path / "planner.yaml", tuning)
+    tuning.write_text("costmap:\n  cost_scaling_factor: 0\n")
+    with pytest.raises(ValueError):
+        render_nav2_params(BASE, bundle, controller_params=tuning)

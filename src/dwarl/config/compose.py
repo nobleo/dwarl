@@ -103,6 +103,12 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
         raise ValueError("compute profiling requires --sim gazebo")
     if cfg.test.controller_params and cfg.test.sim != "gazebo":
         raise ValueError("controller tuning requires --sim gazebo")
+    if cfg.test.planner not in ("navfn", "smac2d"):
+        raise ValueError("test.planner must be navfn or smac2d")
+    if cfg.test.unmapped_obstacles < 0:
+        raise ValueError("test.unmapped_obstacles must be zero or positive")
+    if cfg.test.unmapped_obstacles and cfg.test.sim != "gazebo":
+        raise ValueError("unmapped obstacles require --sim gazebo")
     if cfg.test.suite not in ("benchmark", "validation", "test"):
         raise ValueError("test.suite must be benchmark, validation or test")
     for key in ("recipe.env.control_dt", "recipe.env.episodes_per_map", "recipe.sim.timestep",

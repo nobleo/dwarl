@@ -265,13 +265,17 @@ def _sdf_geom(i: int, prim: np.ndarray, h: float) -> str:
             f"<material><diffuse>0.4 0.4 0.45 1</diffuse></material></visual>")  # fmt: skip
 
 
-def export_gazebo(md: MapData, out_dir: str | Path, name: str) -> None:
-    """Write ``<name>.sdf`` (Gazebo world), ``<name>.yaml/.pgm`` (Nav2 map) and ``<name>.json`` (start/goal)."""
+def export_gazebo(md: MapData, out_dir: str | Path, name: str, unmapped: np.ndarray | None = None) -> None:
+    """Write ``<name>.sdf`` (Gazebo world), ``<name>.yaml/.pgm`` (Nav2 map) and ``<name>.json`` (start/goal).
+
+    ``unmapped`` primitives are added to the Gazebo world only, not to the Nav2 map.
+    """
     from PIL import Image
 
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    geoms = "\n".join(_sdf_geom(i, p, md.height) for i, p in enumerate(md.primitives))
+    world = md.primitives if unmapped is None else np.concatenate([md.primitives, np.reshape(unmapped, (-1, 6))])
+    geoms = "\n".join(_sdf_geom(i, p, md.height) for i, p in enumerate(world))
     (out / f"{name}.sdf").write_text(_WORLD.replace("{geoms}", geoms))
     Image.fromarray(np.where(md.occupancy, 0, 254).astype(np.uint8)[::-1]).save(out / f"{name}.pgm")
     (out / f"{name}.yaml").write_text(
