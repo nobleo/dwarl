@@ -8,5 +8,6 @@ source /opt/ros/jazzy/setup.bash
 source /opt/dwarl_ws/install/setup.bash
 if [ -f /opt/robots_ws/install/setup.bash ]; then source /opt/robots_ws/install/setup.bash; fi
 source /opt/venv/bin/activate
+export PYTHONPATH="/opt/dwarl/demo${PYTHONPATH:+:$PYTHONPATH}"
 cd /work
 exec "$@"

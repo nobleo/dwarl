@@ -25,6 +25,20 @@ x-dwarl: &dwarl
   tty: true
 
 services:
+  demo:            # docker compose run --rm demo  (interactive end-to-end demo, see docker/README.md)
+    <<: *dwarl
+    environment:
+      HOME: /tmp/home
+      DISPLAY: ${DISPLAY:-:0}
+      XAUTHORITY: /tmp/.Xauthority
+      QT_X11_NO_MITSHM: "1"
+      ROS_AUTOMATIC_DISCOVERY_RANGE: LOCALHOST
+      DEMO_ROBOT: ${DEMO_ROBOT:-}
+      DEMO_PRESET: ${DEMO_PRESET:-}
+      DEMO_STAGES: ${DEMO_STAGES:-}
+      DEMO_YES: ${DEMO_YES:-}
+    command: python -m dwarl_demo
+
   shell:
     <<: *dwarl
     command: bash
