@@ -17,7 +17,8 @@ import math
 
 import numpy as np
 
-DEFAULTS = {"enabled": False, "margin": 0.035, "latency": 0.15, "min_points": 2}
+from dwarl.navigation.options import SAFETY_LAYER as DEFAULTS  # noqa: F401  (re-exported)
+from dwarl.navigation.options import safety_layer as settings
 
 # band limits of dwarl_bringup.nav.safety_zones (m/s, rad/s)
 _CREEP = 0.05
@@ -54,17 +55,6 @@ def zone_hits(points: np.ndarray, command: np.ndarray, polygon: np.ndarray, v_mi
     turning = (np.abs(v) < _CREEP) & (np.abs(w) >= _TURN)
     inside = np.where(turning[:, None], in_octagon, in_box)
     return inside.sum(-1)
-
-
-def settings(cfg) -> dict:
-    """Validated safety-layer settings merged over :data:`DEFAULTS`."""
-    s = {**DEFAULTS, **({} if cfg is None else dict(cfg))}
-    unknown = set(s) - set(DEFAULTS)
-    if unknown:
-        raise ValueError(f"unknown safety_layer settings: {sorted(unknown)}")
-    if s["margin"] < 0 or s["latency"] < 0 or int(s["min_points"]) < 1:
-        raise ValueError("safety_layer: margin and latency must be nonnegative, min_points at least 1")
-    return s
 
 
 class SafetyLayer:
