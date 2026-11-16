@@ -99,7 +99,8 @@ Add `--detached` for background training or `--show` for the simulator viewer.
 `--show` trains in one unsharded world, which is much slower. To look at a headless run
 instead, run `pixi run dwarl runs view` from a second terminal: a viewer shows the first
 simulation shard while training continues. Repeat the command or close the window to
-return to full speed.
+return to full speed. If no window can be opened (no display, or no X11 access), the
+training prints `live view unavailable` and continues headless.
 [Monitoring and resume](monitor.md) covers logs, TensorBoard and interruption.
 
 ??? info "Presets and configuration"

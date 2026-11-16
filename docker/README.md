@@ -148,6 +148,11 @@ dwarl runs view                   # toggle a live view of the running training
 dwarl test --sim gazebo --controllers dwarl,mppi,dwb,rpp --case doorway
 ```
 
+From a host terminal, toggle the view of a training running in a detached container with
+`docker exec -it <container> dwarl-entrypoint dwarl runs view`. If the window does not
+open, re-run `./configure-host.sh` after logging in again (it refreshes X11 access) and
+start a new container; the training itself keeps running without the window.
+
 Python dependencies are resolved from `pyproject.toml` when the image is built (the
 native setup pins them in `pixi.lock`). The DWARL source in the image is installed in
 editable mode at `/opt/dwarl`. To try Python changes without rebuilding, add a bind mount
