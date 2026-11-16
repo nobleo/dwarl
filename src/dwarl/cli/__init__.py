@@ -71,9 +71,11 @@ def parser():
         p.add_argument("--robot", help="inspect an integration without changing the saved selection")
         p.add_argument("--run", help="inspect a particular run")
     p = command("runs", "List, inspect or watch training runs", "pixi run dwarl runs watch")
-    p.add_argument("action", choices=("list", "show", "watch"), nargs="?", default="list")
+    p.add_argument("action", choices=("list", "show", "watch", "view"), nargs="?", default="list",
+                   help="view toggles a live simulator viewer on a running headless training")
     p.add_argument("run", nargs="?", help="run directory (default: selected run)")
     p.add_argument("--interval", type=float, default=2., help="watch refresh interval in seconds")
+    p.add_argument("--off", action="store_true", help="view: close the viewer instead of toggling")
     p = command("report", "Summarize or open a navigation report", "pixi run dwarl report --open")
     p.add_argument("directory", nargs="?", help="test directory (default: latest test of selected run)")
     p.add_argument("--run")

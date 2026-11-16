@@ -26,7 +26,8 @@ pixi run train --preset navigation --detached
 ```
 
 The command prints a process log path. Once model/data preparation completes, the
-run is available through `runs list` and `runs watch`.
+run is available through `runs list` and `runs watch`. `runs view` toggles a live
+simulator viewer on the running training without stopping it.
 
 ## Stop and continue
 

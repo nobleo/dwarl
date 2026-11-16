@@ -163,6 +163,13 @@ def execute(args):
         reference = args.run or context.selected_run()
         if not reference:
             raise ValueError("No run selected. Use `pixi run dwarl runs list` and pass a run directory.")
+        if args.action == "view":
+            from dwarl.runs.process import toggle_live_view
+
+            run, on = toggle_live_view(reference, args.off)
+            ui.info(f"Live view {'on' if on else 'off'}: {run}"
+                    + (". It opens within a second; close the window or repeat to stop." if on else ""))
+            return 0, {"run": str(run), "live_view": on}
         if not math.isfinite(args.interval) or args.interval <= 0:
             raise ValueError("--interval must be positive and finite")
         while True:
