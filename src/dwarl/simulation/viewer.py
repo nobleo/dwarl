@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import time
 
 import mujoco
@@ -15,6 +17,19 @@ GOAL_RGBA = np.array([0.95, 0.1, 0.1, 0.8], dtype=np.float32)
 PATH_RGBA = np.array([1.0, 0.6, 0.0, 0.9], dtype=np.float32)
 LOOKAHEAD_RGBA = np.array([0.2, 0.4, 1.0, 0.9], dtype=np.float32)
 _EYE = np.eye(3).ravel()
+
+# GLFW must open the display in a child process first: when it cannot, MuJoCo's viewer ends the whole
+# process ("could not initialize GLFW") instead of raising, which would kill a running training.
+_DISPLAY_CHECK = "import sys, glfw; sys.exit(0 if glfw.init() else 1)"
+
+
+def display_available(timeout: float = 15.0) -> bool:
+    """True when a GLFW window can be opened on this display (checked in a short-lived child process)."""
+    try:
+        child = subprocess.run([sys.executable, "-c", _DISPLAY_CHECK], capture_output=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return child.returncode == 0
 
 
 class SimViewer:
@@ -43,6 +58,10 @@ class SimViewer:
         if not launch:
             self.handle = None
             return
+        if not display_available():
+            self.handle = None
+            raise RuntimeError("cannot open a window on this display; check DISPLAY and X11 access "
+                               "(in Docker, run docker/configure-host.sh and start a new container)")
         self.handle = mujoco.viewer.launch_passive(world.model, world.data, show_left_ui=False,
                                                    show_right_ui=False)  # fmt: skip
         n = world.num_envs
