@@ -65,9 +65,9 @@ class TestConfig:
     profile_compute: bool = False
     controller_params: str | None = None
     planner: str = "navfn"
-    unmapped_obstacles: int = 0
+    unmapped_obstacles: int = 3  # target per case; use 0 for clean navigation
     obstacle_comparison: bool = False  # clean + frozen on-route obstacles, in one Gazebo test
-    unmapped_near_doorways: bool = False  # also place them right behind narrow passages such as doors
+    unmapped_near_doorways: bool = True  # retain reachability checks without blanket doorway exclusions
     # Gazebo: place them on Nav2's first global plan recorded per case in this earlier test directory
     # (a run without unmapped obstacles), instead of on the dataset path, which Nav2 may not follow.
     unmapped_route: str | None = None

@@ -108,7 +108,9 @@ so verify its settings before attributing results to training/deployment parity.
 Only the critic sees the avoidance level. The actor's observations do not change, so the
 exported policy and the Nav2 plugin are the same as for path following. Validation of such a
 recipe places unmapped obstacles in its cases, so the selected checkpoint reflects both skills.
-Check the result with `dwarl test --set test.unmapped_obstacles=3`, in MuJoCo and in Gazebo.
+Check the result with `dwarl test`, in MuJoCo and in Gazebo: testing requests up to
+three unmapped obstacles per case by default. Use `--set test.unmapped_obstacles=0`
+for a clean baseline, and check actual placement counts before claiming avoidance.
 
 ## Inspect or resume
 

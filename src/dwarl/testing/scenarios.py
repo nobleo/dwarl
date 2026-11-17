@@ -26,7 +26,7 @@ from dwarl.datasets.generation.mapdata import BOX, CYLINDER, MapData, path_lengt
 
 SPLIT = "scenarios"
 SIZE, RES, HEIGHT = 8.0, 0.05, 0.6
-LAYOUT_VERSION = 5
+LAYOUT_VERSION = 6
 PASSAGE_SCENARIOS = {"corridor", "narrow_corridor", "doorway", "tight_gap"}
 Pair = tuple[tuple[float, float], tuple[float, float]]
 
@@ -208,10 +208,10 @@ def build_scenarios(out_dir: str | Path, names: list[str] | None = None, preview
                    clutter_obstacles=min(26, max(6, round(26 * (0.18 / r) ** 2))),
                    clutter_separation=max(0.95, 2 * r + 0.2), clutter_extent=3.2)
         if profile.footprint is not None:
-            # Passages should test the actual lateral footprint, not become
-            # spacious by inheriting its much larger circumscribed radius.
+            # Allow 12 cm per side of the lateral footprint for steering corrections,
+            # without inheriting the much larger circumscribed turning radius.
             half_width = max(abs(y) for _, y in profile.footprint)
-            cfg.update(passage_width=2 * (half_width + 0.06), passage_radius=half_width,
+            cfg.update(passage_width=2 * (half_width + 0.12), passage_radius=half_width,
                        passage_inflation_margin=0.0)
     (out / SPLIT).mkdir(parents=True, exist_ok=True)
     files = []

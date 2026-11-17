@@ -170,16 +170,15 @@ in each episode's diagnostics.
 #### Obstacles that are not on the map
 
 ```bash
-dwarl test --sim gazebo --controllers dwarl,mppi,dwb --set test.unmapped_obstacles=3
+dwarl test --sim gazebo --controllers dwarl,mppi,dwb
 ```
 
-This adds up to three boxes or cylinders (0.4–0.7 m across) to the Gazebo world of each case,
+Testing defaults to `test.unmapped_obstacles=3`; use `--set test.unmapped_obstacles=0`
+for clean navigation. This adds up to three boxes or cylinders (0.4–0.7 m across) to the Gazebo world of each case,
 but not to the Nav2 map. The global plan therefore runs through them and only the local
 planner, from its lidar, can avoid them. They are spread along the case's reference path, at
-least 1.5 m from start and goal and 2 m apart, and never touch mapped geometry. They also keep
-two robot radii (circumscribed) plus their own size away from passages on the route that are
-narrower than two robot diameters, such as doorways: an obstacle right behind a door leaves no
-room to manoeuvre and tests the placement more than the controller. With all of
+least 1.5 m from start and goal and 2 m apart, and never touch mapped geometry.
+Placement near doorways is allowed by default. With all of
 them added, the goal stays reachable for the robot's width plus 0.1 m on each side; on tight
 maps fewer obstacles are placed. Placement depends only on the case, so every controller
 meets the same obstacles. Collisions are scored against mapped and unmapped geometry, and the
@@ -187,17 +186,20 @@ trajectory plots show unmapped obstacles in orange. The obstacles are stored per
 `unmapped_obstacles` primitives `[type, x, y, yaw, half_x, half_y]` (type 1 = cylinder).
 
 `--set test.unmapped_route=<earlier test directory>` places them on Nav2's first global plan of each
-case in that test (run it without unmapped obstacles, same planner and tuning) instead of on the
+case in that test (run it with `--set test.unmapped_obstacles=0`, same planner and tuning) instead of on the
 dataset path: Nav2 may choose another route, such as a parallel warehouse aisle, and obstacles on the
-dataset path would then never be met. The demo's comparison does this for its second pass. Trajectory
+dataset path would then never be met. `--obstacle-comparison` does this for its second pass. Trajectory
 plots of Gazebo episodes show Nav2's first global plan, with the dataset path dotted.
 Each selected case must have a recorded obstacle-free Gazebo plan; a missing plan fails
 the case rather than silently placing obstacles on the dataset path.
 Note that Nav2's global costmap also marks obstacles the lidar already sees at the start, so
 the first plan can go around an obstacle in plain view.
 
-`--set test.unmapped_near_doorways=true` drops the doorway rule: a harder test in which an obstacle
-may sit right behind a narrow passage. The other obstacles stay where they were.
+`--set test.unmapped_near_doorways=false` enables the conservative doorway exclusion:
+obstacles must keep two circumscribed robot radii plus their own size away from
+route points in passages narrower than two robot diameters. This can eliminate all
+obstacles on compact maps, especially for long rectangular robots. The remaining
+obstacles stay where they were. Reachability checks apply with either setting.
 
 `--sim mujoco` accepts the obstacle-count and doorway settings and places obstacles on
 the dataset path. It applies the training safety layer when enabled in the saved recipe,

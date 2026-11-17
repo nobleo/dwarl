@@ -40,7 +40,9 @@ when route evidence exists.
 
 One report contains both passes, matched success/collision differences, and completion-time
 differences for cases successful in **both** passes. The case cap applies per controller
-per pass. The default command remains a single pass; this larger workload is opt-in.
+per pass. The default command remains a single pass with up to three unmapped
+obstacles per case; this two-pass workload is opt-in. Use
+`--set test.unmapped_obstacles=0` without `--obstacle-comparison` for a clean-only run.
 
 Add `--show` to watch Gazebo/RViz while the same scored workflow runs. The web workspace's
 “Compare clean and obstructed routes” checkbox launches this same command.

@@ -66,12 +66,18 @@ The default `benchmark` suite automatically builds all twelve layouts for the se
 robot: open space, corridor, narrow corridor, doorway, L-turn, S-turn, U-trap,
 dead end, tight gap, clutter, office and warehouse. The office and warehouse are
 16 m layouts with longer routes through rooms/furniture and shelving/aisles.
-No separate demo command or dataset path is needed.
+No separate demo command or dataset path is needed. Ordinary testing requests up to
+three unmapped obstacles per case in MuJoCo and Gazebo (including `--sim both`).
+Placement can yield fewer or zero; check the episode's actual `unmapped_obstacles`.
+Progress output prints placed/requested counts and flags zero-exposure cases.
+Placement near doorways is allowed by default, with reachability checks retained.
+Set `test.unmapped_near_doorways=false` to enable the conservative doorway exclusion.
+Use `--set test.unmapped_obstacles=0` for a clean-map run.
 
 ```bash
 pixi run dwarl test --show
 pixi run dwarl test --case office --show
-pixi run dwarl test --case warehouse --show --set test.unmapped_obstacles=3
+pixi run dwarl test --case warehouse --show
 ```
 
 For the visual Gazebo/RViz workflow, add `--sim gazebo`. It uses the same cases,

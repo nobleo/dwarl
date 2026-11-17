@@ -102,8 +102,14 @@ def execute(cfg, checkpoint=None):
                         row["unmapped_placement"] = case["unmapped_placement"]
                     rows[name].append(persist_episode(out, name, case, row, checkpoint.sha256))
                     write_json(out / "episodes.json", rows)
+                    exposure = ""
+                    if request.unmapped_obstacles and row.get("status") == "completed":
+                        placed = len(row.get("unmapped_obstacles", []))
+                        exposure = f" · unmapped obstacles: {placed}/{request.unmapped_obstacles}"
+                        if not placed:
+                            exposure += " (no avoidance exposure)"
                     ui.finding("pass" if row.get("outcome") == "success" else "check",
-                               f"{case['name']}: {row.get('outcome', row.get('status', 'unknown'))}")
+                               f"{case['name']}: {row.get('outcome', row.get('status', 'unknown'))}{exposure}")
             finally:
                 if backend is not None:
                     backend.close()
