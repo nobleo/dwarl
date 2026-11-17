@@ -20,8 +20,9 @@ pixi run setup
 
 Setup lets you try the included example, integrate your robot, or continue an
 existing integration. It remembers your selection, helps create a robot profile,
-and checks the requested environment. Python, ROS 2 Jazzy and Gazebo Harmonic come
-from pixi. No manual sourcing is needed. Supported environment: **Linux x86-64**.
+and checks the requested environment. Python, MuJoCo 4, ROS 2 Jazzy and Gazebo Harmonic
+come from pixi. Both simulation environments (`default` and `train`) use the locked
+MuJoCo 4 release. No manual sourcing is needed. Supported environment: **Linux x86-64**.
 
 **Using a coding agent?** Follow [agent-assisted setup](https://nobleo.github.io/dwarl/agent-setup/)
 for a copy-paste prompt and the included portable robot-setup skill.

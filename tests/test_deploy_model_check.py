@@ -1,8 +1,5 @@
 """Deploy compares the compiled robot model, so a newer MuJoCo writing the same model differently passes."""
 
-import mujoco
-import pytest
-
 from dwarl.workflows.deploy import model_difference
 
 MODEL = """<mujoco><option timestep="{dt}"/><worldbody><body name="base" pos="{x} 0 0">
@@ -20,7 +17,6 @@ def test_same_model_written_differently_passes(tmp_path):
     assert model_difference(trained, _write(tmp_path / "noise.xml", x="9.02056e-16")) is None
 
 
-@pytest.mark.skipif(int(mujoco.__version__.split(".")[0]) < 4, reason="input= is a MuJoCo 4 attribute")
 def test_velocity_input_label_passes(tmp_path):
     trained = _write(tmp_path / "trained.xml")
     assert model_difference(trained, _write(tmp_path / "labelled.xml", extra='input="vel"')) is None
