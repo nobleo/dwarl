@@ -74,7 +74,7 @@ def stop_owned(process, partition=None):
 
 
 class GazeboBackend:
-    def __init__(self, contract, bundle, workload, directory, request, controller="dwarl"):
+    def __init__(self, contract, bundle, workload, directory, request, controller="dwarl", phase=None):
         prerequisites()
         self._routes = None  # Nav2 first plans per case, when test.unmapped_route is set
         package = {"mppi": "nav2_mppi_controller", "dwb": "dwb_core",
@@ -106,6 +106,7 @@ class GazeboBackend:
         print(f"Gazebo adapter: {launch.resolve()}")
         self.contract, self.bundle, self.directory, self.request = contract, bundle, directory, request
         self.controller = controller
+        self.phase = phase
         self.process = None
         self.lease = None
         # Shared per-user leases coordinate DWARL consumers, including separate workspaces.
@@ -133,7 +134,10 @@ class GazeboBackend:
         from dwarl.testing.scenarios import export_gazebo
         from dwarl.testing.unmapped import place_unmapped
 
-        out = self.directory / "gazebo" / self.controller / case["id"]
+        root = self.directory / "gazebo"
+        if self.phase:
+            root /= self.phase
+        out = root / self.controller / case["id"]
         out.mkdir(parents=True)
         md = MapData.load(self.directory / case["map_file"])
         robot = OmegaConf.to_container(self.contract.robot, resolve=True)
@@ -149,8 +153,14 @@ class GazeboBackend:
                                  f"for selected case {case['id']}")
             route = dict(case, reference_path=self._routes[case["id"]])
             placement = {"route": "nav2_first_plan", "source": str(source)}
-        unmapped = place_unmapped(md, route, int(self.request.get("unmapped_obstacles", 0)), robot,
-                                  doorways=bool(self.request.get("unmapped_near_doorways", False)))
+        if "unmapped_obstacles" in case:
+            import numpy as np
+
+            unmapped = np.asarray(case["unmapped_obstacles"], dtype=float).reshape(-1, 6)
+            placement = case["unmapped_placement"]
+        else:
+            unmapped = place_unmapped(md, route, int(self.request.get("unmapped_obstacles", 0)), robot,
+                                      doorways=bool(self.request.get("unmapped_near_doorways", False)))
         export_gazebo(md, out, "world", unmapped)
         write_json(out / "input.json", {"case": case, "bundle": str(self.bundle), "controller": self.controller,
                    "unmapped_obstacles": unmapped.tolist(), "unmapped_placement": placement,

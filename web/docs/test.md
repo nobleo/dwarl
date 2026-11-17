@@ -74,6 +74,11 @@ pixi run dwarl test --case office --show
 pixi run dwarl test --case warehouse --show --set test.unmapped_obstacles=3
 ```
 
+For the visual Gazebo/RViz workflow, add `--sim gazebo`. It uses the same cases,
+scoring and reports as headless testing, and closes the stack after each case.
+To replay with another controller, use e.g. `--controllers rpp`. Pin `--run` and
+`--checkpoint` when comparing runs.
+
 These fixed benchmark layouts are separate from the procedural validation and held-out
 test splits. Use `--suite validation` for candidate selection.
 

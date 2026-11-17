@@ -173,6 +173,32 @@ def write_report(directory, workload, rows, summary):
                           f"{number(stats.get('successful_mean_time_s'))} | "
                           f"{number(stats.get('successful_mean_distance_m'))} |")
     comparison.append("")
+    paired = summary.get("obstacle_comparison")
+    if paired:
+        comparison.extend([
+            "## Clean versus obstructed", "",
+            "Both passes use the same checkpoint, maps, starts, goals and navigation settings. "
+            "Obstacle layouts are frozen once from the clean Nav2 routes and shared by every controller.",
+            "Differences are obstructed minus clean. Rates use completed matched cases only; "
+            "time differences use cases successful in both passes. Missing results are not successes.", "",
+            "| Controller | Completed pairs | Successful pairs | Success Δ | Collision Δ | Paired time Δ (s) |",
+            "|---|---|---|---|---|---|",
+        ])
+        for name, stats in paired.get("controllers", {}).items():
+            comparison.append(
+                f"| {name} | {stats['paired_completed']} | {stats['paired_successful']} | "
+                f"{number(stats['success_rate_delta'])} | {number(stats['collision_rate_delta'])} | "
+                f"{number(stats['successful_time_delta_s'])} |")
+        comparison.extend(["", "Rate differences are fractions (0.10 = 10 percentage points).", ""])
+        if paired.get("obstacles_file"):
+            counts = paired["placed_per_case"]
+            comparison.extend([
+                f"[Frozen obstacle layouts](../{paired['obstacles_file']}) · "
+                "[Obstructed cases](../obstructed_cases.json)", "",
+                f"Actual placement: {sum(counts.values())} obstacles across {len(counts)} cases; "
+                f"{sum(n == 0 for n in counts.values())} cases received none. "
+                "Tight passages can reject placements; these cases remain visible in the report.", "",
+            ])
     for name, stats in summary.get("simulators", {}).items():
         drift = stats.get("mean_localization_error_m")
         if drift is not None and drift > LOCALIZATION_WARNING_M:

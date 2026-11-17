@@ -116,6 +116,7 @@ def test_missing_recorded_route_fails_before_starting_gazebo(tmp_path):
 
     backend = GazeboBackend.__new__(GazeboBackend)
     backend.directory, backend.controller = tmp_path, "dwarl"
+    backend.phase = None
     backend.contract = OmegaConf.create({"robot": ROBOT})
     backend.request = OmegaConf.create({"unmapped_route": str(tmp_path / "prior"), "unmapped_obstacles": 3})
     backend._routes = {"another-case": [[-4, 0], [4, 0]]}

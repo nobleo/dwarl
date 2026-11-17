@@ -121,6 +121,11 @@ def compose_config(config=None, assignments=(), cwd=None, explicit_keys=None, pr
         raise ValueError("test.planner must be navfn or smac2d")
     if cfg.test.unmapped_obstacles < 0:
         raise ValueError("test.unmapped_obstacles must be zero or positive")
+    if cfg.test.obstacle_comparison:
+        if cfg.test.sim != "gazebo":
+            raise ValueError("test.obstacle_comparison requires --sim gazebo")
+        if cfg.test.unmapped_route:
+            raise ValueError("obstacle comparison records its own clean routes; omit test.unmapped_route")
     if cfg.test.unmapped_obstacles and cfg.test.sim not in ("gazebo", "mujoco"):
         raise ValueError("unmapped obstacles require --sim gazebo or --sim mujoco")
     if cfg.test.unmapped_route and (cfg.test.sim != "gazebo" or not cfg.test.unmapped_obstacles):

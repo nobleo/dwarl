@@ -615,8 +615,10 @@ and `pixi.lock`, or include their sources in the robot workspace. No separate ro
 installation is performed. Without `ROBOTS_WS`, the empty `docker/robots_ws` is used.
 Rebuild the image after changing packages or dependencies.
 
-To offer the robot in the Docker demo (`docker compose run --rm demo`), add it to
-`work/robots.yaml`, which is merged over the built-in robot list; see `docker/README.md`.
+Select the robot with the same setup workflow as local development:
+`docker compose run --rm dwarl setup`. Or pass its package/profile directly:
+`docker compose run --rm dwarl train my_robot_dwarl --preset navigation`.
+No additional robot registry is needed; see `docker/README.md`.
 
 ## Troubleshooting the first integration
 

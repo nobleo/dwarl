@@ -19,6 +19,32 @@ pixi run dwarl test --suite benchmark --sim gazebo --controllers dwarl,mppi,dwb,
 
 Use `--case office` or `--case warehouse` to focus on one layout.
 
+## Clean versus obstructed routes
+
+```bash
+pixi run dwarl test --sim gazebo --obstacle-comparison \
+  --controllers dwarl,mppi,dwb,rpp
+```
+
+This is one evaluation with two sequential passes. The clean pass records Nav2's
+first global plan for each case. The obstructed pass places up to three stationary
+objects along those recorded routes, absent from the planning map. Layouts are
+generated once and stored in `obstacles.json`; every controller gets the same objects.
+The same checkpoint, maps, starts, goals, seeds, planner and tuning apply to both passes.
+
+Use `--set test.unmapped_obstacles=1` to change the target count. Placement can reject
+obstacles in tight spaces; the report includes actual counts and cases with none.
+An incomplete clean pass or missing route prevents the obstructed pass from starting.
+Completed navigation failures still count as failures and do not prevent comparison
+when route evidence exists.
+
+One report contains both passes, matched success/collision differences, and completion-time
+differences for cases successful in **both** passes. The case cap applies per controller
+per pass. The default command remains a single pass; this larger workload is opt-in.
+
+Add `--show` to watch Gazebo/RViz while the same scored workflow runs. The web workspace's
+“Compare clean and obstructed routes” checkbox launches this same command.
+
 ```bash
 pixi run dwarl report --open
 ```

@@ -30,14 +30,14 @@ for a copy-paste prompt and the included portable robot-setup skill.
 ### Docker
 
 To keep ROS 2 Jazzy, Gazebo Harmonic and Nav2 off your host, use the image in
-[docker/](docker/README.md). It also contains an end-to-end demo: pick a robot (a
-TurtleBot3, or your own), train, compare with Nav2's MPPI, DWB and Regulated Pure Pursuit
-in Gazebo, including obstacles that are not on the map, deploy, and watch the policy drive
-under Nav2:
+[docker/](docker/README.md). It runs the same setup, training, testing and deployment
+commands, with the same robot profiles and configuration:
 
 ```bash
 cd docker && ./configure-host.sh && docker compose build
-docker compose run --rm demo
+docker compose run --rm dwarl setup
+docker compose run --rm dwarl train --preset navigation
+docker compose run --rm dwarl test --sim gazebo --case office --show
 ```
 
 ## The workflow

@@ -15,6 +15,16 @@ def audit(directory):
     episodes = json.loads((directory / "episodes.json").read_text())
     expected = [c["id"] for c in cases]
     errors, controllers, shared = [], {}, {}
+    layouts = None
+    if summary.get("obstacle_comparison"):
+        path = directory / "obstacles.json"
+        if path.is_file():
+            manifest = json.loads(path.read_text())
+            layouts = manifest["cases"]
+            if manifest["checkpoint"] != summary["checkpoint"] or manifest["base_workload"] != summary["workload"]:
+                errors.append("Obstacle manifest does not match the checkpoint/workload")
+        else:
+            errors.append("Missing frozen obstacle manifest")
     if summary["status"] != "completed":
         errors.append(f"Study status is {summary['status']}")
     for label, rows in episodes.items():
@@ -42,7 +52,14 @@ def audit(directory):
                     errors.append(f"{label}/{row['case_id']}: missing {key}")
             if row.get("backend") != "gazebo":
                 continue
-            folder = directory / "gazebo" / row["controller"] / row["case_id"]
+            folder = directory / "gazebo"
+            if row.get("phase"):
+                folder /= row["phase"]
+            folder = folder / row["controller"] / row["case_id"]
+            if row.get("phase") == "obstructed" and layouts is not None:
+                layout = layouts.get(row["case_id"])
+                if layout is None or row.get("unmapped_obstacles") != layout["obstacles"]:
+                    errors.append(f"{label}/{row['case_id']}: obstacles differ from the frozen layout")
             params_path = folder / "nav2_params.yaml"
             if not params_path.is_file():
                 errors.append(f"{label}/{row['case_id']}: missing Nav2 parameter snapshot")

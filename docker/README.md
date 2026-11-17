@@ -1,201 +1,139 @@
 # DWARL in Docker
 
-Everything needed to train, test and deploy DWARL runs in one image. That includes
-ROS 2 Jazzy, Gazebo Harmonic, Nav2 (with the DWB, MPPI and Regulated Pure Pursuit
-controllers) and DWARL's Python environment. Nothing is installed on the host apart
-from Docker. Runs, caches and logs go to `work/` in this repository.
+Docker packages the **same locked Pixi environment** as local development: ROS 2
+Jazzy, Gazebo Harmonic, Nav2, MuJoCo and DWARL. Use the same `setup`, `train`,
+`test`, `deploy` and `report` commands and the same robot profiles and configuration.
+There is no separate Docker workflow or robot registry.
 
-Docker packages the **same Pixi `default` environment** as local development:
-`pyproject.toml` declares dependencies and `pixi.lock` pins Python, MuJoCo 4, ROS,
-Gazebo and native build tools. The image runs `pixi install --locked`, so stale
-lockfiles fail the build instead of resolving a different stack. Supported platform:
-Linux x86-64 (`linux/amd64`).
+Runs, caches and configuration persist in the repository's `work/` directory,
+mounted at `/work`. Set `DWARL_WORK` to use another host directory.
 
 ## Host requirements
 
-- Docker Engine 24 or newer, with the Compose plugin (`docker compose`).
-- An X11 or XWayland desktop, for Gazebo, RViz and the MuJoCo viewer.
-- Optional but recommended: an NVIDIA GPU with the
-  [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
-  PyTorch then trains on CUDA, and Gazebo, RViz and the viewer render with the GPU
-  instead of Mesa's software renderer. MuJoCo physics always runs on the CPU, so
-  training throughput depends mostly on CPU cores.
+- Linux x86-64 with Docker Engine 24+ and the Compose plugin.
+- X11 or XWayland for Gazebo, RViz and MuJoCo windows.
+- Optional NVIDIA GPU with the NVIDIA Container Toolkit for PyTorch and rendering.
+  MuJoCo physics runs on the CPU.
 
-Install the NVIDIA Container Toolkit once on Ubuntu (this needs `sudo`):
+Install the GPU toolkit following
+[NVIDIA's instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html),
+then configure and check it:
 
 ```bash
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
-  | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list \
-  | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#' \
-  | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker
-docker run --rm --gpus all ubuntu nvidia-smi   # should list your GPU
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+docker run --rm --gpus all ubuntu nvidia-smi
 ```
 
-## Set up and build
+## Build and select a robot
 
 ```bash
 cd docker
-./configure-host.sh        # writes docker/.env: your user id, X11 access, GPU if available
-docker compose build       # about 15 minutes and 15 GB the first time
+./configure-host.sh
+docker compose build
+docker compose run --rm dwarl setup
 ```
 
-Re-run `./configure-host.sh` after installing the GPU toolkit, and after logging in
-again if windows stop opening (the X authority file changes per login).
+`configure-host.sh` writes `docker/.env` with your user ID, X11 access and GPU
+configuration. Re-run it after installing the GPU toolkit or logging in again
+if windows stop opening. The image runs `pixi install --locked`; dependencies
+are declared in `pyproject.toml` and pinned in `pixi.lock`.
 
-## End-to-end demo
+For your own robot, provide its colcon workspace before building:
 
 ```bash
-cd docker
-docker compose run --rm demo
+ROBOTS_WS=$HOME/robots_ws ./configure-host.sh
+docker compose build
+docker compose run --rm dwarl robot check my_robot_dwarl
+docker compose run --rm dwarl train my_robot_dwarl --preset smoke
 ```
 
-1. **Pick a robot.** The built-in choice is a TurtleBot3 Waffle. To add your own, see
-   [Switching robots](#switching-robots).
-2. **Pick a training budget**, or reuse a finished run for that robot (offered once one exists).
-3. **Pick what to run:**
-   - `showcase` (default): install the policy and open Gazebo and RViz on a demo world right away.
-     With a reused run, the windows open about a minute after you choose.
-   - `compare`: first the MuJoCo benchmark and the headless Gazebo comparison with MPPI, DWB and
-     Regulated Pure Pursuit, then the showcase. The menu shows the expected duration (about half
-     an hour to an hour), during which no windows open.
+Robot sources are copied to `/opt/robots_ws/src` and built into
+`/opt/dwarl/.pixi/robot/`. The entrypoint activates the robot and DWARL overlays.
+The selected profile is remembered through the normal workflow.
+Declare missing ROS dependencies through `pixi add --feature ros ros-jazzy-<pkg>`
+on the host, commit `pyproject.toml` and `pixi.lock`, then rebuild.
 
-The stages:
-
-| Stage | What happens | Output |
-| --- | --- | --- |
-| setup | Copies the robot integration to `work/robots/<robot>` and builds two demo worlds (office, warehouse) sized for its footprint | `work/demo_worlds/<robot>/previews/*.png` |
-| train | `dwarl train` in MuJoCo, headless, with the GPU for PyTorch when available. One status line shows iteration, success, collision and ETA | `work/runs/<run>`, `work/logs/train-*.log` |
-| evaluate | MuJoCo benchmark on DWARL's canonical cases (doorway, corridor, U-trap, clutter, …) | success/collision table, `report/README.md` |
-| compare | Gazebo + Nav2, headless: DWARL vs MPPI vs DWB vs Regulated Pure Pursuit on the demo worlds, under one shared Nav2 setup (Smac 2D global planner, map, costmaps, limits, safety). A second pass adds obstacles that are in Gazebo but **not** on the map, on the route Nav2 planned for each case in the first pass | one table per pass and a summary |
-| deploy | `dwarl deploy` installs the exported ONNX bundle in the robot integration | `work/robots/<robot>/policies/` |
-| showcase | Gazebo and RViz windows open. Nav2 plans a global path from start to goal, and the DWARL controller plugin follows it around obstacles that are **not** on the map. It uses the same worlds, obstacles, planner and tuning as the second compare pass | goal reached / failed, per world |
-
-Keys while training runs:
-
-| Key | Action |
-| --- | --- |
-| `v` | Show or hide a live MuJoCo view of the training simulations (one shard). It slows training while open, so it is off by default |
-| `l` | Print the last lines of the training log |
-| `q` | Stop training early. Completed checkpoints are kept and the demo continues with them |
-
-During the showcase you pick a world, and afterwards you can replay it with another compared
-controller (`mppi`, `dwb`, `rpp`) or drive the other world.
-Press Enter to close a world and move on.
-
-Budgets (`demo/dwarl_demo/robots.yaml`, presets):
-
-| Preset | Iterations | Purpose |
-| --- | --- | --- |
-| quick | 400 | Pipeline check. The policy drives but is not presentation quality |
-| standard | 1500 | Usable policy for comparisons |
-| full | 3000 | DWARL's default budget |
-
-Run without prompts, or only some stages:
+## Train, test and deploy
 
 ```bash
-DEMO_ROBOT=turtlebot3 DEMO_PRESET=reuse DEMO_MODE=showcase docker compose run --rm demo
-DEMO_ROBOT=turtlebot3 DEMO_PRESET=standard DEMO_MODE=compare DEMO_YES=1 docker compose run --rm demo
-DEMO_ROBOT=turtlebot3 DEMO_PRESET=reuse DEMO_STAGES=evaluate docker compose run --rm demo
+docker compose run --rm dwarl train --preset navigation
+docker compose run --rm dwarl runs watch
+docker compose run --rm dwarl test --suite validation
+docker compose run --rm dwarl deploy
 ```
 
-`DEMO_MODE` answers the "what to run" question; `DEMO_STAGES` (comma separated) picks stages directly.
+Use `--max-iterations` and ordinary `dwarl.yaml` settings for training budgets.
+Use `--run` and `--checkpoint` to select existing evidence. To toggle a viewer
+on a headless training in an existing container:
 
-The `compare` stage starts a fresh Gazebo + Nav2 stack for every case and controller, so
-expect about a minute per case per controller (4 cases per pass). `DEMO_CANONICAL=1` adds a
-pass on DWARL's canonical cases. Unmapped obstacles are placed deterministically per case
-(fixed seed), so every controller meets the same ones; they leave a passage for the robot.
-Reports are Markdown files with images, next to `summary.json` in
-`work/runs/<run>/tests/<id>/`. If a report warns about localization error, read
-[Gazebo adapter pitfalls](../web/docs/manual-integration.md#gazebo-adapter-pitfalls): the bench
-localizes with odometry.
-
-## Switching robots
-
-A robot is selectable when the image contains its integration (a DWARL profile plus a Gazebo
-adapter, see [Your own robot](#your-own-robot)) and the demo's robot list names it. The
-built-in list is `demo/dwarl_demo/robots.yaml`. Add your robots to `work/robots.yaml`,
-which is merged over it, so they stay out of the repository:
-
-```yaml
-robots:
-  my_robot:
-    label: My robot - what it is
-    profile: my_robot_dwarl          # ROS package with dwarl_robot.yaml, a path, or a builtin
-    baselines: package://my_robot_dwarl/config/baselines.yaml   # optional shared tuning
-    controllers: [dwarl, mppi, dwb, rpp]   # the default
-    planner: smac2d                  # global planner for every controller (or navfn)
-    unmapped_obstacles: 3            # per route in the second compare pass; 0 skips it
-    num_envs: 64
-    default: true                    # preselect it in the menu
+```bash
+docker exec -it <container> dwarl-entrypoint dwarl runs view
 ```
 
-`baselines` is a `test.controller_params` file: `mppi`, `dwb`, `rpp` and `dwarl` sections
-for the controllers, plus shared `costmap` and `planner` sections that apply to all of them
-(see [Results](../web/docs/results.md)). The comparison and the showcase both use it.
+## Watch navigation and compare controllers
+
+The office and warehouse are built-in benchmark layouts. `--show` opens Gazebo
+and RViz, drives the selected routes, and records standard scored results:
+
+```bash
+docker compose run --rm dwarl test --sim gazebo --case office --show
+docker compose run --rm dwarl test --sim gazebo --case warehouse --show --controllers rpp
+```
+
+For a clean pass followed by frozen obstacles on the recorded Nav2 routes:
+
+```bash
+docker compose run --rm dwarl test --sim gazebo --obstacle-comparison \
+  --controllers dwarl,mppi,dwb,rpp
+```
+
+Both passes share the checkpoint, cases and navigation settings; every controller
+gets identical obstacle layouts. One report includes both passes and paired changes.
+Add `--case office` for a shorter comparison. Set `test.planner=smac2d` or
+`test.controller_params=/work/tuning.yaml` through `--set` when needed.
+
+```bash
+docker compose run --rm dwarl report
+```
+
+Open the generated `work/runs/<run>/tests/<id>/report/index.html` on the host.
+Navigation failures and infrastructure failures remain distinct; a visual run
+uses the same scoring as a headless test.
 
 ## Other commands
 
 ```bash
-docker compose run --rm shell                          # shell with the locked Pixi environment ready
-docker compose run --rm shell dwarl doctor --sim gazebo
-docker compose --profile monitor up tensorboard        # http://localhost:6006
+docker compose run --rm shell
+docker compose run --rm dwarl doctor --sim gazebo
+docker compose --profile monitor up tensorboard
 ```
 
-Inside the container, the working directory is `/work` (`work/` on the host). DWARL
-keeps `runs/` and `.dwarl/` there. Run `dwarl` directly: the entrypoint activates Pixi
-and the robot/DWARL overlays. The ROS packages are prebuilt (`DWARL_PREBUILT_ROS=1`),
-so nothing is rebuilt or installed at startup. For example:
+TensorBoard is at <http://localhost:6006>. Inside the shell, run `dwarl` directly:
+the entrypoint has activated Pixi. ROS packages are prebuilt
+(`DWARL_PREBUILT_ROS=1`).
 
-```bash
-dwarl train diffbot --num-envs 32 --max-iterations 200
-dwarl runs view                   # toggle a live view of the running training
-dwarl test --sim gazebo --controllers dwarl,mppi,dwb,rpp --case doorway
-```
+The source is installed editable at `/opt/dwarl`. Bind-mount individual source
+directories to try changes; mounting the whole repository there would hide the
+locked environment and ROS builds. Dependency and native/ROS changes require a rebuild.
 
-From a host terminal, toggle the view of a training running in a detached container with
-`docker exec -it <container> dwarl-entrypoint dwarl runs view`. If the window does not
-open, re-run `./configure-host.sh` after logging in again (it refreshes X11 access) and
-start a new container; the training itself keeps running without the window.
+## Migrating from the former demo
 
-Update dependencies through Pixi on the host, commit both `pyproject.toml` and
-`pixi.lock`, then rebuild the image. There is no separate Docker Python/ROS dependency
-list and no `uv sync` or `rosdep install` step. OS display drivers and basic shell
-utilities still come from the base image's package manager.
-
-The DWARL source is installed editable at `/opt/dwarl`. To try Python changes, bind
-mount only the source directories you need (for example `../src:/opt/dwarl/src` and
-`../runtime/src:/opt/dwarl/runtime/src`). Mounting the entire repository over
-`/opt/dwarl` would hide the image's locked environment and built ROS overlays.
-Changes to dependencies, the C++ controller or ROS packages need `docker compose build`.
-
-## Your own robot
-
-Put your robot's ROS packages (a DWARL integration with `dwarl_robot.yaml` and its
-description) in the `src/` folder of a colcon workspace, then:
-
-```bash
-ROBOTS_WS=$HOME/robots_ws ./configure-host.sh   # stored in docker/.env
-docker compose build                            # copies sources and runs Pixi's build-robot task
-docker compose run --rm shell dwarl robot check my_robot_dwarl
-```
-
-Robot sources are copied to `/opt/robots_ws/src`; their build/install directories
-live under `/opt/dwarl/.pixi/robot/`, just as they do with local Pixi builds. Declare
-additional robot dependencies with `pixi add --feature ros ros-jazzy-<package>`
-(or supply the package's sources in the workspace), commit the updated manifest and
-lockfile, then rebuild. Missing dependencies fail the build rather than being silently
-skipped by rosdep.
-
-See [Use your robot in the Docker image](../web/docs/manual-integration.md#use-your-robot-in-the-docker-image).
+The `demo` service, `DEMO_*` variables and `work/robots.yaml` registry have been
+removed. Existing `work/runs` and reports remain usable with `--run`. Select the
+profile with `setup` or pass it to `train`. Existing `work/demo_worlds` datasets
+can still be tested with `--set test.dataset=/work/demo_worlds/<robot>`, but new
+benchmarks automatically include office and warehouse.
 
 ## Troubleshooting
 
-| Symptom | Fix |
+| Symptom | Check |
 | --- | --- |
-| `could not select device driver "nvidia"` | Install the toolkit (above) or re-run `./configure-host.sh` to drop the GPU overlay |
-| `Authorization required` / windows do not open | Re-run `./configure-host.sh` (refreshes `xhost` and the X authority path) |
-| Gazebo or RViz is very slow | No GPU in the container: software rendering. Enable the GPU overlay |
-| Files in `work/` owned by root | `HOST_UID`/`HOST_GID` missing: run `./configure-host.sh` |
+| GPU driver could not be selected | Install the NVIDIA toolkit or re-run `configure-host.sh` without the GPU overlay |
+| Windows do not open | Re-run `configure-host.sh` to refresh X authority; check X11/XWayland |
+| Gazebo or RViz is slow | Confirm hardware rendering; software rendering is much slower |
+| Robot ROS package missing | Set `ROBOTS_WS`, add its dependencies through Pixi, rebuild |
+| Navigation startup or heartbeat failures | Read `launch.log`, check `dwarl doctor --sim gazebo`, and avoid competing simulator workloads |
+
+See [robot integration](../web/docs/manual-integration.md#use-your-robot-in-the-docker-image)
+and [result interpretation](../web/docs/results.md).

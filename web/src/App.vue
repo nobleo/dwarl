@@ -19,6 +19,7 @@ const state = ref({ runs: [], context: {}, jobs: {}, live: {} })
 const selected = ref(''), detail = ref(null), tab = ref('workspace')
 const command = ref('train'), preset = ref(''), simulator = ref('mujoco'), suite = ref('validation')
 const checkpoint = ref('latest'), robot = ref(''), iterations = ref(''), resume = ref(false)
+const obstacleComparison = ref(false), showSimulator = ref(false)
 const extra = ref(''), busy = ref(false), error = ref(''), connected = ref(false)
 const lane = ref('training'), evaluation = ref(''), reportOpen = ref(false)
 const readiness = ref(null), previewSettings = ref(null), replay = ref(null), historyId = ref(''), historyJob = ref(null)
@@ -58,7 +59,11 @@ const argv = computed(() => {
     args.push('--checkpoint', checkpoint.value)
     if (command.value === 'deploy' && robot.value.trim()) args.push(robot.value.trim())
   }
-  if (command.value === 'test') args.push('--sim', simulator.value, '--suite', suite.value)
+  if (command.value === 'test') {
+    args.push('--sim', simulator.value, '--suite', suite.value)
+    if (simulator.value === 'gazebo' && obstacleComparison.value) args.push('--obstacle-comparison')
+    if (showSimulator.value) args.push('--show')
+  }
   if (command.value === 'doctor') args.push('--sim', simulator.value)
   // Each advanced line is one argv element; never passed through a shell.
   return [...args, ...extra.value.split('\n').map(s => s.trim()).filter(Boolean)]
@@ -230,6 +235,10 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
           <select v-model="simulator" class="select w-full" aria-label="Simulator"><option value="mujoco">MuJoCo</option><option value="gazebo">Gazebo</option></select></label>
         <label v-if="command === 'test'" class="block"><span class="text-xs font-medium block mb-2">Suite</span>
           <select v-model="suite" class="select w-full" aria-label="Suite"><option value="validation">Validation</option><option value="test">Held-out test</option><option value="benchmark">Benchmark</option></select></label>
+        <label v-if="command === 'test'" class="flex gap-2 items-center text-sm">
+          <input v-model="showSimulator" type="checkbox" class="checkbox checkbox-sm" /> Show simulator windows</label>
+        <label v-if="command === 'test' && simulator === 'gazebo'" class="flex gap-2 items-center text-sm">
+          <input v-model="obstacleComparison" type="checkbox" class="checkbox checkbox-sm" /> Compare clean and obstructed routes</label>
         <details class="text-sm">
           <summary class="cursor-pointer muted">Advanced arguments</summary>
           <p class="text-xs muted my-2">One argument per line, including option values. Example: --set on one line, train.device=cpu on the next.</p>

@@ -66,6 +66,7 @@ class TestConfig:
     controller_params: str | None = None
     planner: str = "navfn"
     unmapped_obstacles: int = 0
+    obstacle_comparison: bool = False  # clean + frozen on-route obstacles, in one Gazebo test
     unmapped_near_doorways: bool = False  # also place them right behind narrow passages such as doors
     # Gazebo: place them on Nav2's first global plan recorded per case in this earlier test directory
     # (a run without unmapped obstacles), instead of on the dataset path, which Nav2 may not follow.

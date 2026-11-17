@@ -41,6 +41,9 @@ def _runner(cfg, dataset, split):
 
 
 def test_onnx_export_matches_torch(train_cfg, scenario_dir, tmp_path):
+    # This test reconstructs uninterrupted scan history; safety-stop resets have their
+    # own tests and depend on the randomly initialized policy's trajectory.
+    train_cfg.env.safety_layer.enabled = False
     ort = pytest.importorskip("onnxruntime")
     from dwarl.artifacts.exporter import OnnxPolicy, dump_golden, export_runner
 

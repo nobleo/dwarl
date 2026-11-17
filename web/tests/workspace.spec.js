@@ -5,6 +5,19 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText('Local workspace connected', { exact: true })).toBeVisible()
 })
 
+test('visual obstacle comparison uses the normal test command', async ({ page }) => {
+  await page.getByRole('combobox', { name: 'Workflow', exact: true }).selectOption('test')
+  await page.getByRole('combobox', { name: 'Simulator', exact: true }).selectOption('gazebo')
+  await page.getByRole('checkbox', { name: 'Show simulator windows', exact: true }).check()
+  await page.getByRole('checkbox', { name: 'Compare clean and obstructed routes', exact: true }).check()
+  const preview = page.getByText(/^dwarl test /)
+  await expect(preview).toContainText('--obstacle-comparison')
+  await expect(preview).toContainText('--show')
+  await page.getByRole('combobox', { name: 'Simulator', exact: true }).selectOption('mujoco')
+  await expect(preview).not.toContainText('--obstacle-comparison')
+  await expect(page.getByRole('checkbox', { name: 'Compare clean and obstructed routes', exact: true })).toHaveCount(0)
+})
+
 test('native report images, metrics and searchable docs share the workspace', async ({ page }) => {
   await page.getByRole('button', { name: 'View full report & plots', exact: true }).click()
   const image = page.getByRole('img', { name: 'Route plot', exact: true })

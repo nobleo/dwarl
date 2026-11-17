@@ -1,7 +1,7 @@
 # NVIDIA GPU for PyTorch (training/export) and OpenGL (Gazebo, RViz, MuJoCo viewer).
 # Requires the NVIDIA container toolkit on the host (docker/README.md).
 services:
-  demo: &gpu
+  dwarl: &gpu
     deploy:
       resources:
         reservations:

@@ -127,7 +127,7 @@ def build_scenario(name: str, cfg: dict | None = None) -> MapData:
         from dwarl.testing.worlds import build_world
 
         radius = float(cfg.get("passage_radius", cfg["robot_radius"]))
-        return build_world(name, radius=radius)[0]
+        return build_world(name, radius=radius)
     scale = float(cfg.get("geometry_scale", 1.0))
     size, res = SIZE * scale, RES * scale
     tight_passage = name in PASSAGE_SCENARIOS and "passage_width" in cfg
