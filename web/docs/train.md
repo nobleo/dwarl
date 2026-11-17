@@ -23,7 +23,7 @@ the completed checkpoint. Data and robot assets are frozen into the run.
 ## Obstacles that are not on the map
 
 `recipe.env.surprise_obstacles` adds random boxes and cylinders to the reference path of a
-share of training episodes (`probability`, 0 by default). The map and the path stay as they
+share of training episodes (`probability`, a final target of 0.6 by default). The map and the path stay as they
 were, so the robot only sees them in its lidar, like obstacles that appear on a real
 route. They avoid start, goal and mapped geometry, and a detour stays open for a disc of the
 robot's turning radius. Training maps only: test cases place their own (`test.unmapped_obstacles`).
@@ -32,7 +32,30 @@ robot's turning radius. Training maps only: test cases place their own (`test.un
 pixi run train --preset navigation --set recipe.env.surprise_obstacles.probability=0.6
 ```
 
-### Learn to avoid them: `--preset avoidance`
+### Default avoidance curriculum
+
+Plain training and the navigation preset now start with clean routes, then introduce
+obstacles through five stages. Each stage raises the placement probability by 12 percentage
+points, reaching 60%. The maximum count grows from one to three; maximum obstacle radius/half
+extent grows from 0.16 m to 0.4 m. Extra detour margin decreases from 0.26 m to 0.1 m.
+These are placement targets; rejected placements may yield fewer or no obstacles.
+
+The first promotion requires 200 clean episodes with at least 75% success and at most 5%
+collisions. Later decisions require 200 clean **and** 200 actually obstacle-containing
+episodes at the current stage, each meeting those thresholds. Success at or below 30% or
+collisions above 10% in either group demotes one stage; otherwise the stage holds. Windows
+clear after a decision, and episodes started at other stages are ignored. Route-difficulty
+progression remains separate. Clean episodes remain in the mix at every stage.
+
+The stage and partial outcome windows are checkpointed. TensorBoard reports
+`Curriculum/avoidance_stage` and `Curriculum/obstacle_probability`.
+These thresholds are starting heuristics, not a validated performance improvement.
+
+Set `recipe.env.surprise_obstacles.probability=0` for clean-only training, or
+`recipe.env.surprise_obstacles.curriculum=false` for a constant obstacle probability.
+The smoke preset disables surprise obstacles.
+
+### Compatibility preset: `--preset avoidance`
 
 ```bash
 pixi run train --preset avoidance
@@ -41,7 +64,7 @@ pixi run train --preset avoidance --set train.init_from=runs/<path-following run
 
 The path rewards (cross-track error and heading along the path) punish every deviation, so a
 path-following policy collides with or stops at an obstacle on its path. The avoidance
-preset places obstacles on the path in 60 % of the episodes and computes an avoidance level
+curriculum eventually attempts obstacles on the path in 60 % of episodes and computes an avoidance level
 between 0 and 1 from privileged geometry: how close the path within the next few metres
 (`horizon`, `horizon_time`) passes to such an obstacle (`clear`, `ramp`), weighted up as the robot
 gets nearer (`near`). Cross-track and heading rewards are scaled by one minus that level, so
@@ -59,7 +82,20 @@ success. `angular_effort` penalises angular acceleration; with the `window` acti
 action is the command change, so `action_rate` does not see weaving. The preset also lowers
 the entropy bonus, so the exploration noise does not grow into bang-bang steering.
 
-The preset also enables `recipe.env.safety_layer`: training then stops the robot like the
+The default `dewobble` term explicitly penalises steering that conflicts with the
+desired heading. It uses the bearing to the main lookahead target before the action
+and the limited angular command before safety overrides. With heading error `e` and
+`horizon=0.5` seconds, useful angular commands lie between zero and `e / horizon`.
+The squared distance outside this interval, normalised by the angular speed limit,
+is penalised with weight 2.0 (the reward manager also multiplies by the control timestep).
+Thus continued turning when aligned, wrong-way turns and excessive steering cost
+reward; braking reduces the cost. The lookahead bearing permits useful turns on
+bends and when returning from a lateral offset. The penalty relaxes during blocked-path
+detours. This is a heading-aware shaping heuristic, not a guarantee of less wobble.
+Tune `recipe.rewards.dewobble.weight` and `recipe.rewards.dewobble.params.horizon`
+in a new run; set the weight to zero to disable it.
+
+The default recipe also enables `recipe.env.safety_layer`: training then stops the robot like the
 monitor does, and the command restarts from rest with cleared previous-action and lidar-history
 observations, as it does after Nav2's recovery. The policy
 learns that a pose too close to an obstacle leaves it standing, for instance unable to turn

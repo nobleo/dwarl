@@ -21,6 +21,8 @@ state:
 privileged:
   concatenate_dim: -1
   terms:
+    avoidance:
+      func: dwarl.navigation.observations:avoidance
     path:
       func: dwarl.navigation.observations:path_features
       params: {command_name: path, lookahead: [0.5, 1.0, 2.0, 3.0]}

@@ -1,11 +1,53 @@
 
 import numpy as np
+import pytest
 
 from dwarl.config import compose_config
 from dwarl.robot.config import materialize
 from dwarl.testing.cases import materialize as materialize_cases
 from dwarl.testing.cases import select_cases
 from dwarl.testing.scoring import score, summarize
+
+
+@pytest.mark.parametrize("robot", ["diffbot", "tests/robots/testbot"])
+def test_default_benchmark_includes_office_and_warehouse(tmp_path, monkeypatch, robot):
+    from pathlib import Path
+
+    from dwarl.testing.scenarios import BENCHMARK_NAMES, LAYOUT_VERSION
+    from dwarl.training.contract import build_contract
+    from dwarl.training.environment.nav_env import NavVecEnv
+
+    if robot != "diffbot":
+        robot = str(Path(robot).resolve())
+    public = compose_config(assignments=[f"robot={robot}", "train.num_envs=1", "train.device=cpu"])
+    contract = build_contract(public)
+    materialize(contract, tmp_path / "robot")
+    monkeypatch.chdir(tmp_path)
+    out = tmp_path / "benchmark"
+    out.mkdir()
+    workload = materialize_cases(contract, public.test, out)
+    assert {case["name"] for case in workload["cases"]} == set(BENCHMARK_NAMES)
+    assert len(workload["cases"]) <= 32
+    assert LAYOUT_VERSION > 4  # old cached workloads must not hide the new worlds
+    contract.dataset.path, contract.dataset.split = str(out / "maps"), workload["split"]
+    contract.sim.num_shards = 1
+    env = NavVecEnv(contract, split=workload["split"], sequential=True)
+    try:
+        assert env.world.tile_size == 16.
+        for name in ("office", "warehouse"):
+            case = next(case for case in workload["cases"] if case["name"] == name)
+            assert len(case["reference_path"]) > 50
+            env.reset_case(case["map"], case["pair"], case["start"][2], case["seed"])
+            xy, _ = env.world.robot_pose()
+            np.testing.assert_allclose(xy[0], case["start"][:2], atol=1e-6)
+    finally:
+        env.close()
+    public.test.case = "office"
+    selected = tmp_path / "office"
+    selected.mkdir()
+    office = materialize_cases(contract, public.test, selected)
+    assert len(office["cases"]) == 2
+    assert {case["name"] for case in office["cases"]} == {"office"}
 
 
 def test_capped_cases_cover_types_and_maps_reproducibly():

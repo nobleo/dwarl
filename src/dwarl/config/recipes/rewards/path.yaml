@@ -32,3 +32,13 @@ reverse:
   func: dwarl.navigation.rewards:reverse
   weight: 8.0
   params: {deadband: 0.02, power: 1.0}
+angular_effort:
+  func: dwarl.navigation.rewards:angular_effort
+  weight: 2.0
+dewobble:
+  func: dwarl.navigation.rewards:dewobble
+  weight: 2.0
+  params: {horizon: 0.5}
+safety_zone:
+  func: dwarl.navigation.rewards:safety_zone
+  weight: 30.0

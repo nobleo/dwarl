@@ -19,7 +19,8 @@ class Simulation:
 @dataclass
 class SurpriseObstacles:
     """Obstacles on the reference path that are not on the map (dwarl.navigation.surprises)."""
-    probability: float = 0.               # share of training episodes with such obstacles (0 disables)
+    probability: float = 0.               # public recipe opts into staged avoidance
+    curriculum: bool = False
     count: list[int] = field(default_factory=lambda: [1, 3])
     size: list[float] = field(default_factory=lambda: [.1, .4])
     lateral: float = 1.
@@ -38,7 +39,7 @@ class SurpriseObstacles:
 @dataclass
 class SafetyLayer:
     """The deployed collision monitor's STOP zones in training (dwarl.navigation.safety)."""
-    enabled: bool = False                 # stop the robot like the monitor does; off: only measure entries
+    enabled: bool = False                 # public recipe enables the deployed monitor
     margin: float = .035
     latency: float = .15
     min_points: int = 2

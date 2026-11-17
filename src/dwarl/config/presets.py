@@ -6,11 +6,11 @@ Keys are train settings; an optional ``recipe`` mapping is merged into the train
 PRESETS = {
     "smoke": {"name": "smoke", "preset": "smoke", "num_envs": 2, "max_iterations": 2, "save_interval": 1,
               "validation_interval": 0, "data": {"train_maps": 1, "validation_maps": 1, "test_maps": 1,
-                                                   "pairs_per_map": 3}},
+                                                   "pairs_per_map": 3},
+              "recipe": {"env": {"surprise_obstacles": {"probability": 0.0}}}},
     "navigation": {"name": "navigation", "preset": "navigation", "validation_interval": 200},
-    # Path following plus avoidance of obstacles that are not on the map (dwarl.navigation.surprises):
-    # random obstacles on the reference path of 60 % of the episodes, path adherence relaxed while they
-    # block the path ahead, and the avoidance level as privileged critic input.
+    # Compatibility preset: default training now includes staged avoidance. This preset additionally
+    # retains its lower entropy bonus and periodic validation.
     "avoidance": {"name": "avoidance", "preset": "avoidance", "validation_interval": 200, "recipe": {
         "env": {"surprise_obstacles": {"probability": 0.6}, "safety_layer": {"enabled": True}},
         "observations": {"privileged": {"terms": {

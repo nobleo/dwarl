@@ -134,6 +134,8 @@ def test_termination_takes_precedence_over_timeout_and_resets_individually():
 
 
 def test_auto_reset_clears_only_finished_environment_managers(train_cfg):
+    # Isolate episode resets from the safety monitor's independent action/history resets.
+    train_cfg.env.safety_layer.enabled = False
     train_cfg.env.num_envs = 2
     train_cfg.sim.num_shards = 1
     for name in ("success", "collision", "flipped", "stuck"):

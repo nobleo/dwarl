@@ -25,6 +25,8 @@ def capture(env):
             "outcomes": curriculum.window, "last_window_success": curriculum.last_window_success,
             "lidar_rng": deepcopy(env.lidar._rng.bit_generator.state),
              "episode_visits": dict(env.episode_visits),
+            "avoidance_curriculum": (env.surprises.curriculum.state()
+                                     if getattr(env, "surprises", None) and env.surprises.curriculum else None),
             "reward_weights": env.reward_manager.weights,
             "dataset_index_sha256": sha256(env.dataset.root / "index.json")}
 
@@ -47,6 +49,8 @@ def restore(env, state):
         env.sampler.restore_curriculum(CurriculumState(
             state["level"], list(state["outcomes"]), state.get("last_window_success")))
         env.episode_visits = dict(state["episode_visits"])
+        if state.get("avoidance_curriculum") and env.surprises.curriculum:
+            env.surprises.curriculum.restore(state["avoidance_curriculum"])
     env.map_idx[:] = -1
     env.reset()
 

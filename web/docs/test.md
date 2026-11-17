@@ -62,6 +62,21 @@ See [the report reading guide and remote-copy instructions](results.md#open-and-
 
 ## Expand evaluation
 
+The default `benchmark` suite automatically builds all twelve layouts for the selected
+robot: open space, corridor, narrow corridor, doorway, L-turn, S-turn, U-trap,
+dead end, tight gap, clutter, office and warehouse. The office and warehouse are
+16 m layouts with longer routes through rooms/furniture and shelving/aisles.
+No separate demo command or dataset path is needed.
+
+```bash
+pixi run dwarl test --show
+pixi run dwarl test --case office --show
+pixi run dwarl test --case warehouse --show --set test.unmapped_obstacles=3
+```
+
+These fixed benchmark layouts are separate from the procedural validation and held-out
+test splits. Use `--suite validation` for candidate selection.
+
 ```bash
 pixi run test --case doorway --show
 pixi run test --sim both --suite validation

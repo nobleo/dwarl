@@ -106,6 +106,9 @@ class NavVecEnv(VecEnv):
         self.initial_yaw = np.zeros(n)
         self.initial_sensor_state = [None] * n
         self.contacts = np.zeros(n, bool)
+        self.steering_error = np.zeros(n)
+        self.steering_command = np.zeros(n)
+        self.steering_adherence = np.ones(n)
         self.extra_written = np.zeros(n, bool)  # tile holds obstacles that are not on the map
         self.episode_length_buf = torch.zeros(n, dtype=torch.long, device=self.device)
         self.last_episode_info: list[EpisodeInfo] = []
@@ -158,9 +161,14 @@ class NavVecEnv(VecEnv):
         return self._obs, {}
 
     def step(self, actions: torch.Tensor):
-        xy_before, _ = self.world.robot_pose()
+        xy_before, yaw_before = self.world.robot_pose()
+        target = self.path_command.main_goal - xy_before
+        self.steering_error = wrap_angle(np.arctan2(target[:, 1], target[:, 0]) - yaw_before)
+        self.steering_error[np.linalg.norm(target, axis=-1) < 1e-6] = 0.
+        self.steering_adherence = 1.0 - self.surprises.level.copy()
         self.recorder.pre_step(xy_before, self.path_command.command, self.path_command.main_goal)
         self.action_manager.process_action(actions.detach().cpu().numpy())
+        self.steering_command = self.drive_action.command[:, 1].copy()
         self.action_manager.apply_action()
         self.contacts = self.world.step(self.decimation)
         self.episode_length_buf += 1
@@ -191,7 +199,14 @@ class NavVecEnv(VecEnv):
         if len(done_ids):
             self.last_episode_info, extras["log"] = self.recorder.finish(done_ids)
             self.sampler.report(self.termination_manager.get_outcome("success")[done_ids])
+            if not self.sampler.sequential:
+                self.surprises.report(done_ids, self.termination_manager.get_outcome("success")[done_ids],
+                                      self.termination_manager.get_outcome("collision")[done_ids])
             extras["log"].update(self._reset_idx(done_ids))
+            if self.surprises.curriculum:
+                extras["log"]["Curriculum/avoidance_stage"] = self.surprises.curriculum.stage
+                extras["log"]["Curriculum/obstacle_probability"] = self.surprises.curriculum.settings(
+                    self.surprises.s)["probability"]
             self.world.forward(done_ids)
         self._obs = self._observe()
         if self.viewer_trigger is not None:
@@ -227,6 +242,8 @@ class NavVecEnv(VecEnv):
             collision=self.termination_manager.get_outcome("collision"),
             stuck=self.termination_manager.get_outcome("stuck"), v_max=self.v_max, dt=self.control_dt,
             footprint_radius=self.radius, adherence=1.0 - self.surprises.level,
+            steering_error=self.steering_error, steering_command=self.steering_command,
+            steering_adherence=self.steering_adherence,
         )
 
     def _episode_clearance(self, xy, yaw):
@@ -352,7 +369,7 @@ class NavVecEnv(VecEnv):
         # Reserve test capacity before compilation, just like training's sampled obstacles.
         extra = max(self.surprises.max_count, self.obstacle_capacity)
         pool = max(int(sc.pool_size), self.dataset.max_primitives + max(extra, 8))
-        kwargs = dict(tile_size=float(self.dataset.maps[0].size), tile_gap=float(sc.tile_gap),
+        kwargs = dict(tile_size=max(float(md.size) for md in self.dataset.maps), tile_gap=float(sc.tile_gap),
                       pool_size=pool, robot_xml=rc.xml, timestep=float(sc.timestep))
         # Immutable maps keep their compiled BVH only when no runtime additions are needed.
         # The mutable world disables midphase so moved obstacle geometry remains exact.

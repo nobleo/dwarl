@@ -156,7 +156,8 @@ def test_avoidance_preset_enables_obstacles_and_the_critic_signal():
     cfg = compose_config(assignments=["robot=diffbot"], preset="avoidance")
     assert cfg.recipe.env.surprise_obstacles.probability == 0.6
     assert "avoidance" in cfg.recipe.observations.privileged.terms
-    assert "avoidance" not in compose_config().recipe.observations.privileged.terms
+    assert "avoidance" in compose_config().recipe.observations.privileged.terms
+    assert compose_config().recipe.env.surprise_obstacles.curriculum
     with pytest.raises(ValueError, match="probability"):
         compose_config(assignments=["recipe.env.surprise_obstacles.probability=1.5"])
 
@@ -173,9 +174,31 @@ def test_saved_avoidance_config_composes_again(tmp_path):
     assert cfg.recipe.env.surprise_obstacles.probability == 0.6
 
 
-def test_validation_places_unmapped_obstacles_only_for_avoidance_recipes():
+def test_validation_places_unmapped_obstacles_for_default_training_but_not_smoke():
     from dwarl.config import compose_config
     from dwarl.training.validation import unmapped_obstacles
 
-    assert unmapped_obstacles(compose_config(assignments=["robot=diffbot"])) == 0
+    assert unmapped_obstacles(compose_config(assignments=["robot=diffbot"])) == 3
+    assert unmapped_obstacles(compose_config(assignments=["robot=diffbot"], preset="smoke")) == 0
     assert unmapped_obstacles(compose_config(assignments=["robot=diffbot"], preset="avoidance")) == 3
+
+
+def test_curriculum_controls_actual_episode_placement_and_keeps_fixed_cases():
+    from types import SimpleNamespace
+
+    from dwarl.navigation.surprises import SurpriseObstacles
+
+    env = SimpleNamespace(num_envs=1, footprint=None, radius=.3, v_max=.5)
+    obstacles = SurpriseObstacles({"probability": 1., "curriculum": True}, env)
+    md, path = _map(), np.asarray(_case()["reference_path"])
+    rng = np.random.default_rng(42)
+    assert len(obstacles.sample(0, md, path, rng)) == 0
+    obstacles.curriculum.stage = 5
+    assert len(obstacles.sample(0, md, path, rng)) > 0
+    assert obstacles.episode_stages[0] == 5
+    obstacles.report(np.array([0]), np.array([True]), np.array([False]))
+    assert obstacles.curriculum.windows == [[], [(True, False)]]
+    obstacles.curriculum.stage = 0
+    fixed = np.array([[CYLINDER, 0., 0., 0., .2, .2]], np.float32)
+    obstacles.set_fixed(0, fixed)
+    np.testing.assert_array_equal(obstacles.sample(0, md, path, rng), fixed)

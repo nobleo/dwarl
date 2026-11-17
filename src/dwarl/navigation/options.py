@@ -10,6 +10,7 @@ import math
 
 SURPRISE_OBSTACLES = {
     "probability": 0.0,          # share of training episodes with obstacles on the path (0 disables)
+    "curriculum": False,         # legacy/explicit obstacle recipes remain constant unless opted in
     "count": [1, 3],             # obstacles per episode, inclusive range
     "size": [0.1, 0.4],          # radius or larger half extent [m]
     "lateral": 1.0,              # centre offset from the path, as a fraction of (size + robot half width)

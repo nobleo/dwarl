@@ -31,6 +31,11 @@ class RewardContext:
     # 1 - avoidance level: path-adherence weight, < 1 while obstacles that are not on the map block the path
     # ahead (dwarl.navigation.surprises). None or 1: follow the path.
     adherence: np.ndarray | float | None = None
+    # Pre-action bearing to the main lookahead target, and the resulting limited angular
+    # command before the safety monitor can zero it. Positive bearing means turn left.
+    steering_error: np.ndarray | None = None
+    steering_command: np.ndarray | None = None
+    steering_adherence: np.ndarray | None = None
 
 
 def _adherence(c) -> np.ndarray | float:
@@ -113,3 +118,30 @@ def safety_zone(env) -> np.ndarray:
     millimetres to spare. With ``recipe.env.safety_layer.enabled`` the robot is also stopped in training.
     """
     return -env.safety.blocked.astype(np.float64)
+
+
+def dewobble(env, horizon: float = 0.5) -> np.ndarray:
+    """Penalise commanded steering outside the useful heading-correction interval.
+
+    For error e, angular rates between 0 and e/horizon point towards the target
+    without overshooting over the chosen horizon. Penalise squared distance outside
+    that interval, normalised by the robot's angular velocity limit. This charges
+    both wrong-way steering and continued turning when aligned, including a zero
+    increment that maintains an existing turn. Braking reduces the cost even when
+    the rate limit prevents reaching the interval immediately.
+
+    The target is the pre-action main lookahead bearing, not the nearest path
+    tangent: turning back towards an offset path or anticipating a bend is useful.
+    Obstacle detours relax this term just like the path-adherence terms.
+    """
+    if not np.isfinite(horizon) or horizon <= 0:
+        raise ValueError("dewobble.horizon must be finite and strictly positive")
+    c = env.reward_context
+    if c.steering_error is None or c.steering_command is None or c.steering_adherence is None:
+        raise ValueError("dewobble requires pre-action steering measurements")
+    from dwarl.navigation.commands import wrap_angle
+
+    desired = wrap_angle(c.steering_error) / horizon
+    useful = np.clip(c.steering_command, np.minimum(0., desired), np.maximum(0., desired))
+    excess = (c.steering_command - useful) / max(env.w_max, 1e-9)
+    return -(excess ** 2) * c.steering_adherence

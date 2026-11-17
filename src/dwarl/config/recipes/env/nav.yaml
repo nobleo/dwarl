@@ -1,4 +1,9 @@
 control_dt: 0.1              # 10 Hz policy
+surprise_obstacles:
+  probability: 0.6          # final mix; start clean, advance on clean AND obstacle outcomes
+  curriculum: true
+safety_layer:
+  enabled: true
 episodes_per_map: 1          # map swap is cheap (in-place geom pool), so new map every episode by default
 spawn_yaw_noise: 3.14159     # uniform +- noise around the initial path direction [rad]
 spawn_yaw_curriculum: true   # grow the spawn heading noise with the map curriculum level:

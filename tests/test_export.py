@@ -149,6 +149,8 @@ def test_runtime_reproduces_training_with_offset_upside_down_lidar(
     from dwarl.artifacts.exporter import dump_golden, export_runner
 
     cfg = train_cfg.copy()
+    # This checks policy/action parity; the external collision monitor is not part of Policy.step.
+    cfg.env.safety_layer.enabled = False
     cfg.observations.state.terms.command_feedback = (
         ObservationTermCfg(func="dwarl.navigation.observations:last_command", params={"action_name": "drive"})
         if command_feedback else None)

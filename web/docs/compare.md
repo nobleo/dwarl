@@ -11,6 +11,14 @@ pixi run test --run runs/<run> --checkpoint <iteration> \
 The default cap is 32 cases per controller. For a shorter diagnostic workload,
 add `--set test.max_cases=3`. Comparisons run sequentially.
 
+For the built-in benchmark layouts, including office and warehouse:
+
+```bash
+pixi run dwarl test --suite benchmark --sim gazebo --controllers dwarl,mppi,dwb,rpp
+```
+
+Use `--case office` or `--case warehouse` to focus on one layout.
+
 ```bash
 pixi run dwarl report --open
 ```

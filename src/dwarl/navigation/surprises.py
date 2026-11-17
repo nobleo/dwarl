@@ -153,7 +153,11 @@ class SurpriseObstacles:
         self.env = env
         self.s = settings(cfg)
         self.enabled = float(self.s["probability"]) > 0.0
+        from dwarl.navigation.avoidance_curriculum import AvoidanceCurriculum
+
+        self.curriculum = AvoidanceCurriculum() if self.enabled and self.s["curriculum"] else None
         n = env.num_envs
+        self.episode_stages = np.zeros(n, dtype=int)
         self.max_count = int(self.s["count"][1]) if self.enabled else 0
         self.capacity = max(self.max_count, 1)
         self.prims = np.zeros((n, self.capacity, 6))
@@ -191,11 +195,13 @@ class SurpriseObstacles:
 
     def sample(self, env_id: int, md, path: np.ndarray, rng: np.random.Generator) -> np.ndarray:
         """Choose this episode's obstacles for ``env_id``; returns them (M, 6)."""
+        s = self.curriculum.settings(self.s) if self.curriculum else self.s
+        self.episode_stages[env_id] = self.curriculum.stage if self.curriculum else 0
         if int(env_id) in self.fixed:
             prims = self.fixed[int(env_id)]
-        elif self.enabled and rng.random() < float(self.s["probability"]):
-            lo, hi = (int(v) for v in self.s["count"])
-            prims = sample_on_path(md, path, self.robot, rng, int(rng.integers(lo, hi + 1)), self.s)
+        elif self.enabled and rng.random() < float(s["probability"]):
+            lo, hi = (int(v) for v in s["count"])
+            prims = sample_on_path(md, path, self.robot, rng, int(rng.integers(lo, hi + 1)), s)
         else:
             prims = np.zeros((0, 6))
         self.prims[env_id] = 0.0
@@ -208,6 +214,10 @@ class SurpriseObstacles:
 
     def obstacles(self, env_id: int) -> np.ndarray:
         return self.prims[env_id, self.valid[env_id]].astype(np.float32)
+
+    def report(self, ids, successes, collisions):
+        if self.curriculum:
+            self.curriculum.report(self.episode_stages[ids], self.valid[ids].any(-1), successes, collisions)
 
     def update(self, dt: float) -> None:
         """Measure the blockage of the path ahead and update the avoidance level (after each step)."""

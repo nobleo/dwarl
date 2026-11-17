@@ -12,9 +12,9 @@ robot_radius: 0.18         # footprint radius used for inflation (matches diffbo
 inflation_margin: 0.05
 num_previews: 12
 splits:
-  train: 400
-  val: 40
-  test: 60
+  train: 10000
+  val: 500
+  test: 500
 spawn:
   num: 24
   min_num: 4

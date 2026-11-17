@@ -1,12 +1,12 @@
 """Hand-crafted test scenarios, stored in the regular map-dataset format.
 
-``dwarl scenarios build`` writes ``data/maps/scenarios/{index.json, scenarios/<name>.npz}`` plus
-``gazebo/<name>.{sdf,yaml,pgm,json}`` (Gazebo world, Nav2 map, start/goal) for the ROS side, so the
-existing eval/bench code (and the ROS MuJoCo sim) can load them like any generated split. The
+``dwarl test --suite benchmark`` automatically builds a cached dataset plus
+``gazebo/<name>.{sdf,yaml,pgm,json}`` (Gazebo world, Nav2 map, start/goal), so the
+evaluation backends can load them like any generated split. The
 ``generator`` field of each map is the scenario name, so per-generator eval metrics are per-scenario.
 
-Frame: 8 x 8 m tile centred on the origin, bordered by walls. Each scenario is a list of obstacles plus
-one or more (start, goal) pairs; the reference path is planned with the same clearance-aware A*.
+Frames are centred on the origin: canonical tiles are 8 x 8 m; office and warehouse
+are 16 x 16 m. Reference paths use clearance-aware A*.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from dwarl.datasets.generation.mapdata import BOX, CYLINDER, MapData, path_lengt
 
 SPLIT = "scenarios"
 SIZE, RES, HEIGHT = 8.0, 0.05, 0.6
-LAYOUT_VERSION = 4
+LAYOUT_VERSION = 5
 PASSAGE_SCENARIOS = {"corridor", "narrow_corridor", "doorway", "tight_gap"}
 Pair = tuple[tuple[float, float], tuple[float, float]]
 
@@ -113,6 +113,7 @@ SCENARIOS: dict[str, Callable[[], tuple[list, list[Pair]]]] = {
     f.__name__: f
     for f in (open_space, corridor, narrow_corridor, doorway, l_turn, s_turn, u_trap, dead_end, tight_gap, clutter)
 }
+BENCHMARK_NAMES = (*SCENARIOS, "office", "warehouse")
 
 
 # ---------------------------------------------------------------------------- building
@@ -122,6 +123,11 @@ def _planner_cfg() -> dict:
 
 def build_scenario(name: str, cfg: dict | None = None) -> MapData:
     cfg = cfg or _planner_cfg()
+    if name in ("office", "warehouse"):
+        from dwarl.testing.worlds import build_world
+
+        radius = float(cfg.get("passage_radius", cfg["robot_radius"]))
+        return build_world(name, radius=radius)[0]
     scale = float(cfg.get("geometry_scale", 1.0))
     size, res = SIZE * scale, RES * scale
     tight_passage = name in PASSAGE_SCENARIOS and "passage_width" in cfg
@@ -209,7 +215,7 @@ def build_scenarios(out_dir: str | Path, names: list[str] | None = None, preview
                        passage_inflation_margin=0.0)
     (out / SPLIT).mkdir(parents=True, exist_ok=True)
     files = []
-    for name in names or list(SCENARIOS):
+    for name in names or BENCHMARK_NAMES:
         md = build_scenario(name, cfg)
         md.save(out / SPLIT / f"{name}.npz")
         files.append(f"{name}.npz")

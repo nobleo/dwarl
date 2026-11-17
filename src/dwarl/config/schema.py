@@ -9,9 +9,9 @@ from .recipe import Recipe
 class DataConfig:
     path: str | None = None
     allow_custom: bool = False
-    train_maps: int = 128
-    validation_maps: int = 16
-    test_maps: int = 16
+    train_maps: int = 10000
+    validation_maps: int = 500
+    test_maps: int = 500
     pairs_per_map: int = 32
     workers: int = 1
 
