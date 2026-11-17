@@ -4,7 +4,7 @@ A profile is a ``dwarl_robot.yaml`` that lives in the *robot's* repository (typi
 ``<robot>_dwarl`` ROS package). It references the robot's own URDF/xacro and adds what a URDF cannot
 express: drive/actuator model, command limits, footprint, the (post-filter) lidar the policy sees, extra
 physics (friction, joint springs/damping, contact simplifications) and the ROS interface used to deploy
-and benchmark. See ``docs/integrate-robot.md`` for the guide; ``dwarl robot check <ref>`` validates one.
+and benchmark. See ``web/docs/integrate-robot.md`` for the guide; ``dwarl robot check <ref>`` validates one.
 
 Profile references (``resolve_profile``):
     path/to/dwarl_robot.yaml | path/to/dir      a file, or a directory containing one

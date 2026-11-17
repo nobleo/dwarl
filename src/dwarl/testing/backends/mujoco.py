@@ -21,6 +21,9 @@ class MujocoBackend:
                       else None, "footprint_radius": float(contract.robot.footprint_radius)}
         cfg.dataset.path, cfg.dataset.split = str(directory / "maps"), workload["split"]
         self.env = NavVecEnv(cfg, split=workload["split"], sequential=True, obstacle_capacity=self.unmapped)
+        from dwarl.web.telemetry import Publisher
+
+        self.env.web_telemetry = Publisher.from_environment()
         try:
             self.policy = OnnxPolicy(bundle / "policy.onnx")
             self.env.record = True
@@ -80,4 +83,6 @@ class MujocoBackend:
         raise RuntimeError("environment exceeded the materialized episode budget")
 
     def close(self):
+        if self.env.web_telemetry is not None:
+            self.env.web_telemetry.close()
         self.env.close()

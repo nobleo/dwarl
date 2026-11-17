@@ -14,14 +14,14 @@ from dwarl.robot.build import build_xml
 from dwarl.robot.profile import load_profile
 from dwarl.robot.view import inspection_model
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--test-directory", type=Path)
     args = parser.parse_args()
-    output = ROOT / "docs/assets"
+    output = ROOT / "web/docs/assets"
     output.mkdir(exist_ok=True)
     profile = load_profile(ROOT / "tests/robots/testbot")
     model, data = inspection_model(build_xml(profile))

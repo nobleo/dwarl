@@ -87,6 +87,11 @@ def materialize(contract, request, out):
                         "robot": contract.robot.profile_sha256, "suite": request.suite}
                 case["id"] = identity(case)
                 cases.append(case)
+    case_id = request.get("case_id")
+    if case_id:
+        cases = [case for case in cases if case["id"] == case_id]
+        if not cases:
+            raise ValueError(f"case ID {case_id!r} is not in this workload")
     cases = select_cases(cases, request.max_cases, request.seed)
     if not cases:
         raise ValueError("selected workload contains no cases")

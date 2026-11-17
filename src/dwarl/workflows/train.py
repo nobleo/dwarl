@@ -112,6 +112,9 @@ def execute(cfg, assignments=()):
 
             print(f"Training: creating {cfg.train.num_envs} environments on {contract.device}…", flush=True)
             env = NavVecEnv(contract)
+            from dwarl.web.telemetry import Publisher
+
+            env.web_telemetry = Publisher.from_environment()
             if not cfg.train.show:
                 env.viewer_trigger = run / "live_view"
                 env.viewer_trigger.unlink(missing_ok=True)
@@ -167,6 +170,8 @@ def execute(cfg, assignments=()):
             raise
         finally:
             if env is not None:
+                if getattr(env, "web_telemetry", None) is not None:
+                    env.web_telemetry.close()
                 env.close()
     ui.finding("pass" if state in ("finished", "early_stopped") else "check", f"Training {state}: {run}")
     try:

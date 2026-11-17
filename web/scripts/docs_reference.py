@@ -9,12 +9,19 @@ from pathlib import Path
 import mkdocs_gen_files
 from omegaconf import OmegaConf
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
 
 from dwarl.cli import parser  # noqa: E402
 from dwarl.config import compose_config  # noqa: E402
 from dwarl.config.presets import PRESETS  # noqa: E402
 from dwarl.robot.schema import ProfileCfg  # noqa: E402
+
+SHARED = ROOT / "web/shared"
+for asset in SHARED.rglob("*"):
+    if asset.is_file():
+        with mkdocs_gen_files.open("shared/" + asset.relative_to(SHARED).as_posix(), "wb") as out:
+            out.write(asset.read_bytes())
 
 
 def commands(root, prefix="dwarl"):
@@ -72,7 +79,7 @@ with mkdocs_gen_files.open("reference/robot-profile.md", "w") as out:
 
 for name in ("dwarl_robot.yaml", "navigation.launch.py"):
     with mkdocs_gen_files.open(f"examples/{name}", "w") as out:
-        out.write((Path(__file__).resolve().parents[1] / "src/dwarl/templates" / name).read_text())
+        out.write((ROOT / "src/dwarl/templates" / name).read_text())
 
 with mkdocs_gen_files.open("agent-skills/dwarl-robot-setup.txt", "w") as out:
-    out.write((Path(__file__).resolve().parents[1] / ".agents/skills/dwarl-robot-setup/SKILL.md").read_text())
+    out.write((ROOT / ".agents/skills/dwarl-robot-setup/SKILL.md").read_text())

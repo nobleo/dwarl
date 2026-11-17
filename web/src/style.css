@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@import "../shared/theme.css";
+@plugin "daisyui" {
+  themes: false;
+}
+@plugin "daisyui/theme" {
+  name: "dwarl";
+  default: true;
+  color-scheme: light;
+  --color-base-100: var(--dwarl-surface);
+  --color-base-200: var(--dwarl-background);
+  --color-base-300: var(--dwarl-border);
+  --color-base-content: var(--md-default-fg-color);
+  --color-primary: var(--md-primary-fg-color);
+  --color-primary-content: var(--dwarl-on-primary);
+  --color-secondary: var(--nobleo-orange);
+  --color-secondary-content: var(--md-primary-fg-color--dark);
+  --color-accent: var(--md-accent-fg-color);
+  --color-accent-content: var(--dwarl-on-primary);
+  --color-neutral: var(--md-default-fg-color);
+  --color-neutral-content: var(--dwarl-background);
+  --color-info: var(--md-code-bg-color);
+  --color-info-content: var(--md-typeset-a-color);
+  --color-success: var(--dwarl-success);
+  --color-success-content: var(--dwarl-on-success);
+  --color-warning: var(--nobleo-orange);
+  --color-warning-content: var(--md-primary-fg-color--dark);
+  --color-error: var(--dwarl-error);
+  --color-error-content: var(--dwarl-on-error);
+  --radius-selector: .5rem;
+  --radius-field: .65rem;
+  --radius-box: 1rem;
+  --size-selector: .25rem;
+  --size-field: .25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+body { margin: 0; background: var(--color-base-200); border-top: 3px solid var(--nobleo-orange); }
+[data-md-color-scheme="slate"] { color-scheme: dark; }
+button, a, input, select { outline-offset: 4px; }
+.panel { border: 1px solid var(--color-base-300); border-radius: 1rem; background: var(--color-base-100); }
+.muted { color: color-mix(in srgb, var(--color-base-content) 60%, transparent); }
+.terminal { white-space: pre-wrap; overflow-wrap: anywhere; font: .75rem/1.7 ui-monospace, monospace; }

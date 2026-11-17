@@ -7,7 +7,7 @@ description: Run evidence-led DWARL performance iterations from agent-readable n
 
 ## Establish the experiment
 
-Read `AGENTS.md`, `docs/results.md`, the selected run's manifest and contract, and the
+Read `AGENTS.md`, `web/docs/results.md`, the selected run's manifest and contract, and the
 existing reports. Prefer a saved best checkpoint to an unexamined latest checkpoint.
 Identify the robot's footprint, lidar frame/coverage, velocity and acceleration
 limits, command interface, control rate and simulator adapter.
@@ -50,7 +50,7 @@ Nav2 parameters, artifact presence and consistent terminal measurements.
 Use a tuning YAML through `--set test.controller_params=/path/to/tuning.yaml`.
 The workflow freezes the file and its hash at test start. Controller sections are
 `dwarl`, `mppi`, `dwb`; shared sections include `safety`, `progress_checker`,
-`goal_checker`, `motion_limits` and `recovery`. See `docs/results.md` for semantics.
+`goal_checker`, `motion_limits` and `recovery`. See `web/docs/results.md` for semantics.
 
 Examples of hypothesis-driven interventions:
 

@@ -109,7 +109,7 @@ pass on DWARL's canonical cases. Unmapped obstacles are placed deterministically
 (fixed seed), so every controller meets the same ones; they leave a passage for the robot.
 Reports are Markdown files with images, next to `summary.json` in
 `work/runs/<run>/tests/<id>/`. If a report warns about localization error, read
-[Gazebo adapter pitfalls](../docs/manual-integration.md#gazebo-adapter-pitfalls): the bench
+[Gazebo adapter pitfalls](../web/docs/manual-integration.md#gazebo-adapter-pitfalls): the bench
 localizes with odometry.
 
 ## Switching robots
@@ -134,7 +134,7 @@ robots:
 
 `baselines` is a `test.controller_params` file: `mppi`, `dwb`, `rpp` and `dwarl` sections
 for the controllers, plus shared `costmap` and `planner` sections that apply to all of them
-(see [Results](../docs/results.md)). The comparison and the showcase both use it.
+(see [Results](../web/docs/results.md)). The comparison and the showcase both use it.
 
 ## Other commands
 
@@ -189,7 +189,7 @@ additional robot dependencies with `pixi add --feature ros ros-jazzy-<package>`
 lockfile, then rebuild. Missing dependencies fail the build rather than being silently
 skipped by rosdep.
 
-See [Use your robot in the Docker image](../docs/manual-integration.md#use-your-robot-in-the-docker-image).
+See [Use your robot in the Docker image](../web/docs/manual-integration.md#use-your-robot-in-the-docker-image).
 
 ## Troubleshooting
 

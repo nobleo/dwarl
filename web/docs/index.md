@@ -1,7 +1,7 @@
 <div class="docs-hero" markdown>
 
-![DWARL — dynamic window approach and reinforcement learning](assets/dwarl-logo.png#only-light){ .hero-logo }
-![DWARL — dynamic window approach and reinforcement learning](assets/dwarl-logo-dark.png#only-dark){ .hero-logo }
+![DWARL — dynamic window approach and reinforcement learning](shared/assets/dwarl-logo.png#only-light){ .hero-logo }
+![DWARL — dynamic window approach and reinforcement learning](shared/assets/dwarl-logo-dark.png#only-dark){ .hero-logo }
 
 <span class="eyebrow">NOBLEO TECHNOLOGY · DWARL</span>
 

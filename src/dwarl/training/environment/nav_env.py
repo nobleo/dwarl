@@ -169,6 +169,8 @@ class NavVecEnv(VecEnv):
         dones = self.termination_manager.compute()
         xy, yaw = self.world.robot_pose()
         speed, omega = self.world.robot_velocity(yaw)
+        if getattr(self, "web_telemetry", None) is not None:
+            self.web_telemetry.training(self, xy, yaw)
         self.reward_context = self._measure_rewards(yaw, speed)
         reward = self.reward_manager.compute(self.control_dt)
         self.recorder.record_step(EpisodeStep(

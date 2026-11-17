@@ -41,6 +41,9 @@ def path_progress(reference, xy):
 
 class BehaviorTrace:
     def __init__(self, case, *, pose_source, velocity_source, command_source, clearance_source):
+        from dwarl.web.telemetry import Publisher
+
+        self.web_telemetry = Publisher.from_environment()
         self.case = case
         self.data = {
             "schema": "dwarl_behavior_trace/1", "case_id": case["id"], "units": UNITS,
@@ -62,6 +65,12 @@ class BehaviorTrace:
         row.update(distance_to_goal_m=finite(math.dist(pose[:2], self.case["goal"])),
                    path_remaining_m=remaining, path_completion=completion)
         self.data["samples"].append(row)
+        if self.web_telemetry is not None:
+            self.web_telemetry.publish(lambda: {
+                "kind": "testing", "label": self.case["name"], "pose": list(map(finite, pose)),
+                "path": self.case["reference_path"], "time_s": finite(time_s),
+                "clearance_m": finite(clearance),
+            })
         return row
 
     def event(self, kind, time_s, pose=None, **details):

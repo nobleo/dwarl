@@ -5,7 +5,7 @@
 The robot comes from the bundle: its profile's ``ros.sim_launch`` ({package, file}) is included with
 ``world:=<sdf> x:= y:= yaw:= gui:=`` and must start Gazebo with the robot spawned there, publishing /clock,
 odom -> base TF, the scan and accepting cmd_vel (see dwarl_bringup/launch/tb3_sim.launch.py, the reference
-implementation for the builtin `diffbot` profile, and docs/integrate-robot.md).
+implementation for the builtin `diffbot` profile, and web/docs/integrate-robot.md).
 `dwarl test --sim gazebo` writes a matching world.sdf/world.yaml/start pose per case under
 runs/<run>/tests/<test-id>/gazebo/<controller>/<case>/ and drives this launch file itself.
 Localisation is perfect: a static map->odom transform at the spawn pose (Gazebo odometry starts at zero).

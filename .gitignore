@@ -78,3 +78,7 @@ site/
 .pixi/
 /work/
 MUJOCO_LOG.TXT
+node_modules/
+src/dwarl/web/static/
+web/test-results/
+web/playwright-report/

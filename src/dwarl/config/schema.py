@@ -55,6 +55,7 @@ class TestConfig:
     suite: str = "benchmark"
     sim: str = "mujoco"
     case: str | None = None
+    case_id: str | None = None  # replay one exact materialized case, rather than a generator family
     show: bool = False
     repeats: int = 1
     seed: int = 42

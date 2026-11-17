@@ -22,7 +22,7 @@ def parser():
         formatter_class=RichHelpFormatter,
         epilog="Getting started:  setup · robot init\n"
         "Daily workflow:   train · test · deploy\n"
-        "Inspection:       status · next · runs · report · doctor\n\n"
+         "Inspection:       web · status · next · runs · report · doctor\n\n"
         "Start: pixi run setup\nNext step: pixi run dwarl next\nDocs: https://nobleo.github.io/dwarl/"))
     root.set_defaults(plain=False, json=False, verbose=False)
     commands = root.add_subparsers(dest="command", title="Commands", metavar="COMMAND")
@@ -37,6 +37,9 @@ def parser():
     p.add_argument("--example", action="store_true", help="select the included diffbot")
     p.add_argument("--yes", action="store_true", help="use complete, unambiguous saved/detected inputs")
     p.add_argument("--no-build", action="store_true", help="save selection without building ROS")
+    p = command("web", "Open the local training and testing dashboard", "pixi run dwarl web")
+    p.add_argument("--port", type=int, default=8765, help="localhost port (0 chooses a free port)")
+    p.add_argument("--no-open", action="store_true", help="print the URL without opening a browser")
     for name in ("train", "test", "deploy"):
         p = command(name, {"train": "Train a policy", "test": "Evaluate an exact checkpoint",
                            "deploy": "Install a compatible policy bundle"}[name], f"pixi run {name} --help")
@@ -60,6 +63,7 @@ def parser():
             p.add_argument("--sim", choices=("mujoco", "gazebo", "both"))
             p.add_argument("--suite", choices=("benchmark", "validation", "test"))
             p.add_argument("--case")
+            p.add_argument("--case-id", help="select one exact recorded case ID")
             p.add_argument("--repeats", type=int)
             p.add_argument("--controllers", type=lambda value: value.split(","), help="dwarl,mppi,dwb,rpp (Gazebo)")
             p.add_argument("--profile-compute", action="store_true", default=None)
@@ -264,6 +268,11 @@ def dispatch(args):
 def utility(args):
     from dwarl.cli import ui
 
+    if args.command == "web":
+        from dwarl.web.server import serve
+
+        serve(args.port, open_browser=not args.no_open)
+        return 0, None
     if args.command == "setup":
         from dwarl.workflows.setup import execute
 

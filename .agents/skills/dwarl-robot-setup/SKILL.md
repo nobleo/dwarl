@@ -16,7 +16,7 @@ For a setup-only request, stop there and give the next command. Long navigation
 training, controller tuning, installing a replacement policy and driving hardware
 are separate tasks. A smoke policy is not a navigation-quality policy.
 
-Read `AGENTS.md`, `docs/integrate-robot.md`, and any instructions in the robot
+Read `AGENTS.md`, `web/docs/integrate-robot.md`, and any instructions in the robot
 repository. Use `pixi run ...` throughout; never ask users to source ROS overlays.
 Check `--help` against the installed checkout if an option differs from this guide.
 
@@ -94,7 +94,7 @@ Inspect geometry on a floor with `pixi run dwarl robot view <integration>` when 
 GUI is available, or ask the user to do that step. Report visual inspection as
 pending if it has not happened. Do not infer correct support contact from compilation.
 
-If Gazebo is requested/configured, read `docs/gazebo.md`. Wrap an existing robot-only
+If Gazebo is requested/configured, read `web/docs/gazebo.md`. Wrap an existing robot-only
 launch with `robot init --gazebo` and explicit `--sim-package`, `--sim-launch` and
 `--arg-map` options when needed; inspect `robot init --help` for the complete form.
 Then run:
@@ -153,5 +153,5 @@ Finish with:
 
 For a completed setup, the usual next command is `pixi run train --preset navigation`.
 Use `.agents/skills/dwarl-performance-loop/SKILL.md` for later evidence-led tuning.
-For deployment requests, follow `docs/deploy.md` and check compatibility with the
+For deployment requests, follow `web/docs/deploy.md` and check compatibility with the
 target profile; never blindly reuse another robot's policy or dataset.

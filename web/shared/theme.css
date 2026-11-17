@@ -1,4 +1,5 @@
-/* A small visual layer over Material; no custom theme or JavaScript. */
+/* Shared DWARL branding: MkDocs loads this file; Vite imports it directly.
+   Keep palette, typography and logo assets here rather than copying them into the dashboard. */
 :root {
   --md-primary-fg-color: #8b348a;
   --md-primary-fg-color--light: #a35ca7;
@@ -9,6 +10,15 @@
   --md-default-fg-color: #302c36;
   --md-typeset-a-color: #8b348a;
   --md-code-bg-color: #f6f5f8;
+  --dwarl-surface: #fff;
+  --dwarl-background: #f8f7fa;
+  --dwarl-border: #ece9ef;
+  --dwarl-ink: #250326;
+  --dwarl-on-primary: #fff;
+  --dwarl-success: #467650;
+  --dwarl-on-success: #fff;
+  --dwarl-error: #b83242;
+  --dwarl-on-error: #fff;
 }
 
 body, input, button {
@@ -26,10 +36,10 @@ body, input, button {
 .md-typeset td code { white-space: normal; overflow-wrap: anywhere; }
 .md-grid { max-width: 78rem; }
 .md-header {
-  background: #fff;
-  color: #302c36;
+  background: var(--dwarl-surface);
+  color: var(--md-default-fg-color);
   box-shadow: none;
-  border-bottom: 1px solid #ece9ef;
+  border-bottom: 1px solid var(--dwarl-border);
 }
 .md-header__title { font-weight: 750; letter-spacing: -.03em; }
 .md-header__button.md-logo { color: #8b348a; }
@@ -143,6 +153,15 @@ body, input, button {
   --md-default-fg-color--light: #b8afc3;
   --md-typeset-a-color: #cf97d5;
   --md-code-bg-color: #25212c;
+  --dwarl-surface: #1e1b24;
+  --dwarl-background: #19171e;
+  --dwarl-border: #37313f;
+  --dwarl-ink: #f0eaf5;
+  --dwarl-on-primary: #250326;
+  --dwarl-success: #8fc49a;
+  --dwarl-on-success: #19171e;
+  --dwarl-error: #f09ba8;
+  --dwarl-on-error: #19171e;
 }
 [data-md-color-scheme="slate"] .md-header,
 [data-md-color-scheme="slate"] .md-footer,
@@ -152,7 +171,7 @@ body, input, button {
   border-color: #37313f;
 }
 [data-md-color-scheme="slate"] .md-header { border-top-color: var(--nobleo-orange); }
-[data-md-color-scheme="slate"] .md-logo img { content: url("../assets/dwarl-logo-dark.png"); }
+[data-md-color-scheme="slate"] .md-logo img { content: url("./assets/dwarl-logo-dark.png"); }
 [data-md-color-scheme="slate"] .md-search__form { background: #2b2633; }
 [data-md-color-scheme="slate"] .md-search__input,
 [data-md-color-scheme="slate"] .md-search__input::placeholder,
@@ -180,3 +199,24 @@ body, input, button {
 [data-md-color-scheme="slate"] .md-typeset .workflow-card:hover { background: #28212e; border-color: #a76daf; }
 [data-md-color-scheme="slate"] .md-copyright,
 [data-md-color-scheme="slate"] .md-copyright a { color: #bdb3c9 !important; }
+
+/* Native dashboard documents reuse the generated article, without a nested site shell. */
+.dwarl-content { font-size: 1rem; line-height: 1.8; max-width: 90ch; margin-inline: auto; min-width: 0; }
+.dwarl-content img { max-width: 100%; height: auto; border-radius: 8px; }
+.dwarl-content a { color: var(--md-typeset-a-color); text-decoration: underline; }
+.dwarl-content p, .dwarl-content ul, .dwarl-content ol { margin: 1em 0; }
+.dwarl-content ul, .dwarl-content ol { padding-left: 1.5em; }
+.dwarl-content ul { list-style: disc; }
+.dwarl-content ol { list-style: decimal; }
+.dwarl-content pre { background: var(--md-code-bg-color); overflow: auto; padding: 1rem; border-radius: 10px; }
+.dwarl-content pre > code { display: block; border: 0; border-radius: 0; padding: 0; background: transparent; font-size: .85rem; line-height: 1.7; white-space: pre; }
+.dwarl-content :not(pre) > code { background: var(--md-code-bg-color); padding: .15em .35em; }
+.dwarl-content h1 { font-size: 2rem; margin-top: 0; }
+.dwarl-content h2 { font-size: 1.45rem; }
+.dwarl-content table { border-collapse: collapse; width: 100%; }
+.dwarl-content td, .dwarl-content th { padding: .6rem; border-bottom: 1px solid var(--dwarl-border); text-align: left; }
+.dwarl-content .headerlink { margin-left: .4em; opacity: .4; }
+.dwarl-content .admonition { padding: 1rem; border-left: 3px solid var(--md-primary-fg-color); background: var(--md-code-bg-color); }
+.dwarl-content img[src$="#only-dark"] { display: none; }
+[data-md-color-scheme="slate"] .dwarl-content img[src$="#only-dark"] { display: block; }
+[data-md-color-scheme="slate"] .dwarl-content img[src$="#only-light"] { display: none; }

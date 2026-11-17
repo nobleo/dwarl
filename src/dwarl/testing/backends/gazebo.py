@@ -22,7 +22,7 @@ def prerequisites(*, quiet=False):
 
     missing = [name for name in ("ros2", "gz") if not shutil.which(name)]
     if missing:
-        raise ValueError(f"missing {', '.join(missing)}; run DWARL through pixi (`pixi run setup`, docs/ros.md)")
+        raise ValueError(f"missing {', '.join(missing)}; run DWARL through pixi (`pixi run setup`, web/docs/ros.md)")
     overlay()
     for package in ("dwarl_controller", "dwarl_bringup", "nav2_bringup", "ros_gz_bridge"):
         check = subprocess.run(["ros2", "pkg", "prefix", package], capture_output=True, text=True)

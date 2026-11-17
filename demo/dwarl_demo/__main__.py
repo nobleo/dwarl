@@ -314,7 +314,7 @@ def table(summary, title):
         label = {"gazebo": "dwarl"}.get(name, name.replace("gazebo-", ""))
         if drift is not None and drift > 0.1:
             say(f"  warning: {label} ends {drift:.2f} m from ground truth on average; the bench localizes with "
-                "odometry, so this includes odometry drift (docs/manual-integration.md)", YELLOW)
+                "odometry, so this includes odometry drift (web/docs/manual-integration.md)", YELLOW)
 
 
 def evaluate(run_dir, checkpoint, preset):

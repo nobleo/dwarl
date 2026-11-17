@@ -51,6 +51,15 @@ def test_case_selection_and_show_do_not_change_workload(train_cfg, tmp_path):
     c.mkdir()
     selected = materialize_cases(train_cfg, request, c)
     assert selected["cases"] == [case for case in first["cases"] if case["name"] == request.case]
+    # Replay one exact case from frozen maps; selecting by generator alone is not a replay.
+    target = first["cases"][-1]
+    request.case = None
+    request.case_id = target["id"]
+    request.dataset = str(a / "maps")
+    request.max_cases = 1
+    replay = tmp_path / "replay"
+    replay.mkdir()
+    assert materialize_cases(train_cfg, request, replay)["cases"] == [target]
 
 
 def test_explicit_reset_uses_materialized_pose(train_cfg, tmp_path):
