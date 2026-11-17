@@ -58,9 +58,12 @@ def _setup(context):
     planner = render_planner(os.path.join(here, "config", f"planner_{get('planner')}.yaml"), params + ".planner.yaml",
                              get("controller_params") or None)
     args = ["--ros-args", "--log-level", get("log_level")]
-    nodes = ["controller_server", "planner_server", "behavior_server", "bt_navigator"] + (
-        ["collision_monitor"] if safety else []
-    )
+    # Establish the monitor's bond before any controller can send velocity
+    # callbacks (which can block on TF). Reverse shutdown keeps it active until
+    # the command-producing nodes have deactivated.
+    nodes = (["collision_monitor"] if safety else []) + [
+        "controller_server", "planner_server", "behavior_server", "bt_navigator"
+    ]
     actions = [
         SetParameter("use_sim_time", get("use_sim_time") == "true"),
         SetParameter("enable_stamped_cmd_vel", bool(stamped)),

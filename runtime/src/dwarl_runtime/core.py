@@ -163,6 +163,8 @@ def lidar_observation(spec: DeploySpec, scan: Scan, laser: Any = None) -> np.nda
     px = T[0, 3] + d * u[0] - spec.origin[0]
     py = T[1, 3] + d * u[1] - spec.origin[1]
     rel = _wrap(np.arctan2(py, px) - spec.angle_min - np.pi) + np.pi  # [0, 2pi)
+    # Roundoff at the first ray must not wrap it outside a partial field of view.
+    rel = np.where(2 * np.pi - rel < 1e-12, 0.0, rel)
     k = np.floor(rel / inc + 0.5).astype(np.int64)  # == std::lround for rel >= 0
     if spec.full_circle:
         k %= nr

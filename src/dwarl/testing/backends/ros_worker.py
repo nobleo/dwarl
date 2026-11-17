@@ -31,6 +31,7 @@ def execute(directory):
     from rclpy.qos import qos_profile_sensor_data
     from rosgraph_msgs.msg import Clock
     from sensor_msgs.msg import LaserScan
+    from std_srvs.srv import Trigger
     from tf2_ros import Buffer, TransformListener
 
     data = json.loads((directory / "input.json").read_text())
@@ -154,6 +155,22 @@ def execute(directory):
                 if time.monotonic() > deadline:
                     raise TimeoutError(f"{name} did not activate")
                 rclpy.spin_once(node, timeout_sec=.1)
+        # ACTIVE node state precedes bond establishment. Sending a goal there
+        # races the last server's bond handshake, especially when command
+        # callbacks wait for TF on a slow simulator.
+        for name in ("lifecycle_manager_map", "lifecycle_manager_navigation"):
+            service = node.create_client(Trigger, f"/{name}/is_active")
+            deadline = time.monotonic() + request["startup_timeout"]
+            while True:
+                spin_until(service.service_is_ready, max(.1, deadline-time.monotonic()))
+                future = service.call_async(Trigger.Request())
+                spin_until(future.done, max(.1, deadline-time.monotonic()))
+                if future.result().success:
+                    break
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"{name} did not complete lifecycle/bond startup")
+                rclpy.spin_once(node, timeout_sec=.1)
+            node.destroy_client(service)
         if math.dist(state["pose"][:2], case["start"][:2]) > .1:
             raise RuntimeError("Gazebo ground-truth spawn does not match the canonical start")
         goal = NavigateToPose.Goal()

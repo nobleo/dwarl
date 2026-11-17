@@ -26,6 +26,7 @@ dependencies = [
     "prompt-toolkit>=3.0",
     "argcomplete>=3.5",
     "markdown>=3.7",
+    "psutil",
 ]
 
 [project.scripts]
