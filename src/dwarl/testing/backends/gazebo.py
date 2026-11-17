@@ -144,11 +144,11 @@ class GazeboBackend:
                 from dwarl.testing.unmapped import recorded_routes
 
                 self._routes = recorded_routes(source)
-            if case["id"] in self._routes:  # place them where Nav2 will actually drive
-                route = dict(case, reference_path=self._routes[case["id"]])
-                placement = {"route": "nav2_first_plan", "source": str(source)}
-            else:
-                placement = {"route": "dataset_path", "missing_from": str(source)}
+            if case["id"] not in self._routes:
+                raise ValueError(f"test.unmapped_route: {source} has no obstacle-free Gazebo global plan "
+                                 f"for selected case {case['id']}")
+            route = dict(case, reference_path=self._routes[case["id"]])
+            placement = {"route": "nav2_first_plan", "source": str(source)}
         unmapped = place_unmapped(md, route, int(self.request.get("unmapped_obstacles", 0)), robot,
                                   doorways=bool(self.request.get("unmapped_near_doorways", False)))
         export_gazebo(md, out, "world", unmapped)

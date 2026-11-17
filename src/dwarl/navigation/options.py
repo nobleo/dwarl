@@ -6,6 +6,8 @@ Composing a configuration validates these options, and composing must work in sl
 
 from __future__ import annotations
 
+import math
+
 SURPRISE_OBSTACLES = {
     "probability": 0.0,          # share of training episodes with obstacles on the path (0 disables)
     "count": [1, 3],             # obstacles per episode, inclusive range
@@ -40,6 +42,9 @@ def surprise_obstacles(cfg) -> dict:
         raise ValueError("surprise_obstacles.count must be [min, max] with 1 <= min <= max")
     if float(values["size"][0]) <= 0 or float(values["size"][1]) < float(values["size"][0]):
         raise ValueError("surprise_obstacles.size must be [min, max] with 0 < min <= max")
+    release_time = float(values["release_time"])
+    if not math.isfinite(release_time) or release_time <= 0:
+        raise ValueError("surprise_obstacles.release_time must be finite and strictly positive")
     return values
 
 
@@ -54,4 +59,8 @@ def safety_layer(cfg) -> dict:
         raise ValueError(f"unknown safety_layer settings: {sorted(unknown)}")
     if s["margin"] < 0 or s["latency"] < 0 or int(s["min_points"]) < 1:
         raise ValueError("safety_layer: margin and latency must be nonnegative, min_points at least 1")
+    for key in ("margin", "latency", "min_points"):
+        if s[key] != SAFETY_LAYER[key]:
+            raise ValueError(f"safety_layer.{key} must be {SAFETY_LAYER[key]}: "
+                             "custom training safety settings are not exported to deployment")
     return s

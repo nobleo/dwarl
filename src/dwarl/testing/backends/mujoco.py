@@ -20,7 +20,7 @@ class MujocoBackend:
         self.robot = {"footprint": list(map(list, contract.robot.footprint)) if contract.robot.get("footprint")
                       else None, "footprint_radius": float(contract.robot.footprint_radius)}
         cfg.dataset.path, cfg.dataset.split = str(directory / "maps"), workload["split"]
-        self.env = NavVecEnv(cfg, split=workload["split"], sequential=True)
+        self.env = NavVecEnv(cfg, split=workload["split"], sequential=True, obstacle_capacity=self.unmapped)
         try:
             self.policy = OnnxPolicy(bundle / "policy.onnx")
             self.env.record = True

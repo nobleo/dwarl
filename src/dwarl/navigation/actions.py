@@ -30,7 +30,8 @@ class DifferentialDriveAction(ActionTerm):
             # the collision monitor decides on the commanded velocity and the latest scan
             safety.blocked[:] = safety.stops(self.command)
             if safety.enabled:
-                # it sends zero instead; Nav2 then fails FollowPath and the controller restarts from rest
+                # Stop physics now, but retain the attempted action and command
+                # delta for rewards and recording. Recovery resets history later.
                 self.command[safety.blocked] = 0.
         v, w = self.command.T
         half = 0.5 * e.wheel_sep

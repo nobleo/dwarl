@@ -77,3 +77,4 @@ site/
 .playwright-mcp/
 .pixi/
 /work/
+MUJOCO_LOG.TXT

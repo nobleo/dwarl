@@ -92,6 +92,38 @@ def test_doorway_option_also_places_obstacles_behind_doors():
     assert cfg.test.unmapped_near_doorways
 
 
+def test_doorway_exclusion_only_removes_obstacles_without_moving_the_rest():
+    walls = [[BOX, 0.0, 2.75, 0.0, 0.05, 2.25], [BOX, 0.0, -2.75, 0.0, 0.05, 2.25]]
+    md = _map(walls)
+    removed = retained = 0
+    for identifier in "abcdefghijklmnopqrst":
+        case = _case(identifier)
+        anywhere = place_unmapped(md, case, 3, ROBOT, spacing=1.5, doorways=True)
+        narrow = narrow_points(md, np.asarray(case["reference_path"]), ROBOT)
+        keep = [p for p in anywhere
+                if np.linalg.norm(narrow - p[1:3], axis=1).min() >= 2 * ROBOT["footprint_radius"] + p[4]]
+        expected = np.asarray(keep, np.float32).reshape(-1, 6)
+        np.testing.assert_array_equal(place_unmapped(md, case, 3, ROBOT, spacing=1.5), expected)
+        removed += len(anywhere) - len(expected)
+        retained += len(expected)
+    assert removed and retained
+
+
+def test_missing_recorded_route_fails_before_starting_gazebo(tmp_path):
+    from omegaconf import OmegaConf
+
+    from dwarl.testing.backends.gazebo import GazeboBackend
+
+    backend = GazeboBackend.__new__(GazeboBackend)
+    backend.directory, backend.controller = tmp_path, "dwarl"
+    backend.contract = OmegaConf.create({"robot": ROBOT})
+    backend.request = OmegaConf.create({"unmapped_route": str(tmp_path / "prior"), "unmapped_obstacles": 3})
+    backend._routes = {"another-case": [[-4, 0], [4, 0]]}
+    _map().save(tmp_path / "map.npz")
+    with pytest.raises(ValueError, match="unmapped_route:.*selected case a"):
+        backend.execute_case(dict(_case(), map_file="map.npz"))
+
+
 def test_obstacles_can_follow_nav2s_recorded_route(tmp_path):
     import json
 

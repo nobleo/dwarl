@@ -46,8 +46,9 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
     added the goal must stay reachable for a robot of ``passage_radius`` (half its width
     plus ``margin``). Candidates that fail are resampled; an obstacle is skipped after
     ``tries`` failed candidates, so fewer than ``count`` may be returned on tight maps.
-    ``doorways=True`` drops the doorway rule (a harder test: obstacles may sit right behind a door); the
-    rule only rejects candidates after they are drawn, so the other obstacles stay where they were.
+    ``doorways=True`` drops the doorway rule (a harder test: obstacles may sit right behind a door).
+    Generate the layout without that rule first, then filter without replacement: toggling the rule
+    never moves unrelated obstacles or changes subsequent random draws.
     """
     if count <= 0:
         return np.zeros((0, 6), np.float32)
@@ -90,8 +91,6 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
                 continue
             if any(np.linalg.norm(centre - other[1:3]) < spacing for other in placed):
                 continue
-            if not doorways and len(narrow) and np.linalg.norm(narrow - centre, axis=1).min() < turn_clearance + radius:
-                continue
             footprint = rasterize(prim[None], n, res, md.size)
             if (footprint & mapped).any():
                 continue
@@ -100,6 +99,9 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
                 continue
             placed.append(prim)
             break
+    if not doorways and len(narrow):
+        placed = [prim for prim in placed
+                  if np.linalg.norm(narrow - prim[1:3], axis=1).min() >= turn_clearance + prim[4]]
     return np.stack(placed).astype(np.float32) if placed else np.zeros((0, 6), np.float32)
 
 

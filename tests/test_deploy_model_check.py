@@ -31,3 +31,11 @@ def test_real_changes_are_reported(tmp_path):
     assert model_difference(trained, _write(tmp_path / "bigger.xml", size="0.25")) is not None  # first field
     assert model_difference(trained, _write(tmp_path / "slower.xml", dt="0.004")) == "opt.timestep"
     assert model_difference(trained, tmp_path / "missing.xml") == "missing.xml"
+
+
+def test_collision_mask_bits_are_compared_exactly(tmp_path):
+    trained = _write(tmp_path / "trained.xml")
+    target = _write(tmp_path / "target.xml")
+    trained.write_text(trained.read_text().replace('name="chassis"', 'name="chassis" contype="1073741824"'))
+    target.write_text(target.read_text().replace('name="chassis"', 'name="chassis" contype="1073741825"'))
+    assert model_difference(trained, target) in {"body_contype", "geom_contype"}

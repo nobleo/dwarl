@@ -58,10 +58,12 @@ def model_difference(trained, target, tolerance=1e-9):
                if not name.startswith("_")]  # timestep, gravity, solver
     for name, x, y in fields:
         if isinstance(x, np.ndarray):
-            numeric = x.dtype.kind in "biuf"
-            same = x.shape == y.shape and (np.allclose(x, y, rtol=tolerance, atol=tolerance) if numeric
+            floating = x.dtype.kind in "fc"
+            same = x.shape == y.shape and (np.allclose(x, y, rtol=tolerance, atol=tolerance) if floating
                                            else np.array_equal(x, y))
-        elif isinstance(x, (bool, int, float)):
+        elif isinstance(x, (bool, int, np.integer, np.bool_)):
+            same = x == y
+        elif isinstance(x, (float, np.floating)):
             same = np.isclose(x, y, rtol=tolerance, atol=tolerance)
         else:
             continue

@@ -47,6 +47,7 @@ between 0 and 1 from privileged geometry: how close the path within the next few
 gets nearer (`near`). Cross-track and heading rewards are scaled by one minus that level, so
 while the path is blocked a detour costs only progress, and the proximity and collision
 penalties keep their full weight. Behind the obstacle the level decays over `release_time`
+(a finite, strictly positive number of seconds)
 and the policy is rewarded for rejoining the path.
 
 Two more terms keep the detours usable on a robot. `safety_zone` costs as much as a short
@@ -59,11 +60,14 @@ action is the command change, so `action_rate` does not see weaving. The preset 
 the entropy bonus, so the exploration noise does not grow into bang-bang steering.
 
 The preset also enables `recipe.env.safety_layer`: training then stops the robot like the
-monitor does, and the command restarts from rest, as it does after Nav2's recovery. The policy
+monitor does, and the command restarts from rest with cleared previous-action and lidar-history
+observations, as it does after Nav2's recovery. The policy
 learns that a pose too close to an obstacle leaves it standing, for instance unable to turn
 away, instead of only paying for it. MuJoCo tests of such a run apply the same layer.
-`margin`, `latency` and `min_points` must match the robot's collision monitor
-(`dwarl_bringup` builds it with the defaults).
+Only the deployed defaults are supported for `margin` (0.035 m), `latency` (0.15 s),
+and `min_points` (2). Custom training values are rejected because they are not exported
+to the robot's collision monitor. Separate deployment tuning can change that monitor,
+so verify its settings before attributing results to training/deployment parity.
 
 Only the critic sees the avoidance level. The actor's observations do not change, so the
 exported policy and the Nav2 plugin are the same as for path following. Validation of such a

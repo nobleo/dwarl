@@ -39,7 +39,10 @@ from dwarl.training.environment.recorder import EpisodeRecorder
 
 
 class NavVecEnv(VecEnv):
-    def __init__(self, cfg: Any, split="train", sequential=False, gui=None):
+    def __init__(self, cfg: Any, split="train", sequential=False, gui=None, obstacle_capacity=0):
+        self.obstacle_capacity = int(obstacle_capacity)
+        if self.obstacle_capacity < 0:
+            raise ValueError("obstacle_capacity must be non-negative")
         self._robot_tmp = None
         self.world = None
         self.viewer = None
@@ -175,6 +178,9 @@ class NavVecEnv(VecEnv):
             clearance=self._episode_clearance(xy, yaw), lidar_clearance=self.reward_context.clearance,
             rewards=self.reward_manager.term_values,
         ))
+        # Preserve the blocked attempt for rewards/recording, then clear controller
+        # state and refill lidar history from the next scan before policy inference.
+        self.safety.restart_blocked()
         extras = {
             "time_outs": torch.as_tensor(self.termination_manager.time_outs.copy(), device=self.device), "log": {},
         }
@@ -341,11 +347,14 @@ class NavVecEnv(VecEnv):
             raise ValueError("static_map datasets must contain exactly one map")
         if fixed_map is None and self.dataset.max_primitives > int(sc.pool_size):
             raise ValueError(f"dataset needs pool_size >= {self.dataset.max_primitives}")
-        # Room for obstacles that are not on the map: training samples, or a test case's (a few).
-        pool = max(int(sc.pool_size), self.dataset.max_primitives + max(self.surprises.max_count, 8))
+        # Reserve test capacity before compilation, just like training's sampled obstacles.
+        extra = max(self.surprises.max_count, self.obstacle_capacity)
+        pool = max(int(sc.pool_size), self.dataset.max_primitives + max(extra, 8))
         kwargs = dict(tile_size=float(self.dataset.maps[0].size), tile_gap=float(sc.tile_gap),
                       pool_size=pool, robot_xml=rc.xml, timestep=float(sc.timestep))
-        if fixed_map is not None:
+        # Immutable maps keep their compiled BVH only when no runtime additions are needed.
+        # The mutable world disables midphase so moved obstacle geometry remains exact.
+        if fixed_map is not None and not extra:
             kwargs["fixed_map"] = (fixed_map.primitives, fixed_map.height)
         shards = int(sc.get("num_shards", 0) or 0) or default_num_shards(self.num_envs)
         return ShardedWorld(self.num_envs, shards, **kwargs) if not gui and shards > 1 else TiledWorld(

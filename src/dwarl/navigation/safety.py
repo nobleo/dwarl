@@ -43,16 +43,21 @@ def zone_hits(points: np.ndarray, command: np.ndarray, polygon: np.ndarray, v_mi
     v, w = np.asarray(command, dtype=np.float64).T
     px, py = points[..., 0], points[..., 1]
     lateral = (py >= y0) & (py <= y1)
-    # forward_fast, forward_slow, backward and the stopped fallback are boxes that differ in their x extent
-    front = np.where(v >= vmid, x1 + brake(v_max), np.where(v >= _CREEP, x1 + brake(vmid), x1))
-    back = np.where(v <= -_CREEP, x0 - brake(min(v_min, -_CREEP)), x0)
+    # Nav2 chooses the FIRST matching velocity band, including shared boundaries.
+    # For a slow robot vmid can be below _CREEP: forward_fast then takes precedence
+    # over rotation even for commands with abs(v) < _CREEP.
+    fast = v >= vmid
+    slow = ~fast & (v >= _CREEP) & (v <= vmid)
+    backward = ~fast & ~slow & (v <= -_CREEP)
+    front = np.where(fast, x1 + brake(v_max), np.where(slow, x1 + brake(vmid), x1))
+    back = np.where(backward, x0 - brake(min(v_min, -_CREEP)), x0)
     in_box = lateral & (px >= back[:, None]) & (px <= front[:, None])
     # turn_left / turn_right: octagon with circumradius R, vertices at pi/8 + k pi/4 (edge normals at k pi/4)
     radius = float(np.linalg.norm(polygon, axis=-1).max()) + margin
     normals = np.arange(8) * math.pi / 4
     reach = px[..., None] * np.cos(normals) + py[..., None] * np.sin(normals)
     in_octagon = reach.max(-1) <= radius * math.cos(math.pi / 8)
-    turning = (np.abs(v) < _CREEP) & (np.abs(w) >= _TURN)
+    turning = ~fast & ~slow & ~backward & (np.abs(v) <= _CREEP) & (np.abs(w) >= _TURN)
     inside = np.where(turning[:, None], in_octagon, in_box)
     return inside.sum(-1)
 
@@ -77,3 +82,11 @@ class SafetyLayer:
     def stops(self, command: np.ndarray) -> np.ndarray:
         """Boolean (N,): the monitor would stop the robot for this command and the latest scan."""
         return self.hits(command) >= self.min_points
+
+    def restart_blocked(self):
+        """After recording the transition, mirror the deployed controller's recovery reset."""
+        if self.enabled:
+            ids = np.flatnonzero(self.blocked)
+            if ids.size:
+                self.env.action_manager.reset(ids)
+                self.env.observation_manager.reset(ids)

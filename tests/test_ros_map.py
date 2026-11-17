@@ -113,3 +113,57 @@ def test_fixed_dataset_env(source, tmp_path, train_cfg, shards):
         assert not env.world.collided_envs().any()
     finally:
         env.close()
+
+
+def test_imported_map_test_backend_reserves_requested_obstacles(source, tmp_path, train_cfg, monkeypatch):
+    from omegaconf import OmegaConf
+
+    from dwarl.robot.config import materialize
+    from dwarl.testing.backends.mujoco import MujocoBackend
+
+    build_ros_map(source, tmp_path / "maps", num_pairs=3, log=lambda _: None)
+    materialize(train_cfg, tmp_path / "robot")
+    train_cfg.sim.pool_size = 1
+    monkeypatch.setattr("dwarl.artifacts.exporter.OnnxPolicy", lambda _: None)
+    request = OmegaConf.create({"show": False, "unmapped_obstacles": 17})
+    backend = MujocoBackend(train_cfg, tmp_path, {"split": "test"}, tmp_path, request)
+    env = backend.env
+    try:
+        md = env.dataset.maps[0]
+        original_map, original_occupancy = md.primitives.copy(), md.occupancy.copy()
+        assert env.world.pool_size >= len(md.primitives) + 17
+        path = md.path(0)
+        extra = np.array([[1, *path[k % len(path)], 0, .1, .1] for k in range(17)], np.float32)
+        env.reset_case(0, 0, 0., 7, unmapped=extra)
+        used = env.world.pool_geoms[0]
+        assert (env.world.model.geom_contype[used] > 0).sum() == len(md.primitives) + 17
+        np.testing.assert_allclose(env.world.model.geom_pos[used[len(md.primitives):len(md.primitives) + 17], :2],
+                                   extra[:, 1:3])
+        env.reset_case(0, 0, 0., 7)
+        assert (env.world.model.geom_contype[used] > 0).sum() == len(md.primitives)
+        np.testing.assert_array_equal(md.primitives, original_map)
+        np.testing.assert_array_equal(md.occupancy, original_occupancy)
+        np.testing.assert_allclose(env.world.model.geom_pos[used[:len(md.primitives)], :2], md.primitives[:, 1:3])
+    finally:
+        backend.close()
+
+
+def test_imported_map_accepts_training_obstacles(source, tmp_path, train_cfg):
+    from omegaconf import open_dict
+
+    from dwarl.training.environment.nav_env import NavVecEnv
+
+    out = tmp_path / "maps"
+    build_ros_map(source, out, num_pairs=3, log=lambda _: None)
+    train_cfg.dataset.path = str(out)
+    train_cfg.env.num_envs = 1
+    train_cfg.sim.pool_size = 1
+    with open_dict(train_cfg):
+        train_cfg.env.surprise_obstacles = {"probability": 1., "count": [1, 1]}
+    env = NavVecEnv(train_cfg, split="test", sequential=True)
+    try:
+        assert env.world.fixed_map is None
+        assert env.world.pool_size >= env.dataset.max_primitives + 1
+        assert len(env.surprises.obstacles(0)) == 1
+    finally:
+        env.close()

@@ -31,6 +31,7 @@ def execute(cfg, assignments=()):
     from dwarl.training.validation import EarlyStop, attach_validation
 
     checkpoint = None
+    source = None
     if cfg.train.resume:
         run = resolve_run(cfg.train.resume)
         checkpoint = resolve_checkpoint(run)
@@ -60,6 +61,19 @@ def execute(cfg, assignments=()):
         name = cfg.train.name
         if not name or Path(name).name != name or name in (".", ".."):
             raise ValueError("train.name must be a simple directory name")
+        if cfg.train.init_from:
+            # Freeze "latest" before publishing the destination as a new run.
+            origin, selector = resolve_run(cfg.train.init_from), str(cfg.train.init_checkpoint)
+            try:
+                source = resolve_checkpoint(origin, selector)
+            except ValueError as exc:
+                # The store has no distinct exception type for an absent best selection.
+                # Integrity errors and dangling best records must not fall back to latest.
+                if selector != "best" or str(exc) != (
+                    "no best checkpoint: no completed comparable validation workload"
+                ):
+                    raise
+                source = resolve_checkpoint(origin)
         run = Path("runs") / f"{time.strftime('%Y%m%d-%H%M%S')}_{name}_{uuid4().hex[:6]}"
         run = run.resolve()
         run.mkdir(parents=True)
@@ -112,18 +126,11 @@ def execute(cfg, assignments=()):
             from dwarl.training.diagnostics import attach_diagnostics
 
             attach_diagnostics(runner, env, cfg, checks)
-            if cfg.train.init_from and not checkpoint:
+            if source is not None:
                 from dwarl.training.checkpoint import warm_start
 
-                origin, selector = resolve_run(cfg.train.init_from), str(cfg.train.init_checkpoint)
-                try:  # best: the source run's selected (validated) checkpoint, else its latest
-                    source = resolve_checkpoint(origin, selector)
-                except ValueError:
-                    if selector != "best":
-                        raise
-                    source = resolve_checkpoint(origin)
                 summary = warm_start(runner, source.path, contract.device)
-                print(f"Initialized from {source.path} (iteration {source.iteration}): {summary}", flush=True)
+                ui.info(f"Initialized from {source.path} (iteration {source.iteration}): {summary}")
             if checkpoint:
                 infos = runner.load(str(checkpoint.path), map_location=contract.device)
                 runner.current_learning_iteration += 1
