@@ -44,5 +44,11 @@ pixi run test --sim gazebo --suite validation
 Use `--sim both` to evaluate matching cases in MuJoCo and Gazebo. Gazebo cases run
 sequentially with isolated domains and partitions.
 
+The safety monitor activates before command-producing servers, and tests wait for
+both lifecycle managers to finish establishing bonds before sending a goal.
+Nav2's 4-second heartbeat watchdog remains enabled. A heartbeat shutdown is an
+infrastructure failure, not evidence of controller quality: inspect `launch.log`
+and measure simulator speed with `--profile-compute`.
+
 See the [full adapter contract](manual-integration.md#6-add-gazebo-testing) and
 [runtime measurement conventions](results.md#measurement-conventions).

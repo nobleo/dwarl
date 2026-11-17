@@ -37,7 +37,20 @@ def prerequisites(*, quiet=False):
     return findings
 
 
-def stop_owned(process):
+def stop_owned(process, partition=None):
+    import psutil
+
+    # Gazebo may call setsid(), escaping both the worker's session and process
+    # group. The random per-episode partition survives that detachment.
+    detached = []
+    if partition:
+        for candidate in psutil.process_iter():
+            try:
+                if (candidate.uids().real == os.getuid()
+                        and candidate.environ().get("GZ_PARTITION") == partition):
+                    detached.append(candidate)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
     # Signal the owned group even when its leader has exited: descendants may remain.
     for sig, timeout in ((signal.SIGINT, 10), (signal.SIGTERM, 5), (signal.SIGKILL, 5)):
         try:
@@ -49,6 +62,15 @@ def stop_owned(process):
         except subprocess.TimeoutExpired:
             continue
     process.wait()
+    for sig, timeout in ((signal.SIGTERM, 5), (signal.SIGKILL, 5)):
+        for candidate in detached:
+            try:
+                candidate.send_signal(sig)
+            except psutil.NoSuchProcess:
+                pass
+        _, detached = psutil.wait_procs(detached, timeout=timeout)
+        if not detached:
+            break
 
 
 class GazeboBackend:
@@ -116,10 +138,12 @@ class GazeboBackend:
                    "robot": OmegaConf.to_container(self.contract.robot, resolve=True)})
         environment = dict(os.environ, ROS_DOMAIN_ID=str(self.domain), GZ_PARTITION=uuid4().hex,
                            ROS_AUTOMATIC_DISCOVERY_RANGE="LOCALHOST")
+        self.partition = environment["GZ_PARTITION"]
         with (out / "launch.log").open("w") as log:
             self.process = subprocess.Popen([sys.executable, "-m", "dwarl.testing.backends.ros_worker", str(out)],
                                             env=environment, stdout=log, stderr=log, start_new_session=True)
-            # The worker leads a new session that its Gazebo keeps even when orphaned (see ros_env).
+            # Keep the legacy session record for diagnostics as well as the exact
+            # partition used to reap Gazebo processes that detach from that session.
             (lease_directory() / f"{self.domain}.session").write_text(str(self.process.pid))
             try:
                 self.process.wait(timeout=self.request.startup_timeout + case["time_budget"] * 10 + 60)
@@ -127,14 +151,14 @@ class GazeboBackend:
                     raise RuntimeError(f"Gazebo worker failed ({self.process.returncode}); see {out / 'launch.log'}")
                 return json.loads((out / "result.json").read_text())
             finally:
-                stop_owned(self.process)
+                stop_owned(self.process, self.partition)
                 self.process = None
                 if (out / "partial.json").is_file():
                     self.partial = json.loads((out / "partial.json").read_text())
 
     def close(self):
         if self.process is not None:
-            stop_owned(self.process)
+            stop_owned(self.process, self.partition)
         if self.lease is not None:
             self.lease.close()
         self.build_lock.close()

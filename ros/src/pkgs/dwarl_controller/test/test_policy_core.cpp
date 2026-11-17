@@ -49,6 +49,33 @@ TEST(Core, LidarRangeInvertsNormalization)
   }
 }
 
+TEST(Core, LidarFirstRayRoundoff)
+{
+  DeploySpec s;
+  s.num_rays = 3;
+  s.angle_min = -1.0;
+  s.angle_increment = 0.5;
+  s.full_circle = false;
+  s.min_range = 0.0;
+  s.max_range = 10.0;
+  s.lidar_normalize = "linear";
+  dwarl_controller::Scan scan;
+  scan.angle_increment = 0.5;
+  scan.range_max = 10.0;
+  scan.ranges = {2.0f, 4.0f, 6.0f};
+  for (double offset : {-1e-13, 0.0, 1e-13}) {
+    scan.angle_min = s.angle_min + offset;
+    const auto o = dwarl_controller::lidarObservation(s, scan);
+    EXPECT_NEAR(o[0], 0.2, 1e-7);
+    EXPECT_NEAR(o[1], 0.4, 1e-7);
+    EXPECT_NEAR(o[2], 0.6, 1e-7);
+  }
+  scan.angle_min = s.angle_min - 1e-6;
+  scan.ranges = {2.0f};
+  const auto outside = dwarl_controller::lidarObservation(s, scan);
+  for (float value : outside) {EXPECT_FLOAT_EQ(value, 1.0f);}
+}
+
 TEST(Core, StateObservationGoalPoints)
 {
   DeploySpec s;

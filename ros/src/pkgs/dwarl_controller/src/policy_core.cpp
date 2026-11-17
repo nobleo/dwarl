@@ -136,7 +136,9 @@ std::vector<float> lidarObservation(const DeploySpec & spec, const Scan & scan, 
   const bool train_full = spec.full_circle;
   // bin index of a bearing in the base frame, -1 if outside the training FOV
   auto bin = [&](double bearing) -> long {
-      const double rel = wrap(bearing - spec.angle_min - M_PI) + M_PI;  // [0, 2pi)
+      double rel = wrap(bearing - spec.angle_min - M_PI) + M_PI;  // [0, 2pi)
+      // Roundoff at the first ray must not wrap it outside a partial field of view.
+      if (2 * M_PI - rel < 1e-12) {rel = 0.0;}
       const long k = std::lround(rel / spec.angle_increment);
       if (train_full) {return k % nr;}
       return k < nr ? k : -1;
