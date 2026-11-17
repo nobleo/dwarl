@@ -166,7 +166,8 @@ def test_paired_time_does_not_compare_different_successful_cases():
     assert stats["success_rate_delta"] == 0
 
 
-def test_gazebo_consumes_frozen_geometry_without_resampling(tmp_path, train_cfg, monkeypatch):
+@pytest.mark.parametrize("phase", [None, "clean", "obstructed"])
+def test_gazebo_consumes_frozen_geometry_without_resampling(tmp_path, train_cfg, monkeypatch, phase):
     from dwarl.testing.backends import gazebo
     from dwarl.training.environment.dataset import MapDataset
 
@@ -176,12 +177,19 @@ def test_gazebo_consumes_frozen_geometry_without_resampling(tmp_path, train_cfg,
             "unmapped_obstacles": [[1, 1, 2, 0, .2, .2]],
             "unmapped_placement": {"route": "nav2_first_plan", "source": "clean"}}
     backend = gazebo.GazeboBackend.__new__(gazebo.GazeboBackend)
-    backend.directory, backend.phase, backend.controller = tmp_path, "obstructed", "rpp"
+    backend.directory, backend.phase, backend.controller = tmp_path, phase, "rpp"
     backend.contract, backend.bundle, backend.domain = train_cfg, tmp_path / "bundle", 120
     backend.request = compose_config(assignments=["test.sim=gazebo", "test.unmapped_obstacles=3"]).test
     backend._routes = None
-    destination = tmp_path / "gazebo/obstructed/rpp/case"
+    destination = tmp_path / "gazebo"
+    if phase:
+        destination /= phase
+    destination /= "rpp/case"
     def process(*args, **kwargs):
+        from dwarl.testing.backends.ros_worker import load_case_map
+
+        loaded = load_case_map(destination, json.loads((destination / "input.json").read_text()))
+        np.testing.assert_array_equal(loaded.primitives, md.primitives)
         (destination / "result.json").write_text(json.dumps({"status": "completed"}))
         return SimpleNamespace(pid=123, returncode=0, wait=lambda **kw: None)
     monkeypatch.setattr(gazebo.subprocess, "Popen", process)

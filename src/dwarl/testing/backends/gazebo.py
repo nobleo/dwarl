@@ -163,6 +163,7 @@ class GazeboBackend:
                                       doorways=bool(self.request.get("unmapped_near_doorways", False)))
         export_gazebo(md, out, "world", unmapped)
         write_json(out / "input.json", {"case": case, "bundle": str(self.bundle), "controller": self.controller,
+                   "map_file": os.path.relpath(self.directory / case["map_file"], out),
                    "unmapped_obstacles": unmapped.tolist(), "unmapped_placement": placement,
                    "request": OmegaConf.to_container(self.request),
                    "robot": robot})

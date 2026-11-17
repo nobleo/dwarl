@@ -16,6 +16,11 @@ from dwarl.testing.scoring import score
 from dwarl.testing.trace import BehaviorTrace
 
 
+def load_case_map(directory, data):
+    """Load the canonical scoring geometry supplied to this worker."""
+    return MapData.load(directory / data["map_file"])
+
+
 def execute(directory):
     import rclpy
     from action_msgs.msg import GoalStatus
@@ -193,7 +198,7 @@ def execute(directory):
             compute = ComputeProfile(processes[0].pid, float(deploy["control"]["dt"]))
             compute.sample()
         trajectory, travelled, clearance, collision = [state["pose"][:2]], 0., float("inf"), False
-        md = MapData.load(directory.parents[2] / case["map_file"])
+        md = load_case_map(directory, data)
         unmapped = np.asarray(data.get("unmapped_obstacles") or [], np.float32).reshape(-1, 6)
         obstacles = np.concatenate([md.primitives, unmapped])  # scored geometry: mapped + unmapped
         footprint = np.asarray(robot["footprint"]) if robot.get("footprint") else None
