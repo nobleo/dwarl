@@ -13,4 +13,8 @@ site
 ros/build
 ros/install
 ros/log
+ros/build-runtime
+ros/install-runtime
+log
+MUJOCO_LOG.TXT
 docker/robots_ws

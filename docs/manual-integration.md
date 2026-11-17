@@ -606,11 +606,14 @@ changes to the DWARL repository. It is the Docker counterpart of `DWARL_ROBOT_WS
     docker compose run --rm shell dwarl robot check my_robot_dwarl
     ```
 
-The build copies `$ROBOTS_WS/src` to `/opt/robots_ws/src`, installs dependencies with
-rosdep (keys it cannot resolve are skipped), and builds it with colcon. The container
-sources `/opt/robots_ws/install/setup.bash`, so `my_robot_dwarl` works as a profile name
-and `package://` URIs resolve. Without `ROBOTS_WS`, the empty `docker/robots_ws` is used.
-Rebuild the image after changing the packages.
+The build copies `$ROBOTS_WS/src` to `/opt/robots_ws/src` and runs `pixi run --locked build-robot`
+against the same locked ROS environment as local development. The container's Pixi
+activation loads `/opt/dwarl/.pixi/robot/install`, so `my_robot_dwarl` works as a profile
+name and `package://` URIs resolve. Declare additional dependencies using
+`pixi add --feature ros ros-jazzy-<package>` and commit the updated `pyproject.toml`
+and `pixi.lock`, or include their sources in the robot workspace. No separate rosdep
+installation is performed. Without `ROBOTS_WS`, the empty `docker/robots_ws` is used.
+Rebuild the image after changing packages or dependencies.
 
 To offer the robot in the Docker demo (`docker compose run --rm demo`), add it to
 `work/robots.yaml`, which is merged over the built-in robot list; see `docker/README.md`.

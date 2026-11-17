@@ -1,62 +1,41 @@
-# DWARL with ROS 2 Jazzy, Gazebo Harmonic and Nav2 (DWARL, DWB, MPPI, RPP controllers).
+# One dependency stack: the same locked Pixi default environment used on the host.
 # Build through docker/compose.yaml; see docker/README.md.
-FROM osrf/ros:jazzy-desktop AS base
+FROM ghcr.io/prefix-dev/pixi:0.83.0
+
 ENV DEBIAN_FRONTEND=noninteractive
-# Upgrade first: the base image's ROS libraries must match the Nav2 packages installed next
-# (otherwise controller_server fails on a Fast-CDR symbol lookup).
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-      python3-colcon-common-extensions python3-rosdep git curl less nano \
-      ros-jazzy-navigation2 ros-jazzy-nav2-bringup ros-jazzy-nav2-minimal-tb3-sim \
-      ros-jazzy-nav2-regulated-pure-pursuit-controller ros-jazzy-nav2-mppi-controller \
-      ros-jazzy-ros-gz ros-jazzy-gz-ros2-control ros-jazzy-ros2-controllers ros-jazzy-ros2-control \
-      ros-jazzy-xacro ros-jazzy-robot-state-publisher \
+# OS utilities and display drivers only. Python, ROS, Gazebo and build tools come from pixi.lock.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates git less nano libgl1-mesa-dri libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=ghcr.io/astral-sh/uv:0.8.17 /uv /uvx /usr/local/bin/
-# Expose the GPU for CUDA and OpenGL when the NVIDIA container toolkit is present (compose.gpu.yaml).
 ENV NVIDIA_VISIBLE_DEVICES=all NVIDIA_DRIVER_CAPABILITIES=all
-# The ROS packages are built below; dwarl must not try to rebuild them through pixi.
-ENV DWARL_PREBUILT_ROS=1
+ENV DWARL_PREBUILT_ROS=1 DWARL_ROBOT_WS=/opt/robots_ws
+# Bound compilation parallelism (also useful when training is running on the host).
+ARG BUILD_JOBS=2
+ENV CMAKE_BUILD_PARALLEL_LEVEL=${BUILD_JOBS}
 
-# ---------------------------------------------------------------- DWARL Python environment
-# The venv uses the system Python so that ROS's rclpy/gz bindings load inside it.
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv UV_PYTHON=/usr/bin/python3.12 UV_PYTHON_DOWNLOADS=never \
-    UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1
 WORKDIR /opt/dwarl
-# pixi.lock pins the native (pixi) environment; here uv resolves the same pyproject.toml at build time.
-COPY pyproject.toml README.md ./
-COPY runtime runtime
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --group dev --no-install-project
+COPY . .
+# --locked refuses manifest/lockfile drift; it never performs a fresh dependency solve.
+RUN --mount=type=cache,target=/root/.cache/rattler \
+    pixi install --locked --environment default
+RUN pixi run --locked build
 
-# ---------------------------------------------------------------- DWARL ROS packages
-COPY ros/src /opt/dwarl/ros/src
-RUN . /opt/ros/jazzy/setup.sh && apt-get update \
-    && rosdep install --from-paths /opt/dwarl/ros/src --ignore-src -r -y \
-    && rm -rf /var/lib/apt/lists/* \
-    && colcon build --base-paths /opt/dwarl/ros/src --build-base /tmp/build --install-base /opt/dwarl_ws/install \
-         --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \
-    && rm -rf /tmp/build log
-
-# ---------------------------------------------------------------- your robots (/opt/robots_ws), optional
-# ROS packages from src/ of the `robots` build context (ROBOTS_WS in docker/.env; default
-# docker/robots_ws, empty). Dependencies that rosdep cannot resolve are skipped.
+# Optional robot sources use the same compiler, ROS underlay and build task as local development.
+# Robot dependencies must be declared in pyproject.toml and locked, or supplied as source packages.
 RUN --mount=type=bind,from=robots,target=/tmp/robots_ws \
-    if [ -z "$(find /tmp/robots_ws/src -name package.xml 2>/dev/null | head -n 1)" ]; then \
-      echo "No robot packages in the robots context (ROBOTS_WS)"; \
+    mkdir -p /opt/robots_ws/src \
+    && if [ -n "$(find /tmp/robots_ws/src -name package.xml -print -quit)" ]; then \
+      cp -r /tmp/robots_ws/src/. /opt/robots_ws/src/ \
+      && pixi run --locked build-robot; \
     else \
-      mkdir -p /opt/robots_ws && cp -r /tmp/robots_ws/src /opt/robots_ws/src \
-      && . /opt/ros/jazzy/setup.sh && . /opt/dwarl_ws/install/setup.sh && apt-get update \
-      && { rosdep install --from-paths /opt/robots_ws/src --ignore-src -r -y \
-           || echo "rosdep: some robot dependencies were not installed"; } \
-      && rm -rf /var/lib/apt/lists/* \
-      && colcon build --base-paths /opt/robots_ws/src --build-base /tmp/build --install-base /opt/robots_ws/install \
-      && rm -rf /tmp/build log; \
+      echo "No robot packages in the robots context (ROBOTS_WS)"; \
     fi
 
-# ---------------------------------------------------------------- DWARL itself (editable: a bind mount can override it)
-COPY . /opt/dwarl
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --group dev
-COPY docker/entrypoint.sh /usr/local/bin/dwarl-entrypoint
-RUN chmod 0755 /usr/local/bin/dwarl-entrypoint && mkdir -p /work && chmod 0777 /work
+# Bake activation after both overlays are built. Startup needs no solve, download or writable prefix.
+RUN pixi shell-hook --as-is --environment default --shell bash --no-completions --change-ps1 false \
+      > /opt/dwarl-activate.sh
+COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/dwarl-entrypoint
+RUN mkdir -p /work && chmod 0777 /work
 WORKDIR /work
 ENTRYPOINT ["/usr/local/bin/dwarl-entrypoint"]
 CMD ["bash"]

@@ -5,6 +5,12 @@ ROS 2 Jazzy, Gazebo Harmonic, Nav2 (with the DWB, MPPI and Regulated Pure Pursui
 controllers) and DWARL's Python environment. Nothing is installed on the host apart
 from Docker. Runs, caches and logs go to `work/` in this repository.
 
+Docker packages the **same Pixi `default` environment** as local development:
+`pyproject.toml` declares dependencies and `pixi.lock` pins Python, MuJoCo 4, ROS,
+Gazebo and native build tools. The image runs `pixi install --locked`, so stale
+lockfiles fail the build instead of resolving a different stack. Supported platform:
+Linux x86-64 (`linux/amd64`).
+
 ## Host requirements
 
 - Docker Engine 24 or newer, with the Compose plugin (`docker compose`).
@@ -133,14 +139,15 @@ for the controllers, plus shared `costmap` and `planner` sections that apply to 
 ## Other commands
 
 ```bash
-docker compose run --rm shell                          # shell with ROS, DWARL and the venv ready
+docker compose run --rm shell                          # shell with the locked Pixi environment ready
 docker compose run --rm shell dwarl doctor --sim gazebo
 docker compose --profile monitor up tensorboard        # http://localhost:6006
 ```
 
 Inside the container, the working directory is `/work` (`work/` on the host). DWARL
-keeps `runs/` and `.dwarl/` there. Run `dwarl` directly instead of `pixi run`; the ROS
-packages are prebuilt (`DWARL_PREBUILT_ROS=1`), so nothing is rebuilt. For example:
+keeps `runs/` and `.dwarl/` there. Run `dwarl` directly: the entrypoint activates Pixi
+and the robot/DWARL overlays. The ROS packages are prebuilt (`DWARL_PREBUILT_ROS=1`),
+so nothing is rebuilt or installed at startup. For example:
 
 ```bash
 dwarl train diffbot --num-envs 32 --max-iterations 200
@@ -153,11 +160,16 @@ From a host terminal, toggle the view of a training running in a detached contai
 open, re-run `./configure-host.sh` after logging in again (it refreshes X11 access) and
 start a new container; the training itself keeps running without the window.
 
-Python dependencies are resolved from `pyproject.toml` when the image is built (the
-native setup pins them in `pixi.lock`). The DWARL source in the image is installed in
-editable mode at `/opt/dwarl`. To try Python changes without rebuilding, add a bind mount
-of this repository at `/opt/dwarl`. Changes to the C++ controller or the ROS packages
-need `docker compose build`.
+Update dependencies through Pixi on the host, commit both `pyproject.toml` and
+`pixi.lock`, then rebuild the image. There is no separate Docker Python/ROS dependency
+list and no `uv sync` or `rosdep install` step. OS display drivers and basic shell
+utilities still come from the base image's package manager.
+
+The DWARL source is installed editable at `/opt/dwarl`. To try Python changes, bind
+mount only the source directories you need (for example `../src:/opt/dwarl/src` and
+`../runtime/src:/opt/dwarl/runtime/src`). Mounting the entire repository over
+`/opt/dwarl` would hide the image's locked environment and built ROS overlays.
+Changes to dependencies, the C++ controller or ROS packages need `docker compose build`.
 
 ## Your own robot
 
@@ -166,9 +178,16 @@ description) in the `src/` folder of a colcon workspace, then:
 
 ```bash
 ROBOTS_WS=$HOME/robots_ws ./configure-host.sh   # stored in docker/.env
-docker compose build                            # builds $ROBOTS_WS/src into /opt/robots_ws
+docker compose build                            # copies sources and runs Pixi's build-robot task
 docker compose run --rm shell dwarl robot check my_robot_dwarl
 ```
+
+Robot sources are copied to `/opt/robots_ws/src`; their build/install directories
+live under `/opt/dwarl/.pixi/robot/`, just as they do with local Pixi builds. Declare
+additional robot dependencies with `pixi add --feature ros ros-jazzy-<package>`
+(or supply the package's sources in the workspace), commit the updated manifest and
+lockfile, then rebuild. Missing dependencies fail the build rather than being silently
+skipped by rosdep.
 
 See [Use your robot in the Docker image](../docs/manual-integration.md#use-your-robot-in-the-docker-image).
 

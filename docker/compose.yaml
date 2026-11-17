@@ -3,6 +3,7 @@ name: dwarl
 
 x-dwarl: &dwarl
   image: dwarl:jazzy
+  platform: linux/amd64    # matches pixi.lock's supported linux-64 platform
   build:
     context: ..
     dockerfile: docker/Dockerfile
