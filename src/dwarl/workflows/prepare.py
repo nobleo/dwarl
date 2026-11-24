@@ -19,7 +19,7 @@ def ros(robot=None):
         return None
     pixi = os.environ.get("PIXI_EXE") or shutil.which("pixi")
     root = Path(__file__).resolve().parents[3]
-    if not pixi or not (root / "pyproject.toml").is_file():
+    if not pixi or not (root / "pixi.toml").is_file():
         raise ValueError("ROS builds need the DWARL checkout and pixi. Run `pixi run setup` there.")
     values = load_saved()
     env = {**os.environ, **{k: os.environ.get(k, v) for k, v in values.items()}}

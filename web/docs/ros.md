@@ -26,7 +26,7 @@ The robot build leaves the robot repository's own `build/` and `install/` untouc
 only the integration package(s) keeps hardware-only packages (drivers, CAN stacks) out. DWARL loads
 the robot overlay and then its own `ros/install` (its controller takes precedence) for every Gazebo
 run, also right after a build in the same command. Robot runtime dependencies missing from the `ros`
-feature in `pyproject.toml` can be added with `pixi add --feature ros ros-jazzy-<package>`.
+feature in `pixi.toml` can be added with `pixi add --feature ros ros-jazzy-<package>`.
 Run pixi from a terminal without another ROS workspace sourced.
 
 Gazebo testing and deployment with a launch adapter run incremental builds first.

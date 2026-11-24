@@ -610,7 +610,7 @@ The build copies `$ROBOTS_WS/src` to `/opt/robots_ws/src` and runs `pixi run --l
 against the same locked ROS environment as local development. The container's Pixi
 activation loads `/opt/dwarl/.pixi/robot/install`, so `my_robot_dwarl` works as a profile
 name and `package://` URIs resolve. Declare additional dependencies using
-`pixi add --feature ros ros-jazzy-<package>` and commit the updated `pyproject.toml`
+`pixi add --feature ros ros-jazzy-<package>` and commit the updated `pixi.toml`
 and `pixi.lock`, or include their sources in the robot workspace. No separate rosdep
 installation is performed. Without `ROBOTS_WS`, the empty `docker/robots_ws` is used.
 Rebuild the image after changing packages or dependencies.

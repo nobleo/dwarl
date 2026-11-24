@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/root/.cache/rattler \
 RUN pixi run --locked build
 
 # Optional robot sources use the same compiler, ROS underlay and build task as local development.
-# Robot dependencies must be declared in pyproject.toml and locked, or supplied as source packages.
+# Robot dependencies must be declared in pixi.toml and locked, or supplied as source packages.
 RUN --mount=type=bind,from=robots,target=/tmp/robots_ws \
     mkdir -p /opt/robots_ws/src \
     && if [ -n "$(find /tmp/robots_ws/src -name package.xml -print -quit)" ]; then \

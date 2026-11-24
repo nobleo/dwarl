@@ -37,7 +37,7 @@ docker compose run --rm dwarl setup
 `configure-host.sh` writes `docker/.env` with your user ID, X11 access and GPU
 configuration. Re-run it after installing the GPU toolkit or logging in again
 if windows stop opening. The image runs `pixi install --locked`; dependencies
-are declared in `pyproject.toml` and pinned in `pixi.lock`.
+are declared in `pixi.toml` and pinned in `pixi.lock`.
 
 For your own robot, provide its colcon workspace before building:
 
@@ -52,7 +52,7 @@ Robot sources are copied to `/opt/robots_ws/src` and built into
 `/opt/dwarl/.pixi/robot/`. The entrypoint activates the robot and DWARL overlays.
 The selected profile is remembered through the normal workflow.
 Declare missing ROS dependencies through `pixi add --feature ros ros-jazzy-<pkg>`
-on the host, commit `pyproject.toml` and `pixi.lock`, then rebuild.
+on the host, commit `pixi.toml` and `pixi.lock`, then rebuild.
 
 ## Train, test and deploy
 
