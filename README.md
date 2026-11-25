@@ -8,6 +8,14 @@ ONNX bundle. DWARL is experimental and does not include a pretrained navigation 
 
 [**Open the documentation →**](https://nobleo.github.io/dwarl/) · [Try the example robot](https://nobleo.github.io/dwarl/quickstart/) · [Explore the interactive theory diagram](https://nobleo.github.io/dwarl/architecture/)
 
+### See a training run in your browser
+
+After setup, run `pixi run web`. Choose a workflow in **Workspace** to watch robots navigate their maps, then open **Metrics** to see how the run is learning. [Dashboard guide →](https://nobleo.github.io/dwarl/monitor/#watch-in-the-dashboard)
+
+| Workspace · live simulator | Metrics · training curves |
+| --- | --- |
+| [![DWARL workflow controls beside robots navigating simulated environments](web/docs/assets/dashboard-workspace.webp)](web/docs/assets/dashboard-workspace.webp) | [![Training chart wall showing success, path completion, collisions and timeouts](web/docs/assets/dashboard-metrics.webp)](web/docs/assets/dashboard-metrics.webp) |
+
 ## Where to start
 
 | I want to… | Start here |
