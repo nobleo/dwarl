@@ -9,7 +9,7 @@ const params = new URLSearchParams(location.search)
 const letters = ['A', 'B', 'C']
 const variant = ref(letters.includes(params.get('variant')) ? params.get('variant') : 'A')
 const page = ref(params.get('page') === 'settings' ? 'settings' : 'plots')
-const names = computed(() => page.value === 'plots' ? ['Pinboard', 'Library rail', 'Focus queue'] : ['Essentials + sections', 'Setting finder', 'Override sheet'])
+const names = computed(() => page.value === 'plots' ? ['Chart wall', 'Signal ledger', 'Inspection desk'] : ['Essentials + sections', 'Setting finder', 'Override sheet'])
 function navigate(next) {
   page.value = next
   params.set('page', next)
@@ -21,7 +21,7 @@ function cycle(step) {
   history.replaceState(null, '', '?' + params)
 }
 function key(e) {
-  if (e.target.closest('input,textarea,select,[contenteditable]')) return
+  if (e.target.closest('dialog,input,textarea,select,[contenteditable]')) return
   if (['ArrowLeft','ArrowRight'].includes(e.key)) cycle(e.key === 'ArrowLeft' ? -1 : 1)
 }
 onMounted(() => addEventListener('keydown', key))
