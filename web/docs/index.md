@@ -7,6 +7,8 @@
 
 Prefer a browser? After setup, run `pixi run web` to open the [local dashboard](monitor.md#watch-in-the-dashboard). Its **Workflow** menu lets you train, test and deploy using the same commands as the CLI, then inspect metrics and reports.
 
+[![Dashboard workspace with workflow controls on the left and robots navigating multiple maps in the live simulator](assets/dashboard-workspace.webp)](monitor.md#watch-in-the-dashboard)
+
 !!! tip "Using a coding agent?"
     Open it in the DWARL checkout and ask: “Follow `AGENTS.md` to set up `/path/to/my_robot` for MuJoCo.” If you also need Gazebo, ask for a live Gazebo interface check.
 
