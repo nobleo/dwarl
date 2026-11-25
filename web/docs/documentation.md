@@ -16,6 +16,12 @@ The site is built from `web/docs/` with MkDocs. Search and navigation expose the
 workflow; command help and resolved configuration are generated directly from
 the implementation at build time. Update the walkthrough when behavior changes.
 
+The architecture explorer uses the Markdown sections in `architecture.md` as its
+detail panels. Edit the Vue component and slide layouts in `web/theory/`; after
+`npm --prefix web ci`, run `npm --prefix web run build:theory` and include the
+updated `web/docs/assets/theory-explorer.js`. This lets both docs builds serve
+the diagram offline without adding Node to the docs environment.
+
 Preview without installing the training stack (the slim `docs` pixi environment):
 
 ```bash

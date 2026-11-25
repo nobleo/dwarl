@@ -25,8 +25,10 @@ scores establish navigation performance.
 pixi run web
 ```
 
-The local dashboard runs training and testing commands, plots metrics and opens
-reports. Switch on **Viewer** to watch the run in MuJoCo Studio in your browser.
+The **Workflow** menu runs the same datagen, train, test, deploy, environment check,
+status and next-step commands as the CLI. Select a workflow and its options,
+then follow the logs, metrics and reports in the browser.
+Switch on **Viewer** to watch the run in MuJoCo Studio in your browser.
 For MuJoCo tests, **Real time** slows the run to wall-clock speed while you watch;
 scores are unchanged and full speed resumes when the viewer closes.
 **Documentation** opens this site from the dashboard in a new tab.

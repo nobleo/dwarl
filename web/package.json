@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
+    "build:theory": "vite build --config theory/vite.config.js",
     "test": "playwright test"
   },
   "dependencies": {
