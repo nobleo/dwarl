@@ -1,14 +1,27 @@
 """render_nav2_params: generic Nav2 params + a bundle's deploy.yaml -> robot-specific params (no ROS needed)."""
 
+import math
+import runpy
+import xml.etree.ElementTree as ET
 from pathlib import Path
+from types import SimpleNamespace as XYZ
 
 import pytest
 import yaml
-from dwarl_bringup.nav import load_deploy, render_nav2_params, render_planner, resolve_bundle, safety_zones
+from dwarl_bringup.nav import (
+    _rotation_envelope,
+    load_deploy,
+    render_nav2_params,
+    render_planner,
+    render_recovery,
+    resolve_bundle,
+    safety_zones,
+)
+from dwarl_bringup.pose import base_pose
 
 BASE = Path(__file__).parents[1] / "config" / "nav2_params.yaml"
 DEPLOY = {
-    "version": 2,
+    "version": 3,
     "robot": {
         "id": "rover",
         "drive_type": "diff",
@@ -56,11 +69,6 @@ def test_resolve_bundle_explicit_dir(tmp_path):
 
 
 def test_ground_truth_scores_an_offset_base_in_world_axes():
-    import math
-    from types import SimpleNamespace as XYZ
-
-    from dwarl_bringup.pose import base_pose
-
     half = math.sqrt(.5)
     rotated = XYZ(x=0., y=0., z=half, w=half)
     offset = XYZ(translation=XYZ(x=1., y=0., z=0.), rotation=XYZ(x=0., y=0., z=-half, w=half))
@@ -69,8 +77,6 @@ def test_ground_truth_scores_an_offset_base_in_world_axes():
 
 @pytest.mark.parametrize("external", [False, True])
 def test_only_ground_truth_mode_starts_tf_publisher(tmp_path, external):
-    import runpy
-
     launch = pytest.importorskip("launch")
     from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
     from launch_ros.actions import Node
@@ -96,14 +102,14 @@ def test_only_ground_truth_mode_starts_tf_publisher(tmp_path, external):
     assert publishers[0].condition.evaluate(context) is not external
 
 
-@pytest.mark.parametrize("version,accepted", [(2, True), (3, True), (4, False), (5, True)])
+@pytest.mark.parametrize("version,accepted", [(2, False), (3, True), (4, False), (5, True)])
 def test_bundle_versions(tmp_path, version, accepted):
     raw = dict(DEPLOY, version=version)
     (tmp_path / "deploy.yaml").write_text(yaml.safe_dump(raw))
     if accepted:
         assert load_deploy(tmp_path)["version"] == version
     else:
-        with pytest.raises(RuntimeError, match="unsupported deploy.yaml version 4"):
+        with pytest.raises(RuntimeError, match=f"unsupported deploy.yaml version {version}"):
             load_deploy(tmp_path)
 
 
@@ -173,10 +179,6 @@ def test_tuning_snapshot_preserves_shared_stack(tmp_path):
 
 
 def test_rotation_envelope_contains_braking_sweep():
-    import math
-
-    from dwarl_bringup.nav import _rotation_envelope
-
     footprint = DEPLOY["robot"]["footprint"]
     for omega in (-1., 1.):
         polygon = _rotation_envelope(footprint, omega, 2., .15, .035)
@@ -207,10 +209,6 @@ def test_shared_safety_tuning_matches_all_controllers(tmp_path):
 
 
 def test_recovery_variant_requires_backup_and_replans(tmp_path):
-    import xml.etree.ElementTree as ET
-
-    from dwarl_bringup.nav import render_recovery
-
     base = BASE.parent.parent / "behavior_trees/dwarl_safety_retry.xml"
     tuning = tmp_path / "tuning.yaml"
     tuning.write_text(yaml.safe_dump({"recovery": {"through_monitor": True, "retry_count": 1,

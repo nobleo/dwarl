@@ -28,10 +28,10 @@ DeploySpec DeploySpec::load(const std::string & dir)
   }
   const YAML::Node y = YAML::LoadFile(file.string());
   const int version = y["version"].as<int>();
-  if (version != 2 && version != 3 && version != kVersion) {
+  if (version != 3 && version != kVersion) {
     throw std::runtime_error(
-            "deploy.yaml version " + y["version"].as<std::string>() + " in " + dir + ", expected " +
-            "2, 3 or " + std::to_string(kVersion) + " (prepare a compatible bundle with `dwarl deploy`)");
+            "deploy.yaml version " + y["version"].as<std::string>() + " in " + dir + ", expected 3 or " +
+            std::to_string(kVersion) + " (prepare a compatible bundle with `dwarl deploy`)");
   }
   DeploySpec s;
   s.dir = dir;
@@ -56,11 +56,9 @@ DeploySpec DeploySpec::load(const std::string & dir)
   s.origin_x = l["origin"][0].as<double>();
   s.origin_y = l["origin"][1].as<double>();
   s.full_circle = l["full_circle"].as<bool>();
-  s.lidar_normalize = version >= 3 && l["normalize"] ? l["normalize"].as<std::string>() : "linear";
-  if (version >= 3 && l["history"]) {
-    s.lidar_history.clear();
-    for (const auto & k : l["history"]) {s.lidar_history.push_back(k.as<int>());}
-  }
+  s.lidar_normalize = l["normalize"].as<std::string>();
+  s.lidar_history.clear();
+  for (const auto & k : l["history"]) {s.lidar_history.push_back(k.as<int>());}
   s.robot_id = y["robot"]["id"] ? y["robot"]["id"].as<std::string>() : "";
   const auto st = y["state"];
   s.command_feedback = st["command_feedback"] && st["command_feedback"].as<bool>();
@@ -76,10 +74,8 @@ DeploySpec DeploySpec::load(const std::string & dir)
   }
   s.goal_mode = g["mode"].as<std::string>();
   s.lookahead_distance = g["lookahead_distance"].as<double>();
-  if (version >= 3 && g["lookahead_distances"]) {
-    s.lookahead_distances.clear();
-    for (const auto & d : g["lookahead_distances"]) {s.lookahead_distances.push_back(d.as<double>());}
-  }
+  s.lookahead_distances.clear();
+  for (const auto & d : g["lookahead_distances"]) {s.lookahead_distances.push_back(d.as<double>());}
   s.goal_tolerance = g["tolerance"].as<double>();
   s.window_lo = g["projection_window"][0].as<int>();
   s.window_hi = g["projection_window"][1].as<int>();
@@ -89,7 +85,7 @@ DeploySpec DeploySpec::load(const std::string & dir)
   s.w_max = a["w"]["max"].as<double>();
   s.a_max = a["rate_limit"]["a_max"].as<double>();
   s.alpha_max = a["rate_limit"]["alpha_max"].as<double>();
-  s.action_mode = version >= 3 && a["mode"] ? a["mode"].as<std::string>() : "absolute";
+  s.action_mode = a["mode"].as<std::string>();
   if (y["robot"]["drive_type"].as<std::string>() != "diff") {
     throw std::runtime_error("only diff-drive policies are supported");
   }

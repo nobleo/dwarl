@@ -1,5 +1,5 @@
 // ROS-free core of the DWARL controller: reproduces the training observations/actions from deploy.yaml.
-// Mirrors dwarl/core/envs/nav_env.py (_compute_obs, _track_path, step) and dwarl/core/sim/lidar.py.
+// Mirrors dwarl/navigation/{observations,commands,actions}.py.
 #pragma once
 
 #include <array>
@@ -121,8 +121,5 @@ private:
   struct Impl;
   std::unique_ptr<Impl> impl_;
 };
-
-// Resolve a model directory: explicit `model_dir`, else <root>/runs/train/<run>/exported ("latest" = newest
-// run with an exported/deploy.yaml). root defaults to $DWARL_ROOT. Throws std::runtime_error.
 
 }  // namespace dwarl_controller

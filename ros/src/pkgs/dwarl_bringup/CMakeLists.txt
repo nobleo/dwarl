@@ -4,10 +4,6 @@ project(dwarl_bringup NONE)
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 
-# DWARL_ROOT (repo containing runs/ and data/) defaults to this source tree; override by exporting it.
-get_filename_component(DWARL_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." REALPATH)
-ament_environment_hooks(hooks/dwarl_root.dsv.in)
-
 ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS scripts/gazebo_pose DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY behavior_trees config launch DESTINATION share/${PROJECT_NAME}/)

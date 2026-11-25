@@ -24,9 +24,7 @@ controller_server:
       yaw_goal_tolerance: 6.3           # the policy does not control final heading
     FollowPath:
       plugin: "dwarl_controller::DwarlController"
-      run: "latest"
-      model_dir: ""
-      dwarl_root: ""                   # "" -> $DWARL_ROOT (set by the dwarl_bringup env hook)
+      model_dir: ""                     # set from the launch model_dir
       expected_robot_id: ""             # set from deploy.yaml: refuse bundles of another robot
       scan_topic: scan
       scan_timeout: 0.5

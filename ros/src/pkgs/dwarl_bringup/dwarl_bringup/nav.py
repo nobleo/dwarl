@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import copy
 import math
-import os
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -26,18 +26,21 @@ def resolve_bundle(model_dir: str) -> Path:
 
 def load_deploy(bundle: str | Path) -> dict[str, Any]:
     d = yaml.safe_load((Path(bundle) / "deploy.yaml").read_text())
-    if d.get("version") not in (2, 3, 5):
+    if d.get("version") not in (3, 5):
         raise RuntimeError(f"{bundle}: unsupported deploy.yaml version {d.get('version')}")
     return d
+
+
+def _octagon(radius: float) -> list[list[float]]:
+    return [[radius * math.cos(k * math.pi / 4 + math.pi / 8), radius * math.sin(k * math.pi / 4 + math.pi / 8)]
+            for k in range(8)]  # fmt: skip
 
 
 def _footprint(deploy: dict) -> list[list[float]]:
     r = deploy["robot"]
     if r.get("footprint"):
         return [[float(x), float(y)] for x, y in r["footprint"]]
-    rad = float(r["footprint_radius"])
-    return [[rad * math.cos(k * math.pi / 4 + math.pi / 8), rad * math.sin(k * math.pi / 4 + math.pi / 8)]
-            for k in range(8)]  # fmt: skip
+    return _octagon(float(r["footprint_radius"]))
 
 
 def _poly(points) -> str:
@@ -96,9 +99,7 @@ def safety_zones(deploy: dict, margin: float = 0.035, latency: float = 0.15, dec
     vmax, vmin = float(act["v"]["max"]), float(act["v"]["min"])
     brake = lambda v: v * v / (2 * a) + abs(v) * latency  # noqa: E731
     vmid = 0.5 * vmax
-    R = max(math.hypot(x, y) for x, y in fp) + margin
-    octagon = [[R * math.cos(k * math.pi / 4 + math.pi / 8), R * math.sin(k * math.pi / 4 + math.pi / 8)]
-               for k in range(8)]  # fmt: skip
+    octagon = _octagon(max(math.hypot(x, y) for x, y in fp) + margin)
     zones = {
         "forward_fast": (_box(x0, x1 + brake(vmax), y0, y1), vmid, 10.0, -10.0, 10.0),
         "forward_slow": (_box(x0, x1 + brake(vmid), y0, y1), 0.05, vmid, -10.0, 10.0),
@@ -121,7 +122,11 @@ def safety_zones(deploy: dict, margin: float = 0.035, latency: float = 0.15, dec
             for name, (p, lo, hi, tlo, thi) in zones.items()}  # fmt: skip
 
 
-def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True, controller: str = "rl",
+TUNING_SECTIONS = ("dwarl", "mppi", "dwb", "rpp", "safety", "progress_checker", "recovery", "motion_limits",
+                   "goal_checker", "costmap", "planner")
+
+
+def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True, controller: str = "dwarl",
                        profile_compute: bool = False, controller_params: str | Path | None = None) -> dict:
     """Generic ``nav2_params.yaml`` + the bundle's deploy.yaml -> parameters for this robot/policy."""
     deploy = load_deploy(bundle)
@@ -129,10 +134,8 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
     overrides = {}
     if controller_params:
         overrides = yaml.safe_load(Path(controller_params).read_text())
-        allowed = {"mppi", "dwb", "rpp", "dwarl", "safety", "progress_checker", "recovery", "motion_limits",
-                   "goal_checker", "costmap", "planner"}
-        if not isinstance(overrides, dict) or set(overrides) - allowed:
-            raise ValueError("tuning YAML must contain controller, safety or progress_checker mappings")
+        if not isinstance(overrides, dict) or set(overrides) - set(TUNING_SECTIONS):
+            raise ValueError(f"tuning YAML sections must be among {', '.join(TUNING_SECTIONS)}")
         if any(not isinstance(value, dict) for value in overrides.values()):
             raise ValueError("tuning sections must be mappings")
     ros = deploy.get("ros") or {}
@@ -207,7 +210,7 @@ def render_nav2_params(base: str | Path, bundle: str | Path, safety: bool = True
             "use_rotate_to_heading": True, "rotate_to_heading_min_angle": 0.785, "allow_reversing": False,
             "max_robot_pose_search_dist": 10.0,
         }
-    elif controller not in ("rl", "dwarl"):
+    elif controller != "dwarl":
         raise ValueError("controller must be dwarl, mppi, dwb or rpp")
     if controller_params:
         selected = overrides.get(controller, {})
@@ -307,8 +310,6 @@ def write_params(params: dict, out: str | Path) -> str:
 
 def render_recovery(base, out, tuning=None):
     """Snapshot an explicitly requested recovery variant; default tree is untouched."""
-    import xml.etree.ElementTree as ET
-
     options = (yaml.safe_load(Path(tuning).read_text()) or {}).get("recovery", {}) if tuning else {}
     allowed = {"through_monitor", "retry_count", "backup_required", "replan_after_backup"}
     if not isinstance(options, dict) or set(options) - allowed:

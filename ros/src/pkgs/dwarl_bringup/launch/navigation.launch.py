@@ -2,7 +2,7 @@
 
 No localisation / map server (provided by the caller). Usable on the robot and in simulation.
 
-    ros2 launch dwarl_bringup navigation.launch.py model_dir:=<bundle>          (or run:=<train run>|latest)
+    ros2 launch dwarl_bringup navigation.launch.py model_dir:=<bundle>
 
 The bundle's deploy.yaml sets frames, footprint, scan topic, control rate, goal tolerance and the cmd_vel
 interface (topic, TwistStamped or Twist). safety:=true (default) adds the collision_monitor layer:
@@ -11,7 +11,9 @@ A STOP fails FollowPath and bt_navigator backs up and retries the policy (behavi
 The policy output is already rate limited like in training: no velocity smoother.
 """
 
+import atexit
 import os
+import shutil
 import tempfile
 
 from ament_index_python.packages import get_package_share_directory
@@ -36,10 +38,15 @@ def _setup(context):
     deploy = load_deploy(bundle)
     safety = get("safety") == "true"
     ros = deploy.get("ros") or {}
+    output = get("params_output")
+    if not output:
+        scratch = tempfile.mkdtemp(prefix="dwarl_nav2_")
+        atexit.register(shutil.rmtree, scratch, ignore_errors=True)
+        output = os.path.join(scratch, "nav2_params.yaml")
     params = write_params(
         render_nav2_params(os.path.join(here, "config", "nav2_params.yaml"), bundle, safety, get("controller"),
                            get("profile_compute") == "true", get("controller_params") or None),
-        get("params_output") or tempfile.NamedTemporaryFile("w", prefix="dwarl_nav2_", suffix=".yaml", delete=False).name,
+        output,
     )
     cmd_vel = get("cmd_vel_topic") or ros.get("cmd_vel_topic", "cmd_vel")
     stamped = ros.get("cmd_vel_stamped", False) if get("cmd_vel_stamped") == "" else get("cmd_vel_stamped") == "true"
@@ -131,7 +138,7 @@ def generate_launch_description():
         ("use_sim_time", "false", ""),
         ("safety", "true", "collision_monitor stop + back-up-and-retry behavior tree"),
         ("planner", "navfn", "global planner: navfn | smac2d"),
-        ("controller", "rl", "local controller: dwarl | mppi | dwb | rpp (matched bundle limits)"),
+        ("controller", "dwarl", "local controller: dwarl | mppi | dwb | rpp (matched bundle limits)"),
         ("profile_compute", "false", "publish wall-clock controller call timings"),
         ("controller_params", "", "optional controller tuning YAML"),
         ("params_output", "", "optional rendered parameter snapshot path"),

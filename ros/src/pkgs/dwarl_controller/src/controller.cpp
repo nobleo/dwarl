@@ -116,11 +116,16 @@ void DwarlController::deactivate()
   debug_pub_->on_deactivate();
 }
 
-void DwarlController::resetState()
+void DwarlController::resetEpisode()
 {
   last_action_ = {0.0, 0.0};
   cmd_ = {0.0, 0.0};
   scan_buf_.clear();
+}
+
+void DwarlController::resetState()
+{
+  resetEpisode();
   have_goal_ = false;
   safety_stop_ = false;
 }
@@ -129,7 +134,7 @@ void DwarlController::reset() {resetState();}
 
 void DwarlController::onScan(sensor_msgs::msg::LaserScan::ConstSharedPtr msg)
 {
-  std::lock_guard<std::mutex> lk(scan_mutex_);
+  std::lock_guard<std::mutex> lk(msg_mutex_);
   scan_ = msg;
 }
 
@@ -139,7 +144,7 @@ void DwarlController::onSafetyState(nav2_msgs::msg::CollisionMonitorState::Const
   // release the policy; only a FollowPath restart (new session, after the BT's back-up) clears it
   if (msg->action_type != nav2_msgs::msg::CollisionMonitorState::STOP) {return;}
   {
-    std::lock_guard<std::mutex> lk(scan_mutex_);
+    std::lock_guard<std::mutex> lk(msg_mutex_);
     safety_polygon_ = msg->polygon_name;
   }
   safety_stop_ = true;
@@ -155,11 +160,7 @@ void DwarlController::setPlan(const nav_msgs::msg::Path & path)
   const bool new_goal = !have_goal_ ||
     std::hypot(g.x - last_goal_.x, g.y - last_goal_.y) > spec_.goal_tolerance ||
     path.header.frame_id != plan_.header.frame_id;
-  if (new_goal) {
-    last_action_ = {0.0, 0.0};
-    cmd_ = {0.0, 0.0};
-    scan_buf_.clear();
-  }
+  if (new_goal) {resetEpisode();}
   have_goal_ = true;
   last_goal_ = g;
   plan_ = path;
@@ -188,7 +189,7 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
   }
   sensor_msgs::msg::LaserScan::ConstSharedPtr scan;
   {
-    std::lock_guard<std::mutex> lk(scan_mutex_);
+    std::lock_guard<std::mutex> lk(msg_mutex_);
     scan = scan_;
   }
   const rclcpp::Time now = clock_->now();
@@ -197,9 +198,7 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
   if (new_session) {
     session_start_ = now;
     safety_stop_ = false;
-    last_action_ = {0.0, 0.0};
-    cmd_ = {0.0, 0.0};
-    scan_buf_.clear();
+    resetEpisode();
     stop_logged_ = false;
   }
   const bool debug = debug_ && debug_pub_->is_activated();
@@ -210,7 +209,7 @@ geometry_msgs::msg::TwistStamped DwarlController::computeVelocityCommands(
   if (safety_sub_ && safety_stop_ && (now - session_start_).seconds() > safety_grace_) {
     std::string poly;
     {
-      std::lock_guard<std::mutex> lk(scan_mutex_);
+      std::lock_guard<std::mutex> lk(msg_mutex_);
       poly = safety_polygon_;
     }
     last_compute_ = now;  // controller_server keeps calling within failure_tolerance: same session
@@ -380,7 +379,6 @@ void DwarlController::publishMetrics(
   add("speed_limit_intervention", speed_limited ? "1" : "0");
   add("reverse_limit_intervention", reverse_limited_ ? "1" : "0");
   add("safety_stop", status == "safety_stop" ? "1" : "0");
-  add("fallback_active", "0");  // plugin itself never invokes a classical fallback
   add("command_v", std::to_string(cmd_[0]));
   add("command_w", std::to_string(cmd_[1]));
   add("policy_action_v", std::to_string(last_action_[0]));

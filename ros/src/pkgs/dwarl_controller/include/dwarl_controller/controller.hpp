@@ -39,6 +39,7 @@ public:
 private:
   void onScan(sensor_msgs::msg::LaserScan::ConstSharedPtr msg);
   void onSafetyState(nav2_msgs::msg::CollisionMonitorState::ConstSharedPtr msg);
+  void resetEpisode();  // training resets action/command history and scan stack at episode start
   void resetState();
   bool planPose(const geometry_msgs::msg::PoseStamped & pose, geometry_msgs::msg::PoseStamped & out) const;
   void addEvent(const geometry_msgs::msg::PoseStamped & pose, bool stop);
@@ -63,7 +64,7 @@ private:
   geometry_msgs::msg::Point last_goal_;
   rclcpp::Time last_compute_{0, 0, RCL_ROS_TIME};
 
-  std::mutex scan_mutex_;
+  std::mutex msg_mutex_;  // guards scan_ and safety_polygon_ (subscription callbacks)
   sensor_msgs::msg::LaserScan::ConstSharedPtr scan_;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PointStamped>::SharedPtr goal_pub_;

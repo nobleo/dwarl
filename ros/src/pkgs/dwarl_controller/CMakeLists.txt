@@ -62,6 +62,6 @@ if(BUILD_TESTING)
 endif()
 
 ament_export_include_directories(include/${PROJECT_NAME})
-ament_export_dependencies(nav2_core nav2_costmap_2d nav2_util pluginlib rclcpp rclcpp_lifecycle
-  sensor_msgs diagnostic_msgs tf2_ros visualization_msgs)
+ament_export_dependencies(geometry_msgs nav_msgs nav2_core nav2_costmap_2d nav2_msgs nav2_util pluginlib rclcpp
+  rclcpp_lifecycle sensor_msgs diagnostic_msgs tf2_ros visualization_msgs)
 ament_package()

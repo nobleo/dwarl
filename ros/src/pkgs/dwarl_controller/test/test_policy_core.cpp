@@ -155,6 +155,8 @@ TEST(Core, DeployVersionContract)
   EXPECT_THROW(DeploySpec::load(dir.string()), std::runtime_error);
   write(3, true, true, 9);
   EXPECT_THROW(DeploySpec::load(dir.string()), std::runtime_error);
+  write(2, false, false, 7);
+  EXPECT_THROW(DeploySpec::load(dir.string()), std::runtime_error);
 }
 
 TEST(Core, LidarResampleShiftedLaser)

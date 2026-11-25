@@ -57,7 +57,7 @@ class DeploySpec:
             raise FileNotFoundError(f"deploy.yaml not found in {d}")
         y = yaml.safe_load(f.read_text())
         version = y.get("version")
-        if version not in (2, 3, DEPLOY_VERSION):
+        if version not in (3, DEPLOY_VERSION):
             raise ValueError(f"{f}: unsupported deploy.yaml version {version}")
         if y["robot"]["drive_type"] != "diff":
             raise ValueError("only diff-drive policies are supported")
@@ -67,28 +67,22 @@ class DeploySpec:
         if version < 5 and st.get("command_feedback", False):
             raise ValueError("command feedback requires deploy version 5")
         ins = {i["group"]: i for i in m["inputs"]}
-        lidar_normalize = str(lc.get("normalize", "linear")) if version >= 3 else "linear"
-        lidar_history = [int(k) for k in lc.get("history", [0])] if version >= 3 else [0]
-        lookahead_distances = (
-            [float(d) for d in g.get("lookahead_distances", [g["lookahead_distance"]])]
-            if version >= 3 else [float(g["lookahead_distance"])]
-        )
-        action_mode = str(a.get("mode", "absolute")) if version >= 3 else "absolute"
         s = cls(
             dir=d, onnx_file=d / m["onnx"], obs_input=ins["state"]["name"], lidar_input=ins["lidar"]["name"],
             action_output=m["outputs"][0]["name"], obs_dim=int(ins["state"]["shape"][1]), dt=float(y["control"]["dt"]),
             num_rays=int(lc["num_rays"]), angle_min=float(lc["angle_min"]),
             angle_increment=float(lc["angle_increment"]), full_circle=bool(lc["full_circle"]),
             origin=(float(lc["origin"][0]), float(lc["origin"][1])), min_range=float(lc["min_range"]),
-            max_range=float(lc["max_range"]), lidar_normalize=lidar_normalize, lidar_history=lidar_history,
+            max_range=float(lc["max_range"]), lidar_normalize=str(lc["normalize"]),
+            lidar_history=[int(k) for k in lc["history"]],
             max_goal_distance=float(st["max_goal_distance"]),
             v_scale=float(st["v_scale"]), w_scale=float(st["w_scale"]), goal_mode=str(g["mode"]),
             lookahead_distance=float(g["lookahead_distance"]),
-            lookahead_distances=lookahead_distances,
+            lookahead_distances=[float(d) for d in g["lookahead_distances"]],
             goal_tolerance=float(g["tolerance"]),
             window=(int(g["projection_window"][0]), int(g["projection_window"][1])), v_min=float(a["v"]["min"]),
             v_max=float(a["v"]["max"]), w_max=float(a["w"]["max"]), a_max=float(a["rate_limit"]["a_max"]),
-            alpha_max=float(a["rate_limit"]["alpha_max"]), action_mode=action_mode,
+            alpha_max=float(a["rate_limit"]["alpha_max"]), action_mode=str(a["mode"]),
             robot_id=str(y["robot"].get("id", "")),
             ros=dict(y.get("ros") or {}), raw=y,
             command_feedback=version == 5,
