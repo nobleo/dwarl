@@ -1,4 +1,5 @@
 import json
+import shlex
 import tempfile
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from dwarl.runs.store import identity, lock, sha256, write_json
 GENERATOR_VERSION = 1
 
 
-def dataset(public, profile, root=Path(".dwarl/datasets"), *, create=False):
+def dataset(public, profile, root=Path(".dwarl/datasets"), *, create=False, from_train=False):
     data = public.train.data
     if data.path:
         path = Path(data.path)
@@ -34,10 +35,16 @@ def dataset(public, profile, root=Path(".dwarl/datasets"), *, create=False):
     print(f"Dataset: checking cache {path} (waiting if another process is generating it)", flush=True)
     with lock(root / f".{key}.lock"):
         if not path.exists():
+            command = ["dwarl", "datagen", str(profile.path), "--seed", str(cfg.seed)]
+            if public.train.preset:
+                command.extend(["--preset", public.train.preset])
+            for field in ("train_maps", "validation_maps", "test_maps", "pairs_per_map", "workers"):
+                command.extend(["--set", f"train.data.{field}={data[field]}"])
+            hint = f"To prepare these maps ahead of time, run: {shlex.join(command)}"
             if not create:
-                raise ValueError("No prepared dataset matches this robot and training configuration. "
-                                 "Run `pixi run setup --robot <profile>` with matching --preset, --config "
-                                 "and --set options (use --set train.seed=N for a custom seed).")
+                raise ValueError(f"No matching prepared dataset. {hint}")
+            if from_train:
+                print(f"No matching prepared dataset; training will generate it now. {hint}", flush=True)
             print(f"Dataset: generating {dict(cfg.splits)} maps, {data.pairs_per_map} pairs/map; "
                   f"workers={data.workers}. First-time generation can take several minutes.", flush=True)
             from dwarl.datasets.generation.pipeline import generate_dataset

@@ -125,30 +125,25 @@ def _pixi(*task, env):
 
 
 def execute(robot_ws=None, packages=None, interactive=None, build=True, example=False, *,
-            profile=None, preset=None, config=None, assignments=()):
+             profile=None):
     from dwarl.cli import ui
-    from dwarl.config.compose import compose_config
-    from dwarl.datasets.cache import dataset
     from dwarl.robot.profile import load_profile
     from dwarl.workflows import context
 
-    def prepare_maps(robot):
-        selected = load_profile(robot)
-        for recipe in ([preset] if preset else [None, "smoke"]):
-            dataset(compose_config(config, assignments, preset=recipe), selected, create=True)
-
     def next_training(robot):
-        ui.next_step("train", "--preset", preset or "smoke", *(["--show"] if example else []))
-        if (preset in (None, "smoke") and build and interactive
+        ui.info("Optional: prepare smoke maps first with `pixi run datagen --preset smoke`.")
+        ui.next_step("train", "--preset", "smoke", *(["--show"] if example else []))
+        if (build and interactive
                 and ui.ask("Run the small pipeline check now? (y/n)", "y").lower() == "y"):
-            return smoke(robot, config, assignments, show=example)
+            return smoke(robot, show=example)
         return 0
 
     if profile:
         if example or robot_ws or packages:
             raise ValueError("--robot cannot be combined with --example, --robot-ws or --packages")
-        prepare_maps(profile)
+        load_profile(profile)
         context.select_robot(profile)
+        ui.next_step("datagen", "--preset", "smoke")
         return 0
     interactive = sys.stdin.isatty() if interactive is None else interactive
     saved = load_saved()
@@ -170,7 +165,6 @@ def execute(robot_ws=None, packages=None, interactive=None, build=True, example=
         if not report["passed"]:
             return 2
         ui.finding("pass", "Selected diffbot")
-        prepare_maps("diffbot")
         return next_training("diffbot")
     selected = context.load().get("robot")
     if mode == "Continue an existing integration" and selected and not guess_workspace(saved):
@@ -179,7 +173,7 @@ def execute(robot_ws=None, packages=None, interactive=None, build=True, example=
         report = inspect(selected)
         render(report)
         if report["passed"]:
-            prepare_maps(selected)
+            ui.next_step("datagen", "--preset", "smoke")
         ui.next_step("dwarl", "next")
         return 0 if report["passed"] else 2
     workspace = robot_ws or ask("Robot repository (contains src/)", guess_workspace(saved), interactive)
@@ -253,7 +247,6 @@ def execute(robot_ws=None, packages=None, interactive=None, build=True, example=
                 subprocess.run(["kill", pid])
 
     ui.finding("pass", f"Selected integration: {robot}")
-    prepare_maps(robot)
     return next_training(robot)
 
 

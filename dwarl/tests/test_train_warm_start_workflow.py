@@ -38,7 +38,7 @@ def workflow(tmp_path, monkeypatch):
     monkeypatch.setattr("dwarl.robot.profile.load_profile", lambda _: profile)
     monkeypatch.setattr("dwarl.training.contract.build_contract", lambda _: contract)
     monkeypatch.setattr("dwarl.robot.config.materialize", lambda *args: None)
-    monkeypatch.setattr("dwarl.datasets.cache.dataset", lambda *args: (tmp_path / "data", "dataset"))
+    monkeypatch.setattr("dwarl.datasets.cache.dataset", lambda *args, **kwargs: (tmp_path / "data", "dataset"))
     monkeypatch.setattr("dwarl.runs.provenance.source_identity", lambda: {})
     monkeypatch.setattr("dwarl.runs.provenance.versions", lambda: {})
     monkeypatch.setattr("dwarl.workflows.context.remember_run", lambda *args: None)

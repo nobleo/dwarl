@@ -200,11 +200,8 @@ The resume budget is **four total iterations**, not four additional iterations.
 The smoke policy checks data, checkpointing and export/inference; navigation
 failures are expected. Test automatically exports the selected checkpoint to ONNX.
 
-Setup generates maps, spawns and A* paths before training. Use the
-[dataset settings](configuration.md) to size the splits. Training freezes
-the robot assets and reads the matching dataset from
-`.dwarl/datasets/`. Rerun setup after changing robot geometry, seed or data
-settings. Pass `--set train.data.workers=4` to setup to parallelize generation.
+Training freezes the robot assets and reuses matching maps from `.dwarl/datasets/`.
+Use [datagen](datagen.md) to generate maps, spawns and A* paths ahead of training.
 
 ## 4. Train and monitor
 

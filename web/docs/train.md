@@ -17,10 +17,7 @@ For example, preview a smaller run without starting it:
 pixi run train --preset navigation --num-envs 8 --print-config
 ```
 
-Setup prepares the train, validation and test maps for both normal and smoke training.
-If you change the seed or dataset settings, run `pixi run setup --robot <profile>`
-with the matching `--config` and `--set` options first. Add `--preset smoke` to
-prepare only the small dataset. Training reuses the prepared maps.
+Training reuses matching maps or generates them on first use. To prepare them ahead of time, run [datagen](datagen.md).
 
 The CLI shows model preparation, training progress and
 the completed checkpoint. The run contains a copy of the robot assets and records

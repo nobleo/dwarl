@@ -16,11 +16,11 @@ scripts = ["scripts/pixi_activate.sh"]
 
 [tasks]
 dwarl = { cmd = "dwarl", description = "Run the DWARL command-line interface" }
-train = { cmd = "dwarl train", description = "Train or resume a policy using prepared maps" }
-setup = { cmd = "dwarl setup", description = "Select a robot and prepare its training, validation and test maps" }
+train = { cmd = "dwarl train", description = "Train or resume a policy" }
+setup = { cmd = "dwarl setup", description = "Select and check a robot" }
+datagen = { cmd = "dwarl datagen", description = "Prepare training, validation and test maps" }
 demo = { cmd = """\
-  dwarl setup --example --yes --preset navigation --set train.data.train_maps=10 \
-    --set train.data.validation_maps=2 --set train.data.test_maps=1 --set train.data.pairs_per_map=3 \
+  dwarl setup --example --yes \
   && dwarl train diffbot --preset navigation --show --num-envs 10 --set train.validation_cases=2 \
     --set train.data.train_maps=10 --set train.data.validation_maps=2 --set train.data.test_maps=1 \
     --set train.data.pairs_per_map=3 --set recipe.sim.realtime=true""", description = "Prepare the TurtleBot example and watch navigation training in MuJoCo" }

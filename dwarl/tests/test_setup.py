@@ -34,15 +34,9 @@ def test_non_interactive_setup_detects_sibling_and_saves(tmp_path, monkeypatch):
     dwarl.mkdir()
     _integration(ws, "my_robot_dwarl")
     monkeypatch.chdir(dwarl)
-    from dwarl.datasets import cache
-    from dwarl.robot import profile
-
-    monkeypatch.setattr(profile, "load_profile", lambda robot: robot)
-    prepared = []
-    monkeypatch.setattr(cache, "dataset", lambda cfg, robot, create: prepared.append((cfg.train.preset, create)))
     monkeypatch.delenv("DWARL_ROBOT_WS", raising=False)
     assert setup.execute(interactive=False, build=False) == 0
-    assert prepared == [(None, True), ("smoke", True)]
+    assert not (dwarl / ".dwarl/datasets").exists()
     saved = setup.load_saved(dwarl / ".dwarl/setup.env")
     assert saved == {"DWARL_ROBOT_WS": str(ws.resolve()), "DWARL_ROBOT_PACKAGES": "my_robot_dwarl"}
 
