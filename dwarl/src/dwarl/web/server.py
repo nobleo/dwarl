@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from dwarl.web import evidence
+from dwarl.web import evidence, setup_file
 from dwarl.web.jobs import Jobs, inspect_command, pin_checkpoint, tail
 from dwarl.web.metrics import Metrics
 
@@ -93,7 +93,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if url.path == "/api/state":
                 jobs = {name: manager.snapshot() for name, manager in self.server.jobs.items()}
-                self.respond(200, {"api_version": 3, "runs": evidence.runs(self.server.root), "jobs": jobs,
+                self.respond(200, {"api_version": 4, "runs": evidence.runs(self.server.root), "jobs": jobs,
                                   "docs": (self.server.static / "docs/index.html").is_file(),
                                   "context": evidence.read(self.server.root / ".dwarl/context.json", {}),
                                   "history": evidence.history(self.server.root),
@@ -101,6 +101,14 @@ class Handler(BaseHTTPRequestHandler):
                                              if job else None for name, job in jobs.items()},
                                   "live": {name: evidence.read(job["telemetry"]) if job else None
                                            for name, job in jobs.items()}})
+            elif url.path == "/api/setup":
+                self.respond(200, setup_file.load(self.server.root))
+            elif url.path == "/api/settings":
+                from dwarl.web.settings import catalog
+
+                query = parse_qs(url.query)
+                self.respond(200, catalog(self.server.root, query.get("workflow", ["train"])[0],
+                                          query.get("preset", [""])[0]))
             elif url.path == "/api/run":
                 self.respond(200, evidence.details(self.server.root, parse_qs(url.query).get("name", [""])[0]))
             elif url.path == "/api/history":
@@ -161,6 +169,8 @@ class Handler(BaseHTTPRequestHandler):
                 argv = data.get("argv")
                 lane = "training" if isinstance(argv, list) and argv[:1] == ["train"] else "evaluation"
                 self.respond(200, self.server.jobs[lane].start(argv, telemetry=data.get("telemetry") is True))
+            elif self.path == "/api/setup":
+                self.respond(200, setup_file.save(self.server.root, data))
             elif self.path == "/api/stop":
                 if data.get("lane") not in self.server.jobs:
                     raise ValueError("choose training or evaluation")

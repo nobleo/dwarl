@@ -1,6 +1,9 @@
 <script setup>
 import { computed, ref } from 'vue'
 const props = defineProps({ series: Object, smoothing: Number })
+const group = computed(() => props.series.tag.split('/')[0])
+const title = computed(() => (props.series.tag.split('/').slice(1).join(' / ') || group.value).replaceAll('_', ' '))
+const colors = { Train:'#7466ca', Validation:'#138c80', Loss:'#c17635', Policy:'#a36e9e', Perf:'#40888c' }
 const hover = ref(null)
 const raw = computed(() => props.series.points)
 const points = computed(() => {
@@ -23,18 +26,22 @@ function move(event) {
 }
 </script>
 <template>
-  <section class="panel p-4 min-w-0">
-    <div class="flex justify-between gap-3 items-start">
-      <h3 class="font-medium text-sm break-all">{{ series.tag }}</h3>
-      <span class="font-mono text-sm text-primary whitespace-nowrap">{{ format((hover || raw.at(-1))[1]) }}</span>
+  <section class="panel p-5 min-w-0" :style="{'--trace-color':colors[group] || 'var(--color-primary)'}">
+    <div class="flex gap-2 items-center">
+      <slot name="handle"></slot>
+      <div class="flex-1 min-w-0" :title="series.tag"><p class="eyebrow break-all">{{ group.replaceAll('_',' ') }}</p>
+        <h3 class="font-semibold break-words first-letter:uppercase">{{ title }}</h3></div>
+      <slot name="actions"></slot>
     </div>
+    <p class="font-mono text-2xl tracking-tight mt-3">{{ format((hover || raw.at(-1))[1]) }}</p>
     <svg viewBox="0 0 500 190" class="w-full mt-3 text-base-content" role="img" :aria-label="`${series.tag} over training steps`" @mousemove="move" @mouseleave="hover = null">
       <g v-for="i in [0, 1, 2]" :key="i">
         <line x1="58" x2="478" :y1="20 + i * 70" :y2="20 + i * 70" stroke="currentColor" opacity=".1" />
         <text x="50" :y="24 + i * 70" text-anchor="end" fill="currentColor" opacity=".6" font-size="10">{{ format(limits.y1 - (limits.y1 - limits.y0) * i / 2) }}</text>
       </g>
-      <path :d="line(raw)" stroke="var(--color-primary)" stroke-opacity=".18" stroke-width="1" fill="none" />
-      <path :d="line(points)" stroke="var(--color-primary)" stroke-width="2" fill="none" />
+      <path :d="line(points)+' L478,160 H58 Z'" fill="var(--trace-color)" opacity=".06" />
+      <path :d="line(raw)" stroke="var(--trace-color)" stroke-opacity=".24" stroke-width="1" fill="none" />
+      <path :d="line(points)" stroke="var(--trace-color)" stroke-width="2" fill="none" />
       <circle v-if="hover" :cx="x(hover[0])" :cy="y(hover[1])" r="4" fill="var(--color-secondary)" />
       <text x="58" y="180" fill="currentColor" font-size="10">{{ limits.x0 }}</text>
       <text x="478" y="180" text-anchor="end" fill="currentColor" font-size="10">{{ limits.x1 }}</text>

@@ -5,6 +5,8 @@ import logo from '../shared/assets/dwarl-logo.png'
 import logoDark from '../shared/assets/dwarl-logo-dark.png'
 import MujocoView from './MujocoView.vue'
 import MetricsView from './MetricsView.vue'
+import WorkspaceOverrides from './WorkspaceOverrides.vue'
+import { dashboardSetup } from './dashboardSetup'
 import DocumentView from './DocumentView.vue'
 import CaseReplay from './CaseReplay.vue'
 import Comparison from './Comparison.vue'
@@ -17,9 +19,8 @@ if (fragment.has('token')) {
 const token = sessionStorage.getItem('dwarl-token') || ''
 const state = ref({ runs: [], context: {}, jobs: {}, live: {} })
 const selected = ref(''), detail = ref(null), tab = ref('workspace')
-const command = ref('train'), preset = ref(''), simulator = ref('mujoco'), suite = ref('validation')
-const checkpoint = ref('latest'), robot = ref(''), iterations = ref(''), resume = ref(false)
-const obstacleComparison = ref(false), showSimulator = ref(false)
+const command = ref('train'), preset = ref(''), simulator = ref('mujoco')
+const checkpoint = ref('latest'), robot = ref(''), resume = ref(false)
 const extra = ref(''), busy = ref(false), error = ref(''), connected = ref(false)
 const lane = ref('training'), evaluation = ref(''), reportOpen = ref(false)
 const readiness = ref(null), previewSettings = ref(null), replay = ref(null), historyId = ref(''), historyJob = ref(null)
@@ -41,7 +42,28 @@ const job = computed(() => state.value.jobs[lane.value])
 const running = computed(() => Boolean(job.value?.running))
 const commandLane = computed(() => command.value === 'train' ? 'training' : 'evaluation')
 const commandRunning = computed(() => Boolean(state.value.jobs[commandLane.value]?.running))
-const compatible = computed(() => state.value.api_version === 3)
+const compatible = computed(() => state.value.api_version === 4)
+const { setup, message: setupMessage, failed: setupFailed, pending, load, save, update, importFile, download } = dashboardSetup(api)
+watch(compatible, value => { if (value) load() })
+const configurable = computed(() => ['train','test'].includes(command.value))
+const fields = ref(null)
+watch([compatible, command, preset, resume], async (_, __, onCleanup) => {
+  let current = true
+  onCleanup(() => { current = false })
+  fields.value = null
+  if (!compatible.value || !configurable.value) return
+  try {
+    const query = new URLSearchParams({workflow:command.value,preset:command.value==='train' && !resume.value?preset.value:''})
+    const data = await api(`settings?${query}`)
+    if (current) fields.value = data
+  } catch(e) { if (current) error.value = e.message }
+})
+const starters = {train:[{path:'train.max_iterations'}], test:[
+  {path:'test.sim'}, {path:'test.suite',value:'validation'}, {path:'test.show'}, {path:'test.obstacle_comparison'}]}
+const rows = computed(() => setup.value?.settings?.[command.value] ?? starters[command.value] ?? [])
+const testSim = computed(() => rows.value.find(r=>r.path==='test.sim')?.value ?? fields.value?.['test.sim']?.value)
+function updateRows(value) { update({settings:{...setup.value.settings,[command.value]:value}}) }
+const waitingForSettings = computed(() => configurable.value && (!setup.value || !fields.value))
 const progress = computed(() => run.value?.progress || {})
 const argv = computed(() => {
   const args = [command.value]
@@ -51,17 +73,17 @@ const argv = computed(() => {
       if (robot.value.trim()) args.push(robot.value.trim())
       if (preset.value) args.push('--preset', preset.value)
     }
-    if (iterations.value) args.push('--max-iterations', String(iterations.value))
   }
   if (['test', 'deploy'].includes(command.value)) {
     if (selected.value) args.push('--run', `runs/${selected.value}`)
     args.push('--checkpoint', checkpoint.value)
     if (command.value === 'deploy' && robot.value.trim()) args.push(robot.value.trim())
   }
-  if (command.value === 'test') {
-    args.push('--sim', simulator.value, '--suite', suite.value)
-    if (simulator.value === 'gazebo' && obstacleComparison.value) args.push('--obstacle-comparison')
-    if (showSimulator.value) args.push('--show')
+  for (const {path,value} of rows.value) {
+    if (value === undefined || !fields.value?.[path]) continue
+    if (path === 'test.obstacle_comparison' && testSim.value !== 'gazebo') continue
+    if (value === true && ['test.show','test.obstacle_comparison'].includes(path)) args.push('--'+path.slice(5).replaceAll('_','-'))
+    else args.push('--set', `${path}=${JSON.stringify(value)}`)
   }
   if (command.value === 'doctor') args.push('--sim', simulator.value)
   // Each advanced line is one argv element; never passed through a shell.
@@ -180,6 +202,13 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
       <span v-else class="btn btn-sm btn-ghost btn-disabled" title="Build the documentation with pixi run web-build">
         <BookOpen :size="15" /> Documentation</span>
       <div class="flex flex-wrap items-center gap-3 lg:ml-auto text-xs">
+        <details v-if="compatible" class="relative"><summary class="btn btn-sm">Dashboard setup</summary>
+          <div class="panel absolute z-40 w-64 p-3 space-y-2 shadow-lg"><p>Workspace preferences · autosaved</p>
+            <div class="flex flex-wrap gap-2"><button class="btn btn-xs" :disabled="pending || !setup" @click="save">Save setup</button>
+              <button class="btn btn-xs" :disabled="pending" @click="load">Load setup</button>
+              <button class="btn btn-xs" :disabled="!setup" @click="download">Export JSON</button></div>
+            <label>Import setup<input type="file" accept=".json,application/json" class="file-input file-input-xs w-full" :disabled="pending" @change="importFile($event.target.files[0]); $event.target.value=''"></label>
+            <p role="status">{{ setupMessage }}</p></div></details>
         <select v-model="selected" class="select select-sm w-64 max-w-full text-xs" aria-label="Selected run" @change="loadDetail().catch(e => error = e.message)">
           <option value="">No run selected</option><option v-for="r in state.runs" :key="r.name" :value="r.name">{{ r.name }}</option>
         </select>
@@ -191,6 +220,7 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
   </header>
 
   <div class="max-w-[1600px] mx-auto px-4 sm:px-8 py-6">
+    <div v-if="setupFailed" class="alert alert-error mb-5" role="alert">Dashboard setup: {{ setupMessage }}</div>
     <div v-if="error" class="alert alert-error mb-5" role="alert"><span>{{ error }}</span>
       <button class="btn btn-sm btn-ghost" @click="error = ''">Dismiss</button></div>
     <div v-if="connected && !compatible" class="alert alert-warning mb-5" role="alert">
@@ -222,8 +252,6 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
             <label v-if="!resume" class="block"><span class="text-xs font-medium block mb-2">Recipe</span>
               <select v-model="preset" class="select w-full" aria-label="Recipe"><option value="">Configured defaults</option>
                 <option value="smoke">Smoke</option><option value="navigation">Navigation</option></select></label>
-            <label class="block"><span class="text-xs font-medium block mb-2">Iteration budget</span>
-              <input v-model="iterations" type="number" min="1" class="input w-full" placeholder="Configured default" aria-label="Iteration budget" /></label>
           </template>
           <label v-if="['test', 'deploy'].includes(command)" class="block"><span class="text-xs font-medium block mb-2">Checkpoint</span>
             <select v-model="checkpoint" class="select w-full" aria-label="Checkpoint">
@@ -233,21 +261,16 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
                 Iteration {{ cp.iteration }}{{ cp.best ? ' · best' : '' }} · {{ cp.sha256.slice(0, 8) }}
               </option>
             </select></label>
-          <label v-if="['test', 'doctor'].includes(command)" class="block"><span class="text-xs font-medium block mb-2">Simulator</span>
+          <label v-if="command==='doctor'" class="block"><span class="text-xs font-medium block mb-2">Simulator</span>
             <select v-model="simulator" class="select w-full" aria-label="Simulator"><option value="mujoco">MuJoCo</option><option value="gazebo">Gazebo</option></select></label>
-          <label v-if="command === 'test'" class="block"><span class="text-xs font-medium block mb-2">Suite</span>
-            <select v-model="suite" class="select w-full" aria-label="Suite"><option value="validation">Validation</option><option value="test">Held-out test</option><option value="benchmark">Benchmark</option></select></label>
-          <label v-if="command === 'test'" class="flex gap-2 items-center text-sm">
-            <input v-model="showSimulator" type="checkbox" class="checkbox checkbox-sm" /> Show simulator windows</label>
-          <label v-if="command === 'test' && simulator === 'gazebo'" class="flex gap-2 items-center text-sm">
-            <input v-model="obstacleComparison" type="checkbox" class="checkbox checkbox-sm" /> Compare clean and obstructed routes</label>
+          <WorkspaceOverrides v-if="configurable && fields && setup" :key="command" :fields="fields" :rows="rows" :gazebo="testSim==='gazebo'" @update="updateRows" />
           <details class="text-sm">
             <summary class="cursor-pointer muted">Advanced arguments</summary>
             <p class="text-xs muted my-2">One argument per line, including option values. Example: --set on one line, train.device=cpu on the next.</p>
             <textarea v-model="extra" class="textarea w-full font-mono text-xs" rows="4" aria-label="Advanced arguments"></textarea>
           </details>
           <div class="bg-base-200 rounded-lg p-3 command-preview">{{ preview }}</div>
-          <button v-if="['train', 'test', 'deploy'].includes(command)" class="btn btn-outline w-full" :disabled="busy || !connected" @click="checkPreview">Preview & check inputs</button>
+          <button v-if="['train', 'test', 'deploy'].includes(command)" class="btn btn-outline w-full" :disabled="busy || !connected || waitingForSettings" @click="checkPreview">Preview & check inputs</button>
           <div v-if="previewSettings" class="text-xs bg-base-200 p-3 rounded-lg space-y-2">
             <p class="font-semibold text-primary">Preflight passed</p>
             <p class="break-words">Robot: {{ previewSettings.config.robot || 'Frozen run profile' }}</p>
@@ -256,7 +279,7 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
             <details><summary class="cursor-pointer">Resolved workflow settings</summary><pre class="terminal console rounded-lg p-3 mt-2 max-h-64 overflow-auto">{{ JSON.stringify(previewSettings.config[command], null, 2) }}</pre></details>
           </div>
           <div class="grid grid-cols-[1fr_auto] gap-2">
-            <button class="btn btn-primary" :disabled="busy || commandRunning || !connected" @click="act('command', { argv: previewSettings?.argv || argv, telemetry: false })">
+            <button class="btn btn-primary" :disabled="busy || commandRunning || !connected || waitingForSettings" @click="act('command', { argv: previewSettings?.argv || argv, telemetry: false })">
               <Play :size="16" /> Run {{ command }}</button>
             <button class="btn btn-outline" :disabled="busy || !commandRunning" :title="`Stop ${commandLane}`" @click="act('stop', { lane: commandLane })"><Square :size="14" /> Stop</button>
           </div>
@@ -378,7 +401,7 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
       </div>
     </main>
 
-    <MetricsView v-if="tab === 'metrics' && compatible" :run="selected" />
+    <MetricsView v-if="tab === 'metrics' && compatible && setup" :run="selected" :setup="setup" @update="update" />
     <footer class="py-6 text-xs muted flex justify-between">Local tools. Recorded evidence. <span>DWARL</span></footer>
   </div>
 </template>

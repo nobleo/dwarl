@@ -73,6 +73,24 @@ def test_cli_preflight_and_robot_readiness(dashboard):
     assert not list((dashboard.root / "runs").glob("*"))
 
 
+def test_workspace_setup_roundtrip_and_invalid_import(dashboard):
+    headers = {"X-DWARL-Token": dashboard.token}
+    setup = {"schema": "dwarl-dashboard/1", "plots": ["Reward/goal"], "smoothing": 0,
+             "settings": {"train": [{"path": "train.show", "value": False}, {"path": "train.device"}]}}
+    assert request(dashboard, "/api/setup", setup, headers)[0] == 200
+    path = dashboard.root / "web/dashboard-setup.json"
+    assert json.loads(path.read_text()) == setup
+    assert request(dashboard, "/api/setup", {**setup, "settings": {"train": [{"path": "test.sim"}]}}, headers)[0] == 400
+    assert json.loads(request(dashboard, "/api/setup", headers=headers)[1]) == setup
+    status, body = request(dashboard, "/api/settings?workflow=train&preset=smoke", headers=headers)
+    assert status == 200
+    fields = json.loads(body)
+    assert fields["train.num_envs"]["value"] == 2
+    assert fields["train.early_stop.enabled"]["kind"] == "bool"
+    assert fields["train.early_stop.min_delta"]["maximum"] == 1
+    assert "train.detached" not in fields
+
+
 def test_commands_are_allowlisted_and_stay_attached():
     for argv in (["web"], ["train", "--detached"], ["train", "--set", "train.detached=true"], "train"):
         with pytest.raises(ValueError):

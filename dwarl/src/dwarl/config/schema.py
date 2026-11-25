@@ -20,17 +20,17 @@ class DataConfig:
 class EarlyStopConfig:
     enabled: bool = False
     patience: int = 5
-    min_delta: float = 0.01
+    min_delta: float = field(default=0.01, metadata={"minimum": 0, "maximum": 1})
 
 
 @dataclass
 class TrainConfig:
     preset: str | None = None
     name: str = "navigation"
-    num_envs: int = 64
+    num_envs: int = field(default=64, metadata={"minimum": 1})
     seed: int = 42
     device: str = "auto"
-    max_iterations: int = 3000
+    max_iterations: int = field(default=3000, metadata={"minimum": 1})
     resume: str | None = None
     # Start a new run from another run's selected checkpoint: weights whose shapes match are copied
     # (optimizer, iteration and exploration noise start fresh). Lets a recipe change build on a policy.
@@ -52,8 +52,8 @@ class TrainConfig:
 class TestConfig:
     run: str = "latest"
     checkpoint: str = "latest"
-    suite: str = "benchmark"
-    sim: str = "mujoco"
+    suite: str = field(default="benchmark", metadata={"choices": ["benchmark", "validation", "test"]})
+    sim: str = field(default="mujoco", metadata={"choices": ["mujoco", "gazebo", "both"]})
     case: str | None = None
     case_id: str | None = None  # replay one exact materialized case, rather than a generator family
     show: bool = False
@@ -65,7 +65,7 @@ class TestConfig:
     profile_compute: bool = False
     external_localization: bool = False
     controller_params: str | None = None
-    planner: str = "navfn"
+    planner: str = field(default="navfn", metadata={"choices": ["navfn", "smac2d"]})
     unmapped_obstacles: int = 3  # target per case; use 0 for clean navigation
     obstacle_comparison: bool = False  # clean + frozen on-route obstacles, in one Gazebo test
     unmapped_near_doorways: bool = True  # retain reachability checks without blanket doorway exclusions

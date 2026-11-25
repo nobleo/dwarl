@@ -31,6 +31,27 @@ For MuJoCo tests, **Real time** slows the run to wall-clock speed while you watc
 scores are unchanged and full speed resumes when the viewer closes.
 **Documentation** opens this site from the dashboard in a new tab.
 
+### Personalize and share the dashboard
+
+In **Metrics**, open **Metric library** to inspect any scalar in the selected
+run. Choose **Pin to wall** to keep it. Drag the dotted handles (or focus a
+handle and press Up/Down) to reorder your wall. Pins survive switching runs.
+
+Under **Workspace → Settings overrides**, search **+ Add setting** to pin a
+training, recipe or test field. Pinning alone inherits the workspace/recipe
+value. Editing creates an explicit CLI override; **Reset to inherited** removes
+the value but keeps the control. Drag handles to order the controls. Run and
+checkpoint selection stay in the command centre; preview checks use the CLI.
+
+The server autosaves these preferences, including explicit overrides, to
+`web/dashboard-setup.json` relative to the workspace where you started the
+dashboard. All browsers connected to that workspace share this file. Under
+**Dashboard setup**, **Save setup** writes it now, **Load setup** rereads it,
+and **Export JSON** / **Import setup** transfer a copy. Loading a setup does
+not start a job. To share it with a colleague, copy the file into their `web/`
+folder or export and import it. Git ignores it by default; use
+`git add -f web/dashboard-setup.json` to track an intentional team setup.
+
 ## Background execution
 
 ```bash
