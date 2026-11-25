@@ -1,3 +1,4 @@
 - Follow the [development checks](web/docs/contributing.md). Keep experiments opt-in.
 - For [robot setup](web/docs/integrate-robot.md), ask for missing measurements, preserve the installed policy, and stop after smoke validation.
 - [Tune on matched validation cases](web/docs/results.md#report-driven-iteration); save held-out cases for the final test.
+- Before committing, run `pixi run -e train pre-commit run --all-files`.

@@ -23,6 +23,7 @@ Component scripts likewise belong in `ros/scripts/` or `web/scripts/`; the root 
 live in `web/tests/`, and each ROS package owns its native tests under `test/`.
 
 ```bash
+pixi run -e train pre-commit run --all-files
 pixi run pytest
 pixi run lint
 pixi run -e docs docs

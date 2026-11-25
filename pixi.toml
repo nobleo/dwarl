@@ -39,6 +39,7 @@ web-test = { cmd = "npm --prefix web test", depends-on = ["web-build"], descript
 [feature.dev.pypi-dependencies]
 pytest = ">=8"
 ruff = ">=0.6"
+pre-commit = ">=4, <5"
 
 [feature.dev.tasks]
 pytest = { cmd = "pytest -q", env = { OMP_NUM_THREADS = "1", MKL_NUM_THREADS = "1", PYTEST_DISABLE_PLUGIN_AUTOLOAD = "1" }, description = "Run the Python test suite with single-threaded numerical libraries" }

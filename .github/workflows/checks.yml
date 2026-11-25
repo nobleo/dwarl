@@ -1,0 +1,33 @@
+name: Checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: pre-commit
+            command: pre-commit run --all-files
+          - name: lint
+            command: lint
+          - name: python-tests
+            command: pytest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          environments: train
+          locked: true
+      - run: pixi run --locked -e train ${{ matrix.command }}
