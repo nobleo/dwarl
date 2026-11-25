@@ -23,7 +23,8 @@ and `pixi run ros-test` for native ROS tests.
 ## Get started
 
 [Try the example robot](https://nobleo.github.io/dwarl/quickstart/) to watch a TurtleBot3 train and navigate in MuJoCo.
-The same example is available in [Docker](docker/README.md).
+The quickstart covers installing Pixi and reclaiming disk space afterward.
+A [Docker demo](docker/README.md) is also available on a best-effort basis.
 
 ## Train, test and deploy
 
