@@ -1,6 +1,6 @@
 site_name: DWARL
 docs_dir: docs
-site_dir: ../site
+site_dir: site
 site_description: Train, test and deploy a neural local planner
 site_url: https://nobleo.github.io/dwarl/
 repo_url: https://github.com/nobleo/dwarl
