@@ -19,6 +19,7 @@ if (fragment.has('token')) {
 const token = sessionStorage.getItem('dwarl-token') || ''
 const state = ref({ runs: [], context: {}, jobs: {}, live: {} })
 const selected = ref(''), detail = ref(null), tab = ref('workspace')
+let manualSelection = false
 const command = ref('train'), preset = ref(''), simulator = ref('mujoco')
 const checkpoint = ref('latest'), robot = ref(''), resume = ref(false)
 const extra = ref(''), busy = ref(false), error = ref(''), connected = ref(false)
@@ -130,12 +131,8 @@ async function refresh() {
   try {
     state.value = await api('state')
     connected.value = true
-    if (!selected.value && state.value.runs.length) {
-      const context = state.value.context
-      const choices = context.runs?.[context.robot] || {}
-      const remembered = (choices.navigation || choices.smoke || '').split('/').at(-1)
-      selected.value = state.value.runs.some(r => r.name === remembered) ? remembered : state.value.runs[0].name
-    }
+    if (selected.value && !run.value) manualSelection = false
+    if (!manualSelection) selected.value = state.value.runs[0]?.name || ''
     await loadDetail()
     if (follow.value) {
       await nextTick()
@@ -211,7 +208,7 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
               <button class="btn btn-xs" :disabled="!setup" @click="download">Export JSON</button></div>
             <label>Import setup<input type="file" accept=".json,application/json" class="file-input file-input-xs w-full" :disabled="pending" @change="importFile($event.target.files[0]); $event.target.value=''"></label>
             <p role="status">{{ setupMessage }}</p></div></details>
-        <select v-model="selected" class="select select-sm w-64 max-w-full text-xs" aria-label="Selected run" @change="loadDetail().catch(e => error = e.message)">
+        <select v-model="selected" class="select select-sm w-64 max-w-full text-xs" aria-label="Selected run" @change="manualSelection = true; loadDetail().catch(e => error = e.message)">
           <option value="">No run selected</option><option v-for="r in state.runs" :key="r.name" :value="r.name">{{ r.name }}</option>
         </select>
         <span class="flex items-center gap-2 whitespace-nowrap"><span class="status" :class="connected ? 'status-success' : 'status-error'"></span>

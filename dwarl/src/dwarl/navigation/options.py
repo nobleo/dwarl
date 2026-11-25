@@ -12,7 +12,7 @@ SURPRISE_OBSTACLES = {
     "probability": 0.0,          # share of training episodes with obstacles on the path (0 disables)
     "curriculum": False,         # legacy/explicit obstacle recipes remain constant unless opted in
     "count": [1, 3],             # obstacles per episode, inclusive range
-    "size": [0.1, 0.4],          # radius or larger half extent [m]
+    "size": None,                # automatic from footprint; explicit [min, max] in metres
     "lateral": 1.0,              # centre offset from the path, as a fraction of (size + robot half width)
     "keepout": 1.0,              # free distance around start and goal [m]
     "spacing": 1.2,              # minimum distance between obstacle centres [m]
@@ -41,7 +41,8 @@ def surprise_obstacles(cfg) -> dict:
     lo, hi = (int(v) for v in values["count"])
     if lo < 1 or hi < lo:
         raise ValueError("surprise_obstacles.count must be [min, max] with 1 <= min <= max")
-    if float(values["size"][0]) <= 0 or float(values["size"][1]) < float(values["size"][0]):
+    size = values["size"]
+    if size is not None and (len(size) != 2 or not (0 < float(size[0]) <= float(size[1]) < math.inf)):
         raise ValueError("surprise_obstacles.size must be [min, max] with 0 < min <= max")
     release_time = float(values["release_time"])
     if not math.isfinite(release_time) or release_time <= 0:

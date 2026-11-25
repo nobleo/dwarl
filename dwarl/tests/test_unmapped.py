@@ -46,6 +46,21 @@ def test_obstacles_never_close_a_narrow_corridor():
     assert len(place_unmapped(_map(walls), _case(), 3, ROBOT)) > 0  # 1.9 m corridor: room to pass
 
 
+def test_default_size_follows_lateral_footprint():
+    md, case = _map(), _case()
+    small = place_unmapped(md, case, 1, {"footprint_radius": .18})
+    large = place_unmapped(md, case, 1, {"footprint_radius": .67, "footprint": [[.59, .315], [-.14, -.315]]})
+    assert len(small) == len(large) == 1
+    assert small[0, 4] / large[0, 4] == pytest.approx(.18 / .315)
+
+
+def test_distant_way_around_blocked_aisle_does_not_count_as_a_bypass():
+    # Both ends open into the same room: a global search can go around either wall.
+    walls = [[BOX, 0, y, 0, 2.5, .05] for y in (-.43, .43)]
+    assert not len(place_unmapped(_map(walls), _case(), 1, {"footprint_radius": .18},
+                                  size=(.23, .23), doorways=True))
+
+
 def test_unmapped_obstacles_are_in_the_world_only(tmp_path):
     md = _map()
     obstacles = place_unmapped(md, _case(), 2, ROBOT)
@@ -82,12 +97,14 @@ def test_obstacles_keep_clear_of_doorways():
 def test_doorway_option_also_places_obstacles_behind_doors():
     walls = [[BOX, 0.0, 2.75, 0.0, 0.05, 2.25], [BOX, 0.0, -2.75, 0.0, 0.05, 2.25]]
     md = _map(walls)
+    narrow = narrow_points(md, np.asarray(_case()["reference_path"]), ROBOT)
     near = []
     for identifier in "abcdefghijklmnopqrst":
         aware = place_unmapped(md, _case(identifier), 1, ROBOT)
         anywhere = place_unmapped(md, _case(identifier), 1, ROBOT, doorways=True)
         assert len(anywhere) >= len(aware)
-        near += [p for p in anywhere if abs(p[1]) < 2 * ROBOT["footprint_radius"] + p[4]]
+        near += [p for p in anywhere
+                 if np.linalg.norm(narrow - p[1:3], axis=1).min() < 2 * ROBOT["footprint_radius"] + p[4]]
     assert near  # some obstacles now sit close to the door
     cfg = compose_config(assignments=["test.sim=gazebo", "test.unmapped_obstacles=3",
                                       "test.unmapped_near_doorways=true"])
@@ -95,7 +112,7 @@ def test_doorway_option_also_places_obstacles_behind_doors():
 
 
 def test_doorway_exclusion_only_removes_obstacles_without_moving_the_rest():
-    walls = [[BOX, 0.0, 2.75, 0.0, 0.05, 2.25], [BOX, 0.0, -2.75, 0.0, 0.05, 2.25]]
+    walls = [[BOX, 0.85, 2.75, 0.0, 0.05, 2.25], [BOX, 0.85, -2.75, 0.0, 0.05, 2.25]]
     md = _map(walls)
     removed = retained = 0
     for identifier in "abcdefghijklmnopqrst":

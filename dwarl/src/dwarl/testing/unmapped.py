@@ -13,15 +13,14 @@ import numpy as np
 
 from dwarl.datasets.generation.geometry import rasterize
 from dwarl.datasets.generation.mapdata import BOX, CYLINDER
+from dwarl.navigation.surprises import LocalDetours, half_width, obstacle_size
 from dwarl.navigation.surprises import dilate as _dilate
 from dwarl.navigation.surprises import reachable as _reachable
 
 
 def passage_radius(robot: dict, margin: float) -> float:
     """Half the robot's width plus a margin: the free half-width a detour must have."""
-    footprint = robot.get("footprint")
-    half_width = max(abs(float(y)) for _, y in footprint) if footprint else float(robot["footprint_radius"])
-    return half_width + margin
+    return half_width(robot) + margin
 
 
 def narrow_points(md, path: np.ndarray, robot: dict) -> np.ndarray:
@@ -33,8 +32,8 @@ def narrow_points(md, path: np.ndarray, robot: dict) -> np.ndarray:
     return path[tight[rc[:, 0], rc[:, 1]]]
 
 
-def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, float] = (0.2, 0.35),
-                   margin: float = 0.1, keepout: float = 1.5, spacing: float = 2.0,
+def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, float] | None = None,
+                   margin: float | None = None, keepout: float = 1.5, spacing: float = 2.0,
                    tries: int = 40, doorways: bool = False) -> np.ndarray:
     """Return up to ``count`` obstacle primitives (N, 6) on the case's reference path.
 
@@ -61,6 +60,8 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
     seed = int.from_bytes(hashlib.sha256(f"{case['id']}:{case.get('seed', 0)}".encode()).digest()[:8], "little")
     rng = np.random.default_rng(seed)
     n, res = md.occupancy.shape[0], md.resolution
+    if margin is None:
+        margin = half_width(robot) / 3
     cells = int(np.ceil(passage_radius(robot, margin) / res))
     start = tuple(md.xy_to_cell(np.asarray(case["start"][:2])).tolist())
     goal = tuple(md.xy_to_cell(np.asarray(case["goal"][:2])).tolist())
@@ -71,6 +72,8 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
     narrow = narrow_points(md, path, robot)
     turn_clearance = 2 * float(robot["footprint_radius"])
     placed: list[np.ndarray] = []
+    local = LocalDetours(md, path, arc, robot, margin)
+    size = size or obstacle_size(robot)
     usable = length - 2 * keepout
     for k in range(count):
         target = keepout + usable * (k + 0.5) / count
@@ -96,6 +99,8 @@ def place_unmapped(md, case: dict, count: int, robot: dict, size: tuple[float, f
                 continue
             occupied = mapped | rasterize(np.stack([*placed, prim]), n, res, md.size)
             if not _reachable(_dilate(occupied, cells), start, goal):
+                continue
+            if not local.accept(footprint, s, tangent):
                 continue
             placed.append(prim)
             break

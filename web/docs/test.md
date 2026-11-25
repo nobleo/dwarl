@@ -64,7 +64,11 @@ See [the report reading guide and remote-copy instructions](results.md#open-and-
 
 Choose `--suite benchmark` for built-in layouts such as doorways, offices and warehouses.
 Set `test.unmapped_obstacles` to request a target obstacle count per case in MuJoCo or Gazebo.
-Placement can yield fewer or zero; check the episode's actual `unmapped_obstacles`.
+Obstacle diameter (or the longer side of a box) is 50–90% of robot width, taken
+from the footprint polygon or the diameter for a circular robot. Placement checks
+for a short sidestep that rejoins the same path and leaves room for the robot to turn.
+A route around another aisle does not qualify. Placement can yield fewer or zero;
+check the episode's actual `unmapped_obstacles`.
 Progress output prints placed/requested counts and flags zero-exposure cases.
 Set `test.unmapped_near_doorways=false` to enable the conservative doorway exclusion.
 Use `--set test.unmapped_obstacles=0` for a clean-map run.

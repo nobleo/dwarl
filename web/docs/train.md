@@ -28,9 +28,11 @@ the dataset path and index hash. Keep the referenced dataset if you move the run
 `recipe.env.surprise_obstacles` adds random boxes and cylinders to the reference path of a
 share of training episodes. The map and the path stay as they
 were, so the robot only sees them in its lidar, like obstacles that appear on a real
-route. They avoid start, goal and mapped geometry. Placement checks that a detour
-remains reachable on the grid; on tight maps it reduces the required clearance
-to what the original route allows. Test cases place their own (`test.unmapped_obstacles`).
+route. They avoid start, goal and mapped geometry. By default their diameter or
+longer box side is 50–90% of the robot's footprint width before curriculum scaling.
+An explicit `size: [min, max]` still specifies radius or box half-extent in metres.
+Placement requires a short, footprint-clear sidestep back onto the reference path.
+Test cases place their own (`test.unmapped_obstacles`).
 
 ```bash
 pixi run train --preset navigation --set recipe.env.surprise_obstacles.probability=0.6

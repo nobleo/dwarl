@@ -23,7 +23,7 @@ class AvoidanceCurriculum:
             **base,
             "probability": base["probability"] * fraction,
             "count": [max(1, int(np.ceil(value * fraction))) for value in base["count"]],
-            "size": [base["size"][0], base["size"][0] +
+            "size": None if base["size"] is None else [base["size"][0], base["size"][0] +
                      (base["size"][1] - base["size"][0]) * fraction],
             "margin": base["margin"] + 0.2 * (1 - fraction),
         }

@@ -16,6 +16,12 @@ After setup, run `pixi run web`. Choose a workflow in **Workspace** to watch rob
 | --- | --- |
 | [![DWARL workflow controls beside robots navigating simulated environments](web/docs/assets/dashboard-workspace.webp)](web/docs/assets/dashboard-workspace.webp) | [![Training chart wall showing success, path completion, collisions and timeouts](web/docs/assets/dashboard-metrics.webp)](web/docs/assets/dashboard-metrics.webp) |
 
+### Watch a checkpoint navigate in Gazebo
+
+[![Gazebo shows the robot among walls and obstacles; RViz shows its route over the navigation costmap](.github/assets/gazebo-rviz-test.webp)](.github/assets/gazebo-rviz-test.webp)
+
+One test, two views: **Gazebo** (left) shows the world the robot moves through. **RViz** (right) shows the map and route Nav2 uses to steer. To watch your own checkpoint, run `pixi run dwarl test --sim gazebo --show`. [Testing guide →](https://nobleo.github.io/dwarl/test/)
+
 ## Where to start
 
 | I want to… | Start here |

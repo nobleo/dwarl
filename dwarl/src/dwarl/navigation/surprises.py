@@ -90,6 +90,48 @@ def half_width(robot: dict) -> float:
     return max(abs(float(y)) for _, y in footprint) if footprint else float(robot["footprint_radius"])
 
 
+def obstacle_size(robot: dict) -> tuple[float, float]:
+    """Radius or larger box half-extent, in metres."""
+    width = half_width(robot)
+    return .5 * width, .9 * width
+
+
+class LocalDetours:
+    """Require a short, clear excursion that rejoins the same stretch of reference path."""
+
+    def __init__(self, md, path, arc, robot, margin):
+        self.md, self.path, self.arc = md, path, arc
+        width = half_width(robot)
+        clearance = max(float(robot["footprint_radius"]), width + margin)
+        self.cells = int(np.ceil(clearance / md.resolution))
+        self.blocked = dilate(md.occupancy, self.cells)
+        self.excursion = clearance + width + margin
+        self.reserved = np.zeros_like(self.blocked)
+
+    def accept(self, footprint, along, tangent):
+        """Keep a collision-free bypass for this obstacle and preserve earlier bypasses."""
+        added = dilate(footprint, self.cells)
+        if (added & self.reserved).any():
+            return False
+        span = 2 * self.excursion
+        lo, hi = max(0., along - span), min(self.arc[-1], along + span)
+        samples = np.linspace(lo, hi, int(np.ceil((hi - lo) / (.25 * self.md.resolution))) + 1)
+        route = np.column_stack([np.interp(samples, self.arc, axis) for axis in self.path.T])
+        phase = (samples - along) / np.where(samples < along, along - lo, hi - along)
+        bump = (.5 + .5 * np.cos(np.pi * phase))[:, None] * np.array([-tangent[1], tangent[0]])
+        blocked = self.blocked | added
+        for factor in (.5, -.5, .75, -.75, 1., -1.):
+            detour = route + factor * self.excursion * bump
+            if np.abs(detour).max() >= self.md.size / 2:
+                continue
+            rows, cols = self.md.xy_to_cell(detour).T
+            if not blocked[rows, cols].any():
+                self.reserved[rows, cols] = True
+                self.blocked = blocked
+                return True
+        return False
+
+
 # ------------------------------------------------------------------------------------------- placement
 def sample_on_path(md, path: np.ndarray, robot: dict, rng: np.random.Generator, count: int,
                    s: dict | None = None) -> np.ndarray:
@@ -114,13 +156,15 @@ def sample_on_path(md, path: np.ndarray, robot: dict, rng: np.random.Generator, 
     cells = int(np.ceil(max(radius_c, width + float(s["margin"])) / res))
     while cells > 0 and not reachable(dilate(mapped, cells), start, goal):
         cells -= 1  # tight start or goal: require no more room than the mapped route has
+    local = LocalDetours(md, path, arc, robot, float(s["margin"]))
+    size = s["size"] or obstacle_size(robot)
     placed: list[np.ndarray] = []
     for _ in range(count):
         for _ in range(int(s["tries"])):
             along = rng.uniform(keepout, length - keepout)
             i = int(np.clip(np.searchsorted(arc, along) - 1, 0, len(path) - 2))
             tangent = (path[i + 1] - path[i]) / max(steps[i], 1e-9)
-            radius = rng.uniform(*map(float, s["size"]))
+            radius = rng.uniform(*size)
             offset = rng.uniform(-1.0, 1.0) * float(s["lateral"]) * (radius + width)
             centre = path[i] + tangent * (along - arc[i]) + np.array([-tangent[1], tangent[0]]) * offset
             if rng.random() < 0.5:
@@ -137,6 +181,8 @@ def sample_on_path(md, path: np.ndarray, robot: dict, rng: np.random.Generator, 
                 continue
             occupied = mapped | rasterize(np.stack([*placed, prim]), n, res, md.size)
             if not reachable(dilate(occupied, cells), start, goal):
+                continue
+            if not local.accept(footprint, along, tangent):
                 continue
             placed.append(prim)
             break
@@ -169,6 +215,8 @@ class SurpriseObstacles:
         robot = {"footprint": env.footprint.tolist() if env.footprint is not None else None,
                  "footprint_radius": env.radius}
         self.robot = robot
+        if self.s["size"] is None:
+            self.s["size"] = obstacle_size(robot)
         self.width = half_width(robot)
         lo, hi = (float(v) for v in self.s["horizon"])
         self.horizon = float(np.clip(env.v_max * float(self.s["horizon_time"]), lo, hi))
