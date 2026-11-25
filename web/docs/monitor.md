@@ -33,17 +33,17 @@ For MuJoCo tests, **Real time** slows the run to wall-clock speed while you watc
 scores are unchanged and full speed resumes when the viewer closes.
 **Documentation** opens this site from the dashboard in a new tab.
 
-=== "Workspace · watch the robots"
+<div class="dashboard-previews" markdown>
 
-    Choose **Training** or **Evaluation** above the simulator. The command controls stay beside the viewer so you can see which workflow and settings you selected.
+[![Workspace with the training workflow selected and the live MuJoCo viewer showing several robot routes](assets/dashboard-workspace.webp)](assets/dashboard-workspace.webp)
 
-    [![Workspace with the training workflow selected and the live MuJoCo viewer showing several robot routes](assets/dashboard-workspace.webp)](assets/dashboard-workspace.webp)
+[![Metrics chart wall with success, path completion, collision and timeout curves](assets/dashboard-metrics.webp)](assets/dashboard-metrics.webp)
 
-=== "Metrics · follow the run"
+</div>
 
-    Open **Metrics** to compare success and path completion with collisions and timeouts across training iterations. These are training signals; use [checkpoint tests](test.md) to assess navigation on separate cases.
+**Workspace · watch the robots.** Choose **Training** or **Evaluation** above the simulator. The command controls stay beside the viewer so you can see which workflow and settings you selected.
 
-    [![Metrics chart wall with success, path completion, collision and timeout curves](assets/dashboard-metrics.webp)](assets/dashboard-metrics.webp)
+**Metrics · follow the run.** Open **Metrics** to compare success and path completion with collisions and timeouts across training iterations. These are training signals; use [checkpoint tests](test.md) to assess navigation on separate cases.
 
 ### Personalize and share the dashboard
 
