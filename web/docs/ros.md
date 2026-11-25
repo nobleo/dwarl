@@ -1,0 +1,63 @@
+# Native ROS setup
+
+For the complete model → training → testing → export → Nav2 workflow, follow
+[Your robot: from model to Nav2](integrate-robot.md).
+
+Target platform: Linux x86-64 with ROS 2 Jazzy and Gazebo Harmonic, installed by
+[pixi](https://pixi.sh) from [RoboStack](https://robostack.github.io): no system ROS install,
+`apt`, `rosdep` or `source .../setup.bash` is needed. The native Nav2 controller can
+run in the lightweight `runtime` Pixi environment without the training stack. Loading different policy weights must
+not require a ROS rebuild.
+
+Run the guided setup once:
+
+```sh
+pixi run setup
+```
+
+It offers the example robot, a new integration or a saved integration. Workspace answers
+are stored in `.dwarl/setup.env` and active selections in `.dwarl/context.json`.
+Gazebo integrations build the packages under `ros/src/` and the robot workspace against
+pixi's ROS (into `.pixi/robot/`) and offer a live check. Rerun it to change the answers. For scripts and CI:
+`dwarl setup --robot-ws /path/to/robot --packages my_robot_dwarl --yes`.
+`DWARL_ROBOT_WS` / `DWARL_ROBOT_PACKAGES` in the environment override the saved answers.
+
+The robot build leaves the robot repository's own `build/` and `install/` untouched, and building
+only the integration package(s) keeps hardware-only packages (drivers, CAN stacks) out. DWARL loads
+the robot overlay and then its own `ros/install` (its controller takes precedence) for every Gazebo
+run, also right after a build in the same command. Robot runtime dependencies missing from the `ros`
+feature in `pixi.toml` can be added with `pixi add --feature ros ros-jazzy-<package>`.
+Run pixi from a terminal without another ROS workspace sourced.
+
+Upgrading an existing checkout from the old ROS source layout? After stopping any
+running ROS or Gazebo stack, move the generated `ros/build`, `ros/install`,
+`ros/build-runtime` and `ros/install-runtime` directories aside before the next
+build. CMake caches and symlink installs contain the previous source paths.
+New checkouts do not need this step.
+
+Run `pixi run test --sim gazebo` directly, including after editing ROS code.
+DWARL builds incrementally before testing or deploying with a launch adapter;
+you don't need a separate build command. MuJoCo testing skips ROS builds.
+The [Docker image](https://github.com/nobleo/dwarl/tree/main/docker) uses the
+packages built into the image automatically. Rebuild the image after changing those packages.
+`dwarl doctor --sim gazebo` (also part of `dwarl test --sim gazebo`) warns about Gazebo servers left
+behind by an interrupted DWARL test (they share ROS domains and CPU) and a `powersave` CPU governor.
+
+```sh
+pixi run test --sim both --case doorway
+pixi run deploy /path/to/robot-repository
+```
+
+The robot's planner launch needs one initial integration-package build.
+Subsequent deployments update the source integration's selected-policy file and bundles;
+the symlink-installed launch reads that source location, so new weights need no rebuild.
+
+Fresh-machine installation and broader Gazebo scoring validation remain experimental.
+`dwarl doctor --sim gazebo` reports missing prerequisites.
+
+For Gazebo's ground-truth localization or a robot-provided localizer, see
+[Choose who supplies localization](gazebo.md#choose-who-supplies-localization).
+
+Ground truth uses Jazzy's Gazebo Transport 13 and Messages 10 Python bindings directly:
+the generic ROS Pose_V bridge does not preserve scene-pose model names. Each managed
+test owns a ROS domain lease and Gazebo partition, and starts a fresh stack per case.

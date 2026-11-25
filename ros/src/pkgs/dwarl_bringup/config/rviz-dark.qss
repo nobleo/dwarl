@@ -1,0 +1,11 @@
+QWidget {
+  background-color: #292c31;
+  color: #e5e8ed;
+  selection-background-color: #405f84;
+  selection-color: white;
+}
+QAbstractItemView, QLineEdit, QAbstractSpinBox {
+  background-color: #202226;
+  alternate-background-color: #303338;
+}
+QWidget:disabled { color: #969ba3; }

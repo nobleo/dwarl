@@ -1,0 +1,20 @@
+collision:
+  role: collision
+  func: dwarl.navigation.terminations:collision
+  params: {min_upright: 0.5}
+flipped:
+  role: collision
+  func: dwarl.navigation.terminations:flipped
+  params: {min_upright: 0.5}
+success:
+  role: success
+  func: dwarl.navigation.terminations:goal_reached
+  params: {command_name: path, tolerance: 0.3, min_upright: 0.5}
+stuck:
+  role: stuck
+  func: dwarl.navigation.terminations:NoProgress
+  params: {command_name: path, steps: 50, distance: 0.3}
+timeout:
+  func: dwarl.navigation.terminations:PathTimeLimit
+  time_out: true                  # RSL-RL bootstraps time limits, not task terminations
+  params: {command_name: path, min_steps: 100, time_factor: 2.5}

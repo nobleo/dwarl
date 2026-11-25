@@ -1,0 +1,7 @@
+timestep: 0.005
+tile_gap: 1.0
+pool_size: 300           # obstacle geoms per tile (>= datagen.max_primitives)
+num_shards: 0            # gui=false only: split envs over N independent models stepped in threads (0 = auto, #physical cores)
+render_fps: 30
+realtime: false          # slow the control loop down to wall-clock time
+realtime_speed: 1.0

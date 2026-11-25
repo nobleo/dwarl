@@ -1,0 +1,23 @@
+# Only inputs used by the example image. Never send local workspaces or credentials.
+**
+!pixi.lock
+!pixi.toml
+!README.md
+!LICENSE
+!dwarl/
+!dwarl/pyproject.toml
+!dwarl/README.md
+!dwarl/LICENSE
+!dwarl/src/
+!dwarl/src/**
+!ros/
+!ros/src/
+!ros/src/**
+!scripts/
+!scripts/pixi_activate.sh
+!docker/
+!docker/Dockerfile
+!docker/entrypoint.sh
+**/__pycache__/
+**/*.egg-info/
+dwarl/src/dwarl/web/static/

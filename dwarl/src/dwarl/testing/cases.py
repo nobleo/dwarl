@@ -1,0 +1,112 @@
+"""Freeze geometry and starts once; simulators consume the same cases.json."""
+
+import math
+import random
+import shutil
+import tempfile
+from collections import deque
+from pathlib import Path
+
+from dwarl.runs.store import identity, lock, sha256, write_json
+
+
+def select_cases(cases, limit, seed):
+    """Balance capped workloads across generators, then maps within each generator."""
+    if limit is None or len(cases) <= limit:
+        return cases
+    rng = random.Random(seed)
+    groups = {}
+    for case in cases:
+        groups.setdefault(case["name"], {}).setdefault(case["map"], []).append(case)
+    generators = []
+    for name in sorted(groups):
+        maps = []
+        for index in sorted(groups[name]):
+            candidates = list(groups[name][index])
+            rng.shuffle(candidates)
+            maps.append(deque(candidates))
+        rng.shuffle(maps)
+        generators.append(deque(maps))
+    rng.shuffle(generators)
+    pending = deque(generators)
+    selected = []
+    while pending and len(selected) < limit:
+        maps = pending.popleft()
+        candidates = maps.popleft()
+        selected.append(candidates.popleft())
+        if candidates:
+            maps.append(candidates)
+        if maps:
+            pending.append(maps)
+    return selected
+
+
+def materialize(contract, request, out):
+    from dwarl.datasets.generation.mapdata import path_length
+    from dwarl.testing.scenarios import BENCHMARK_NAMES, LAYOUT_VERSION, SPLIT, build_scenarios
+    from dwarl.training.environment.dataset import MapDataset
+
+    source = request.dataset or contract.dataset.path
+    split = {"validation": "val", "test": "test", "benchmark": SPLIT}[request.suite]
+    if request.suite == "benchmark" and not request.dataset:
+        if request.case and request.case not in BENCHMARK_NAMES:
+            raise ValueError(f"unknown case {request.case!r}; available: {', '.join(BENCHMARK_NAMES)}")
+        root = Path(".dwarl/scenarios").resolve()
+        key = identity({"robot": contract.robot.profile_sha256, "layout": LAYOUT_VERSION,
+                        "case": request.case})
+        source = root / key
+        with lock(root / f".{key}.lock"):
+            if not source.exists():
+                with tempfile.TemporaryDirectory(prefix=".scenarios-", dir=root) as tmp:
+                    stage = Path(tmp) / "data"
+                    build_scenarios(stage, names=[request.case] if request.case else None,
+                                    robot=contract.robot.profile_file, previews=False)
+                    stage.rename(source)
+    dataset = MapDataset(source, split)
+    names = sorted({m.generator for m in dataset.maps})
+    if request.case and request.case not in names:
+        raise ValueError(f"unknown case {request.case!r}; available: {', '.join(names)}")
+    maps_dir = out / "maps" / split
+    maps_dir.mkdir(parents=True)
+    cases, files = [], []
+    for mi, md in enumerate(dataset.maps):
+        name = dataset.index["splits"][split]["maps"][mi]
+        # MuJoCo indexes the local map list, but benchmark IDs historically use
+        # the full suite's position, including when replaying a frozen subset.
+        id_map = mi
+        if (request.suite == "benchmark" and dataset.index.get("config", {}).get("kind") == "scenarios"
+                and name == f"{md.generator}.npz" and md.generator in BENCHMARK_NAMES):
+            id_map = BENCHMARK_NAMES.index(md.generator)
+        shutil.copyfile(Path(source) / split / name, maps_dir / name)
+        files.append(name)
+        if request.case and md.generator != request.case:
+            continue
+        for pi in range(md.num_pairs):
+            path = md.path(pi)
+            direction = path[min(5, len(path)-1)] - path[0]
+            yaw = math.atan2(float(direction[1]), float(direction[0]))
+            for repeat in range(request.repeats):
+                params = contract.terminations.timeout.params
+                budget = (params.min_steps + int(params.time_factor * path_length(path) /
+                          contract.robot.v_max / contract.env.control_dt)) * contract.env.control_dt
+                case = {"name": md.generator, "map": mi, "pair": pi, "map_file": f"maps/{split}/{name}",
+                        "geometry": sha256(maps_dir / name), "start": [*path[0].tolist(), yaw],
+                        "goal": path[-1].tolist(), "reference_path": path.tolist(), "repeat": repeat,
+                        "seed": request.seed + repeat, "time_budget": budget,
+                        "tolerance": contract.terminations.success.params.tolerance,
+                        "robot": contract.robot.profile_sha256, "suite": request.suite}
+                case["id"] = identity({**case, "map": id_map})
+                cases.append(case)
+    case_id = request.get("case_id")
+    if case_id:
+        cases = [case for case in cases if case["id"] == case_id]
+        if not cases:
+            raise ValueError(f"case ID {case_id!r} is not in this workload")
+    cases = select_cases(cases, request.max_cases, request.seed)
+    if not cases:
+        raise ValueError("selected workload contains no cases")
+    index = {"config": dataset.index.get("config", {}), "splits": {split: {"maps": files}}}
+    write_json(out / "maps/index.json", index)
+    workload = {"schema": "dwarl_cases/1", "split": split, "cases": cases, "identity": identity(cases)}
+    write_json(out / "cases.json", workload)
+    return workload

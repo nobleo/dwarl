@@ -1,0 +1,127 @@
+"""DWARL Gazebo benchmark for any robot: robot simulator + perfect localisation + map + Nav2/dwarl.
+
+    ros2 launch dwarl_bringup bench.launch.py world:=<sdf> map:=<yaml> x:=1 y:=2 yaw:=0 model_dir:=<bundle>
+
+The robot comes from the bundle: its profile's ``ros.sim_launch`` ({package, file}) is included with
+``world:=<sdf> x:= y:= yaw:= gui:=`` and must start Gazebo with the robot spawned there, publishing /clock,
+odom -> base TF, the scan and accepting cmd_vel (see dwarl_bringup/launch/tb3_sim.launch.py, the reference
+implementation for the builtin `diffbot` profile, and web/docs/integrate-robot.md).
+`dwarl test --sim gazebo` writes a matching world.sdf/world.yaml/start pose per case under
+runs/<run>/tests/<test-id>/gazebo/<controller>/<case>/ and drives this launch file itself.
+Localisation uses Gazebo truth unless external_localization:=true delegates map->odom to the adapter.
+"""
+
+import os
+import xml.etree.ElementTree as ET
+
+from ament_index_python.packages import get_package_share_directory
+from dwarl_bringup.nav import load_deploy, resolve_bundle
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
+from launch.conditions import IfCondition, UnlessCondition
+from launch.launch_description_sources import AnyLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration as LC
+from launch_ros.actions import Node
+
+
+def _setup(context):
+    get = lambda k: LC(k).perform(context)  # noqa: E731
+    bundle = resolve_bundle(get("model_dir"))
+    deploy = load_deploy(bundle)
+    ros = deploy.get("ros") or {}
+    x, y, yaw = float(get("x")), float(get("y")), float(get("yaw"))
+    world, map_yaml = get("world"), get("map")
+    if not world or not map_yaml:
+        raise RuntimeError("provide explicit world:=<sdf> map:=<yaml> x:= y:= yaw:=")
+    sim = ros.get("sim_launch") or {}
+    pkg, file = get("robot_sim_package") or sim.get("package"), get("robot_sim_file") or sim.get("file")
+    if not pkg or not file:
+        raise RuntimeError(
+            f"robot '{deploy['robot']['id']}' has no ros.sim_launch in its profile; "
+            "pass robot_sim_package:= robot_sim_file:="
+        )
+    here = get_package_share_directory("dwarl_bringup")
+    st = {"use_sim_time": True}
+    world_element = ET.parse(world).getroot().find("world")
+    if world_element is None:
+        raise RuntimeError(f"no world element in {world}")
+    return [
+        IncludeLaunchDescription(
+            AnyLaunchDescriptionSource(os.path.join(get_package_share_directory(pkg), "launch", file)),
+            launch_arguments={
+                "world": str(world),
+                "x": str(x),
+                "y": str(y),
+                "yaw": str(yaw),
+                "gui": get("gui"),
+                "external_localization": get("external_localization"),
+            }.items(),
+        ),
+        Node(
+            package="dwarl_bringup",
+            executable="gazebo_pose",
+            condition=UnlessCondition(LC("external_localization")),
+            output="screen",
+            parameters=[st, {
+                "world": world_element.attrib["name"],
+                "model": ros.get("gazebo_model", "robot"),
+                "map_frame": ros.get("map_frame", "map"),
+                "odom_frame": ros.get("odom_frame", "odom"),
+                "model_frame": ros.get("gazebo_model_frame") or ros.get("base_frame", "base_link"),
+            }],
+        ),
+        Node(package="nav2_map_server", executable="map_server", parameters=[st, {"yaml_filename": str(map_yaml)}]),
+        Node(
+            package="nav2_lifecycle_manager",
+            executable="lifecycle_manager",
+            name="lifecycle_manager_map",
+            parameters=[st, {"autostart": True, "node_names": ["map_server"]}],
+        ),
+        IncludeLaunchDescription(
+            AnyLaunchDescriptionSource(os.path.join(here, "launch", "navigation.launch.py")),
+            launch_arguments={
+                "use_sim_time": "true",
+                "model_dir": str(bundle),
+                "safety": get("safety"),
+                "planner": get("planner"),
+                "controller": get("controller"),
+                "profile_compute": get("profile_compute"),
+                "controller_params": get("controller_params"),
+                "params_output": get("params_output"),
+            }.items(),
+        ),
+        Node(
+            package="rviz2",
+            executable="rviz2",
+            condition=IfCondition(get("rviz")),
+            arguments=["-d", os.path.join(here, "config", "dwarl.rviz"),
+                       "-stylesheet", os.path.join(here, "config", "rviz-dark.qss")],
+            parameters=[st],
+        ),
+    ]
+
+
+def generate_launch_description():
+    args = [
+        ("world", "", "Gazebo world .sdf (without scenario)"),
+        ("map", "", "map .yaml (without scenario)"),
+        ("x", "0.0", "spawn x (without scenario)"),
+        ("y", "0.0", ""),
+        ("yaw", "0.0", ""),
+        ("model_dir", "", "policy bundle dir; overrides run"),
+        ("robot_sim_package", "", "override the profile's ros.sim_launch package"),
+        ("robot_sim_file", "", "override the profile's ros.sim_launch file"),
+        ("planner", "navfn", "global planner: navfn | smac2d"),
+        ("controller", "rl", "local controller: dwarl | mppi | dwb | rpp"),
+        ("profile_compute", "false", "publish wall-clock controller call timings"),
+        ("external_localization", "false", "adapter supplies map->odom instead of Gazebo truth"),
+        ("controller_params", "", "optional controller tuning YAML"),
+        ("params_output", "", "optional rendered parameter snapshot path"),
+        ("safety", "true", "collision_monitor stop + back-up-and-retry behavior tree"),
+        ("gui", "true", "Gazebo GUI"),
+        ("rviz", "true", "RViz"),
+    ]
+    return LaunchDescription(
+        [DeclareLaunchArgument(n, default_value=d, description=h) for n, d, h in args]
+        + [OpaqueFunction(function=_setup)]
+    )

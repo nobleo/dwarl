@@ -1,0 +1,12 @@
+"""Explicit starter recipes; normal defaults do not change.
+
+Keys are train settings; an optional ``recipe`` mapping is merged into the training recipe.
+"""
+
+PRESETS = {
+    "smoke": {"name": "smoke", "preset": "smoke", "num_envs": 2, "max_iterations": 2, "save_interval": 1,
+              "validation_interval": 0, "data": {"train_maps": 1, "validation_maps": 1, "test_maps": 1,
+                                                   "pairs_per_map": 3},
+              "recipe": {"env": {"surprise_obstacles": {"probability": 0.0}}}},
+    "navigation": {"name": "navigation", "preset": "navigation", "validation_interval": 200},
+}

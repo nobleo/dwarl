@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Run the built-in example from any directory, keeping outputs owned by the caller.
+set -eu
+root="$(cd "$(dirname "$0")/.." && pwd)"
+image=dwarl:example
+build_image() {
+  docker build --platform linux/amd64 -f "$root/docker/Dockerfile" -t "$image" "$root"
+}
+if [[ ${1:-} == build ]]; then
+  build_image
+  exit
+elif ! docker image inspect "$image" >/dev/null 2>&1; then
+  build_image >&2
+fi
+opts=(--rm --init --platform linux/amd64 --user "$(id -u):$(id -g)" --shm-size=2g)
+if [[ ${1:-} == --gpu ]]; then
+  opts+=(--gpus all --env NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics,display)
+  shift
+fi
+if [[ -t 0 && -t 1 ]]; then opts+=(-it); fi
+if [[ -n ${DISPLAY:-} ]]; then
+  opts+=(--env DISPLAY --volume /tmp/.X11-unix:/tmp/.X11-unix:ro)
+  auth=${XAUTHORITY:-$HOME/.Xauthority}
+  if [[ -r $auth ]]; then
+    opts+=(--volume "$auth:/tmp/.Xauthority:ro" --env XAUTHORITY=/tmp/.Xauthority
+           --env "XAUTHLOCALHOSTNAME=$(hostname)")
+  fi
+fi
+work=${DWARL_WORK:-$root/work}
+mkdir -p "$work"
+exec docker run "${opts[@]}" --volume "$(realpath "$work"):/work" "$image" "$@"
