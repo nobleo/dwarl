@@ -1,0 +1,446 @@
+{
+  "schema": "dwarl/1",
+  "robot": null,
+  "train": {
+    "preset": null,
+    "name": "navigation",
+    "num_envs": 64,
+    "seed": 42,
+    "device": "auto",
+    "max_iterations": 3000,
+    "resume": null,
+    "init_from": null,
+    "init_checkpoint": "best",
+    "show": false,
+    "detached": false,
+    "save_interval": 50,
+    "validation_interval": 0,
+    "validation_cases": 32,
+    "benchmark_interval": 0,
+    "benchmark_cases": 32,
+    "early_stop": {
+      "enabled": false,
+      "patience": 5,
+      "min_delta": 0.01
+    },
+    "deployment_ready": true,
+    "data": {
+      "path": null,
+      "allow_custom": false,
+      "train_maps": 32,
+      "validation_maps": 4,
+      "test_maps": 4,
+      "pairs_per_map": 32,
+      "workers": 1
+    }
+  },
+  "test": {
+    "run": "latest",
+    "checkpoint": "latest",
+    "suite": "benchmark",
+    "sim": "mujoco",
+    "case": null,
+    "case_id": null,
+    "show": false,
+    "repeats": 1,
+    "seed": 42,
+    "dataset": null,
+    "max_cases": 32,
+    "controllers": [
+      "dwarl"
+    ],
+    "profile_compute": false,
+    "external_localization": false,
+    "controller_params": null,
+    "planner": "navfn",
+    "unmapped_obstacles": 3,
+    "obstacle_comparison": false,
+    "unmapped_near_doorways": true,
+    "unmapped_route": null,
+    "startup_timeout": 120.0,
+    "stall_timeout": 30.0
+  },
+  "deploy": {
+    "run": "latest",
+    "checkpoint": "latest"
+  },
+  "recipe": {
+    "actions": {
+      "drive": {
+        "class_type": "dwarl.navigation.actions:DifferentialDriveAction",
+        "params": {
+          "mode": "window"
+        },
+        "clip": [
+          -1.0,
+          1.0
+        ]
+      }
+    },
+    "commands": {
+      "path": {
+        "class_type": "dwarl.navigation.commands:PathCommand",
+        "params": {
+          "goal_mode": "lookahead",
+          "lookahead_distances": [
+            0.5,
+            1.0,
+            2.0,
+            3.0
+          ],
+          "lookahead_distance": 2.0,
+          "projection_window": [
+            -5,
+            30
+          ]
+        }
+      }
+    },
+    "observations": {
+      "lidar": {
+        "concatenate_dim": -1,
+        "terms": {
+          "scan": {
+            "func": "dwarl.navigation.observations:LidarHistory",
+            "params": {
+              "history": [
+                0,
+                2,
+                5
+              ],
+              "normalization": "log"
+            },
+            "clip": null,
+            "scale": 1.0
+          }
+        }
+      },
+      "state": {
+        "concatenate_dim": -1,
+        "terms": {
+          "goals": {
+            "func": "dwarl.navigation.observations:goal_points",
+            "params": {
+              "command_name": "path",
+              "max_distance": 10.0
+            },
+            "clip": null,
+            "scale": 1.0
+          },
+          "last_action": {
+            "func": "dwarl.navigation.observations:last_action",
+            "params": {},
+            "clip": null,
+            "scale": 1.0
+          },
+          "velocity": {
+            "func": "dwarl.navigation.observations:base_velocity",
+            "params": {},
+            "clip": null,
+            "scale": 1.0
+          },
+          "command_feedback": null
+        }
+      },
+      "privileged": {
+        "concatenate_dim": -1,
+        "terms": {
+          "avoidance": {
+            "func": "dwarl.navigation.observations:avoidance",
+            "params": {},
+            "clip": null,
+            "scale": 1.0
+          },
+          "path": {
+            "func": "dwarl.navigation.observations:path_features",
+            "params": {
+              "command_name": "path",
+              "lookahead": [
+                0.5,
+                1.0,
+                2.0,
+                3.0
+              ]
+            },
+            "clip": null,
+            "scale": 1.0
+          }
+        }
+      }
+    },
+    "rewards": {
+      "progress": {
+        "func": "dwarl.navigation.rewards:progress",
+        "params": {},
+        "weight": 10.0
+      },
+      "cross_track": {
+        "func": "dwarl.navigation.rewards:cross_track",
+        "params": {},
+        "weight": 2.0
+      },
+      "heading": {
+        "func": "dwarl.navigation.rewards:heading",
+        "params": {},
+        "weight": 1.0
+      },
+      "goal": {
+        "func": "dwarl.navigation.rewards:goal",
+        "params": {},
+        "weight": 300.0
+      },
+      "collision": {
+        "func": "dwarl.navigation.rewards:collision",
+        "params": {},
+        "weight": 500.0
+      },
+      "stuck": {
+        "func": "dwarl.navigation.rewards:stuck",
+        "params": {},
+        "weight": 200.0
+      },
+      "time": {
+        "func": "dwarl.navigation.rewards:time",
+        "params": {},
+        "weight": 0.5
+      },
+      "action_rate": {
+        "func": "dwarl.navigation.rewards:action_rate",
+        "params": {},
+        "weight": 0.2
+      },
+      "proximity": {
+        "func": "dwarl.navigation.rewards:proximity",
+        "params": {
+          "band": 0.25,
+          "power": 1.0
+        },
+        "weight": 5.0
+      },
+      "reverse": {
+        "func": "dwarl.navigation.rewards:reverse",
+        "params": {
+          "deadband": 0.02,
+          "power": 1.0
+        },
+        "weight": 8.0
+      },
+      "angular_effort": {
+        "func": "dwarl.navigation.rewards:angular_effort",
+        "params": {},
+        "weight": 2.0
+      },
+      "dewobble": {
+        "func": "dwarl.navigation.rewards:dewobble",
+        "params": {
+          "horizon": 0.5
+        },
+        "weight": 2.0
+      },
+      "safety_zone": {
+        "func": "dwarl.navigation.rewards:safety_zone",
+        "params": {},
+        "weight": 30.0
+      }
+    },
+    "terminations": {
+      "collision": {
+        "func": "dwarl.navigation.terminations:collision",
+        "params": {
+          "min_upright": 0.5
+        },
+        "time_out": false,
+        "role": "collision"
+      },
+      "flipped": {
+        "func": "dwarl.navigation.terminations:flipped",
+        "params": {
+          "min_upright": 0.5
+        },
+        "time_out": false,
+        "role": "collision"
+      },
+      "success": {
+        "func": "dwarl.navigation.terminations:goal_reached",
+        "params": {
+          "command_name": "path",
+          "tolerance": 0.3,
+          "min_upright": 0.5
+        },
+        "time_out": false,
+        "role": "success"
+      },
+      "stuck": {
+        "func": "dwarl.navigation.terminations:NoProgress",
+        "params": {
+          "command_name": "path",
+          "steps": 50,
+          "distance": 0.3
+        },
+        "time_out": false,
+        "role": "stuck"
+      },
+      "timeout": {
+        "func": "dwarl.navigation.terminations:PathTimeLimit",
+        "params": {
+          "command_name": "path",
+          "min_steps": 100,
+          "time_factor": 2.5
+        },
+        "time_out": true,
+        "role": null
+      }
+    },
+    "sim": {
+      "timestep": 0.005,
+      "tile_gap": 1.0,
+      "pool_size": 300,
+      "num_shards": 0,
+      "render_fps": 30,
+      "realtime": false,
+      "realtime_speed": 1.0
+    },
+    "env": {
+      "control_dt": 0.1,
+      "episodes_per_map": 1,
+      "spawn_yaw_noise": 3.14159,
+      "spawn_yaw_curriculum": true,
+      "spawn_yaw_min": 0.5,
+      "spawn_yaw_full_level": 0.6,
+      "surprise_obstacles": {
+        "probability": 0.6,
+        "curriculum": true,
+        "count": [
+          1,
+          3
+        ],
+        "size": [
+          0.1,
+          0.4
+        ],
+        "lateral": 1.0,
+        "keepout": 1.0,
+        "spacing": 1.2,
+        "margin": 0.1,
+        "tries": 12,
+        "horizon_time": 5.0,
+        "horizon": [
+          1.5,
+          3.0
+        ],
+        "near": 0.6,
+        "clear": 0.35,
+        "ramp": 0.25,
+        "release_time": 1.5
+      },
+      "safety_layer": {
+        "enabled": true,
+        "margin": 0.035,
+        "latency": 0.15,
+        "min_points": 2
+      }
+    },
+    "curriculum": {
+      "enabled": true,
+      "init_level": 0.2,
+      "min_level": 0.1,
+      "step": 0.05,
+      "window": 200,
+      "promote_success": 0.75,
+      "demote_success": 0.3
+    },
+    "agent": {
+      "num_steps_per_env": 64,
+      "logger": "tensorboard",
+      "obs_groups": {
+        "actor": [
+          "lidar",
+          "state"
+        ],
+        "critic": [
+          "lidar",
+          "state",
+          "privileged"
+        ]
+      },
+      "actor": {
+        "class_name": "dwarl.training.models.lidar_cnn:LidarCNNModel",
+        "hidden_dims": [
+          512,
+          256,
+          128
+        ],
+        "activation": "elu",
+        "obs_normalization": true,
+        "encoder_cfg": {
+          "channels": [
+            32,
+            64,
+            64
+          ],
+          "kernels": [
+            7,
+            5,
+            3
+          ],
+          "strides": [
+            2,
+            2,
+            2
+          ],
+          "latent_dim": 128,
+          "activation": "elu"
+        },
+        "distribution_cfg": {
+          "class_name": "GaussianDistribution",
+          "init_std": 0.6,
+          "std_type": "scalar"
+        }
+      },
+      "critic": {
+        "class_name": "dwarl.training.models.lidar_cnn:LidarCNNModel",
+        "hidden_dims": [
+          512,
+          256,
+          128
+        ],
+        "activation": "elu",
+        "obs_normalization": true,
+        "encoder_cfg": {
+          "channels": [
+            32,
+            64,
+            64
+          ],
+          "kernels": [
+            7,
+            5,
+            3
+          ],
+          "strides": [
+            2,
+            2,
+            2
+          ],
+          "latent_dim": 128,
+          "activation": "elu"
+        },
+        "distribution_cfg": null
+      },
+      "algorithm": {
+        "class_name": "PPO",
+        "num_learning_epochs": 5,
+        "num_mini_batches": 4,
+        "clip_param": 0.2,
+        "gamma": 0.99,
+        "lam": 0.95,
+        "value_loss_coef": 1.0,
+        "entropy_coef": 0.005,
+        "learning_rate": 0.0003,
+        "max_grad_norm": 1.0,
+        "schedule": "adaptive",
+        "desired_kl": 0.01
+      }
+    }
+  }
+}
