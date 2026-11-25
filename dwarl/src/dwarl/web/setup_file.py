@@ -25,7 +25,7 @@ def validated(data):
     from dwarl.web.settings import editable
 
     settings = data.get("settings", {})
-    if not isinstance(settings, dict) or settings.keys() - {"train", "test", "deploy"}:
+    if not isinstance(settings, dict) or settings.keys() - {"datagen", "train", "test", "deploy"}:
         raise ValueError("expected settings grouped by workflow")
     for workflow, rows in settings.items():
         if (not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows)

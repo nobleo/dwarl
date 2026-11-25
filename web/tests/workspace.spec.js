@@ -5,6 +5,20 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText('Local workspace connected', { exact: true })).toBeVisible()
 })
 
+test('prepare maps previews and runs datagen without starting training', async ({ page }) => {
+  await page.getByLabel('Workflow', {exact:true}).selectOption('datagen')
+  await page.getByLabel('Robot integration').fill('diffbot')
+  await page.getByLabel('Recipe', {exact:true}).selectOption('smoke')
+  await expect(page.getByLabel('train maps', {exact:true})).toHaveValue('1')
+  await page.getByRole('button', {name:'Preview dataset settings'}).click()
+  await expect(page.getByText('Dataset settings resolved')).toBeVisible()
+  const response = page.waitForResponse(r => r.url().endsWith('/api/command'))
+  await page.getByRole('button', {name:'Run datagen'}).click()
+  const job = await (await response).json()
+  expect(job.argv).toEqual(['datagen','diffbot','--preset','smoke'])
+  await expect(page.locator('pre').filter({hasText:'Dataset: generating'})).toBeVisible({timeout:20000})
+})
+
 test('visual obstacle comparison uses the normal test command', async ({ page }) => {
   await page.getByRole('combobox', { name: 'Workflow', exact: true }).selectOption('test')
   await page.getByRole('combobox', { name: 'Simulator', exact: true }).selectOption('gazebo')

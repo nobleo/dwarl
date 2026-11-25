@@ -6,6 +6,8 @@
 pixi run datagen --preset navigation
 ```
 
+In the dashboard, select **Workflow → Prepare maps (datagen)**, choose a robot and recipe, then click **Run datagen**.
+
 Use the same `--preset`, `--seed`, `--config` and [data overrides](configuration.md) as `train`. For a tiny dataset, use `--preset smoke`.
 
 This step is optional: on a cache miss, `train` prints the matching `dwarl datagen` command and generates the maps. Later runs reuse them.

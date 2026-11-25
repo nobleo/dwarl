@@ -15,6 +15,8 @@ _dedicated = {"train.preset", "train.resume", "train.detached", "test.run", "tes
 
 
 def editable(workflow, path):
+    if workflow == "datagen":
+        return path == "train.seed" or path.startswith("train.data.")
     return (path not in _dedicated and
             (path.startswith(workflow + ".") or workflow == "train" and path.startswith("recipe.")))
 
@@ -24,7 +26,7 @@ def _describe(node, prefix, workflow):
     declared = {f.name: f for f in fields(owner)} if is_dataclass(owner) else {}
     for name, value in node.items():
         path = prefix + name
-        if not editable(workflow, path):
+        if not editable(workflow, path) and not (workflow == "datagen" and path == "train.data"):
             continue
         if OmegaConf.is_dict(value) and len(value):
             yield from _describe(value, path + ".", workflow)
@@ -42,12 +44,12 @@ def _describe(node, prefix, workflow):
 
 
 def catalog(root, workflow, preset):
-    if workflow not in ("train", "test", "deploy"):
+    if workflow not in ("datagen", "train", "test", "deploy"):
         raise ValueError("unknown settings workflow")
     try:
         with _compose_lock:
             cfg = compose_config(cwd=root, preset=preset or None)
-            groups = (workflow, "recipe") if workflow == "train" else (workflow,)
+            groups = {"train": ("train", "recipe"), "datagen": ("train",)}.get(workflow, (workflow,))
             return dict(row for group in groups for row in _describe(cfg[group], group + ".", workflow))
     except OmegaConfBaseException as exc:
         raise ValueError(str(exc)) from exc
