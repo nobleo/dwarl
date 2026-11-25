@@ -79,8 +79,11 @@ pixi run dwarl test --case office --show
 pixi run dwarl test --case warehouse --show
 ```
 
-For the visual Gazebo/RViz workflow, add `--sim gazebo`. It uses the same cases,
-scoring and reports as headless testing, and closes the stack after each case.
+To watch the same test in Gazebo and RViz, run `pixi run dwarl test --sim gazebo --show`.
+
+[![Gazebo shows the robot between obstacles (left); RViz shows its route on the navigation costmap (right).](assets/gazebo-rviz-test.webp)](assets/gazebo-rviz-test.webp)
+
+The visual workflow uses the same cases, scoring and reports as headless testing, and closes the stack after each case.
 To replay with another controller, use e.g. `--controllers rpp`. Pin `--run` and
 `--checkpoint` when comparing runs.
 
