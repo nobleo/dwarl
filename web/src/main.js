@@ -2,4 +2,8 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import './style.css'
 
-createApp(App).mount('#app')
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('prototype')) {
+  import('./prototype/Dashboard.vue').then(({ default: prototype }) => createApp(prototype).mount('#app'))
+} else {
+  createApp(App).mount('#app')
+}
