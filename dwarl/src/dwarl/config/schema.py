@@ -20,17 +20,17 @@ class DataConfig:
 class EarlyStopConfig:
     enabled: bool = False
     patience: int = 5
-    min_delta: float = 0.01
+    min_delta: float = field(default=0.01, metadata={"minimum": 0, "maximum": 1})
 
 
 @dataclass
 class TrainConfig:
     preset: str | None = None
     name: str = "navigation"
-    num_envs: int = 64
+    num_envs: int = field(default=64, metadata={"minimum": 1})
     seed: int = 42
     device: str = "auto"
-    max_iterations: int = 3000
+    max_iterations: int = field(default=3000, metadata={"minimum": 1})
     resume: str | None = None
     # Start a new run from another run's selected checkpoint: weights whose shapes match are copied
     # (optimizer, iteration and exploration noise start fresh). Lets a recipe change build on a policy.
