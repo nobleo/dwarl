@@ -18,7 +18,7 @@ def command_arguments(argv):
     if (not isinstance(argv, list) or not argv or len(argv) > 128
             or any(not isinstance(arg, str) or len(arg) > 4096 for arg in argv)):
         raise ValueError("command must be an argument array")
-    if argv[0] not in ("train", "test", "deploy", "doctor", "status", "next", "report"):
+    if argv[0] not in ("datagen", "train", "test", "deploy", "doctor", "status", "next", "report"):
         raise ValueError("unsupported dashboard command")
     try:
         args = parser().parse_args(argv)

@@ -34,7 +34,7 @@ watch(dark, value => {
   localStorage.setItem('/docs/.__palette', JSON.stringify({
     index: value ? 1 : 0, color: { media: '', scheme, primary: 'custom', accent: 'custom' } }))
 }, { immediate: true })
-const guide = computed(() => `/docs/${['train', 'test', 'deploy'].includes(command.value) ? command.value : 'troubleshooting'}/`)
+const guide = computed(() => `/docs/${['datagen', 'train', 'test', 'deploy'].includes(command.value) ? command.value : 'troubleshooting'}/`)
 const terminal = ref(null), follow = ref(true)
 let timer, stopped = false
 const run = computed(() => state.value.runs.find(r => r.name === selected.value))
@@ -42,10 +42,11 @@ const job = computed(() => state.value.jobs[lane.value])
 const running = computed(() => Boolean(job.value?.running))
 const commandLane = computed(() => command.value === 'train' ? 'training' : 'evaluation')
 const commandRunning = computed(() => Boolean(state.value.jobs[commandLane.value]?.running))
-const compatible = computed(() => state.value.api_version === 4)
+const compatible = computed(() => state.value.api_version === 5)
 const { setup, message: setupMessage, failed: setupFailed, pending, load, save, update, importFile, download } = dashboardSetup(api)
 watch(compatible, value => { if (value) load() })
-const configurable = computed(() => ['train','test'].includes(command.value))
+const configurable = computed(() => ['datagen','train','test'].includes(command.value))
+const usesRecipe = computed(() => command.value === 'datagen' || (command.value === 'train' && !resume.value))
 const fields = ref(null)
 watch([compatible, command, preset, resume], async (_, __, onCleanup) => {
   let current = true
@@ -53,12 +54,13 @@ watch([compatible, command, preset, resume], async (_, __, onCleanup) => {
   fields.value = null
   if (!compatible.value || !configurable.value) return
   try {
-    const query = new URLSearchParams({workflow:command.value,preset:command.value==='train' && !resume.value?preset.value:''})
+    const query = new URLSearchParams({workflow:command.value,preset:usesRecipe.value?preset.value:''})
     const data = await api(`settings?${query}`)
     if (current) fields.value = data
   } catch(e) { if (current) error.value = e.message }
 })
-const starters = {train:[{path:'train.max_iterations'}], test:[
+const starters = {datagen:['train_maps','validation_maps','test_maps','pairs_per_map'].map(key=>({path:`train.data.${key}`})),
+  train:[{path:'train.max_iterations'}], test:[
   {path:'test.sim'}, {path:'test.suite',value:'validation'}, {path:'test.show'}, {path:'test.obstacle_comparison'}]}
 const rows = computed(() => setup.value?.settings?.[command.value] ?? starters[command.value] ?? [])
 const testSim = computed(() => rows.value.find(r=>r.path==='test.sim')?.value ?? fields.value?.['test.sim']?.value)
@@ -67,8 +69,8 @@ const waitingForSettings = computed(() => configurable.value && (!setup.value ||
 const progress = computed(() => run.value?.progress || {})
 const argv = computed(() => {
   const args = [command.value]
-  if (command.value === 'train') {
-    if (resume.value && selected.value) args.push('--resume', `runs/${selected.value}`)
+  if (command.value === 'train' || command.value === 'datagen') {
+    if (command.value === 'train' && resume.value && selected.value) args.push('--resume', `runs/${selected.value}`)
     else {
       if (robot.value.trim()) args.push(robot.value.trim())
       if (preset.value) args.push('--preset', preset.value)
@@ -238,18 +240,19 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
         <div class="p-5 space-y-5">
           <label class="block"><span class="text-xs font-medium block mb-2">Workflow</span>
             <select v-model="command" class="select w-full" aria-label="Workflow">
+              <option value="datagen">Prepare maps (datagen)</option>
               <option value="train">Train a policy</option><option value="test">Test a checkpoint</option>
               <option value="deploy">Deploy a policy</option><option value="doctor">Check environment</option>
               <option value="status">Inspect status</option><option value="next">Suggest next step</option>
             </select></label>
-          <label v-if="['train', 'deploy'].includes(command)" class="block">
+          <label v-if="['datagen', 'train', 'deploy'].includes(command)" class="block">
             <span class="text-xs font-medium block mb-2">Robot integration</span>
             <input v-model="robot" class="input w-full" placeholder="Use saved selection" aria-label="Robot integration" />
             <p class="text-xs muted mt-2 break-words">{{ state.context.robot || 'No saved robot. Run pixi run setup to get started.' }}</p>
           </label>
-          <template v-if="command === 'train'">
-            <label v-if="selected" class="flex items-center gap-2 text-sm"><input v-model="resume" type="checkbox" class="checkbox checkbox-sm" /> Resume selected run</label>
-            <label v-if="!resume" class="block"><span class="text-xs font-medium block mb-2">Recipe</span>
+          <template v-if="command === 'train' || command === 'datagen'">
+            <label v-if="command === 'train' && selected" class="flex items-center gap-2 text-sm"><input v-model="resume" type="checkbox" class="checkbox checkbox-sm" /> Resume selected run</label>
+            <label v-if="usesRecipe" class="block"><span class="text-xs font-medium block mb-2">Recipe</span>
               <select v-model="preset" class="select w-full" aria-label="Recipe"><option value="">Configured defaults</option>
                 <option value="smoke">Smoke</option><option value="navigation">Navigation</option></select></label>
           </template>
@@ -270,13 +273,13 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
             <textarea v-model="extra" class="textarea w-full font-mono text-xs" rows="4" aria-label="Advanced arguments"></textarea>
           </details>
           <div class="bg-base-200 rounded-lg p-3 command-preview">{{ preview }}</div>
-          <button v-if="['train', 'test', 'deploy'].includes(command)" class="btn btn-outline w-full" :disabled="busy || !connected || waitingForSettings" @click="checkPreview">Preview & check inputs</button>
+          <button v-if="['datagen', 'train', 'test', 'deploy'].includes(command)" class="btn btn-outline w-full" :disabled="busy || !connected || waitingForSettings" @click="checkPreview">{{ command === 'datagen' ? 'Preview dataset settings' : 'Preview & check inputs' }}</button>
           <div v-if="previewSettings" class="text-xs bg-base-200 p-3 rounded-lg space-y-2">
-            <p class="font-semibold text-primary">Preflight passed</p>
-            <p class="break-words">Robot: {{ previewSettings.config.robot || 'Frozen run profile' }}</p>
+            <p class="font-semibold text-primary">{{ command === 'datagen' ? 'Dataset settings resolved' : 'Preflight passed' }}</p>
+            <p class="break-words">Robot: {{ previewSettings.config.robot || (command === 'datagen' ? 'No robot selected' : 'Frozen run profile') }}</p>
             <p v-if="command === 'train'">Device: {{ previewSettings.config.train.device }} · {{ previewSettings.config.train.num_envs }} environments · {{ previewSettings.config.train.max_iterations }} iterations</p>
             <p v-if="command === 'test'">{{ previewSettings.config.test.sim }} · {{ previewSettings.config.test.suite }} · up to {{ previewSettings.config.test.max_cases || 'all' }} cases per controller · checkpoint {{ previewSettings.config.test.checkpoint }}</p>
-            <details><summary class="cursor-pointer">Resolved workflow settings</summary><pre class="terminal console rounded-lg p-3 mt-2 max-h-64 overflow-auto">{{ JSON.stringify(previewSettings.config[command], null, 2) }}</pre></details>
+            <details><summary class="cursor-pointer">Resolved workflow settings</summary><pre class="terminal console rounded-lg p-3 mt-2 max-h-64 overflow-auto">{{ JSON.stringify(command === 'datagen' ? previewSettings.config.train.data : previewSettings.config[command], null, 2) }}</pre></details>
           </div>
           <div class="grid grid-cols-[1fr_auto] gap-2">
             <button class="btn btn-primary" :disabled="busy || commandRunning || !connected || waitingForSettings" @click="act('command', { argv: previewSettings?.argv || argv, telemetry: false })">

@@ -93,7 +93,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if url.path == "/api/state":
                 jobs = {name: manager.snapshot() for name, manager in self.server.jobs.items()}
-                self.respond(200, {"api_version": 4, "runs": evidence.runs(self.server.root), "jobs": jobs,
+                self.respond(200, {"api_version": 5, "runs": evidence.runs(self.server.root), "jobs": jobs,
                                   "docs": (self.server.static / "docs/index.html").is_file(),
                                   "context": evidence.read(self.server.root / ".dwarl/context.json", {}),
                                   "history": evidence.history(self.server.root),
@@ -188,10 +188,11 @@ class Handler(BaseHTTPRequestHandler):
                 from dwarl.web.jobs import command_arguments
 
                 command_arguments(argv)
-                if argv[0] not in ("train", "test", "deploy"):
-                    raise ValueError("preview supports train, test and deploy")
+                if argv[0] not in ("datagen", "train", "test", "deploy"):
+                    raise ValueError("preview supports datagen, train, test and deploy")
                 pinned = pin_checkpoint(self.server.root, argv)
-                preview = inspect_command(self.server.root, pinned, "--dry-run")
+                preview = ({"config": inspect_command(self.server.root, pinned, "--print-config")}
+                           if argv[0] == "datagen" else inspect_command(self.server.root, pinned, "--dry-run"))
                 self.respond(200, {"argv": pinned, **preview})
             elif self.path == "/api/readiness":
                 reference = data.get("robot") or evidence.read(
