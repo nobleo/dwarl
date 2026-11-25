@@ -1,12 +1,14 @@
 import { ref } from 'vue'
 
 export function dashboardSetup(api) {
-  const setup = ref(null), message = ref(''), pending = ref(0)
+  const setup = ref(null), message = ref(''), pending = ref(0), failed = ref(false)
   let queue = Promise.resolve()
   // Preserve edit order when a second drag or change happens during a write.
   function run(action) {
     pending.value++
-    queue = queue.then(action).catch(e => { message.value = e.message }).finally(() => pending.value--)
+    queue = queue.then(action).then(() => { failed.value = false }).catch(e => {
+      failed.value = true; message.value = e.message
+    }).finally(() => pending.value--)
     return queue
   }
   function load() {
@@ -24,7 +26,9 @@ export function dashboardSetup(api) {
     if (!file) return
     return run(async () => {
       if (file.size > 65536) throw Error('Setup exceeds 64 KiB.')
-      setup.value = await api('setup', JSON.parse(await file.text()))
+      const data = JSON.parse(await file.text())
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw Error('Expected a dashboard setup object.')
+      setup.value = await api('setup', data)
       message.value = 'Imported and saved workspace setup.'
     })
   }
@@ -34,5 +38,5 @@ export function dashboardSetup(api) {
     link.href = url; link.download = 'dashboard-setup.json'; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-  return { setup, message, pending, load, save, update, importFile, download }
+  return { setup, message, failed, pending, load, save, update, importFile, download }
 }

@@ -22,7 +22,17 @@ def validated(data):
         raise ValueError("plots must be an ordered list of unique metric names")
     if type(smoothing) not in (int, float) or not 0 <= smoothing <= .95:
         raise ValueError("smoothing must be between 0 and 0.95")
-    return {"schema": VERSION, "plots": plots, "smoothing": smoothing}
+    from dwarl.web.settings import editable
+
+    settings = data.get("settings", {})
+    if not isinstance(settings, dict) or settings.keys() - {"train", "test", "deploy"}:
+        raise ValueError("expected settings grouped by workflow")
+    for workflow, rows in settings.items():
+        if (not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows)
+                or not names([r.get("path") for r in rows])
+                or any(not editable(workflow, r["path"]) or r.keys() - {"path", "value"} for r in rows)):
+            raise ValueError(f"invalid {workflow} settings")
+    return {"schema": VERSION, "plots": plots, "smoothing": smoothing, "settings": settings}
 
 
 def load(root):

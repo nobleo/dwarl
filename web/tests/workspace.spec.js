@@ -61,6 +61,32 @@ test('an old backend gets an upgrade message instead of unsupported API requests
   expect(unsupported).toBe(0)
 })
 
+test('a shared setup restores the wall and typed overrides without starting a command', async ({ page }) => {
+  const setup = { schema:'dwarl-dashboard/1', plots:[], smoothing:0,
+    settings:{train:[{path:'train.early_stop.min_delta',value:0.25}]} }
+  const headers = {'X-DWARL-Token':'dwarl-browser-test'}
+  const original = await (await page.request.get('/api/setup', {headers})).json()
+  try {
+    await page.getByText('Dashboard setup',{exact:true}).click()
+    await page.getByLabel('Import setup').setInputFiles({name:'shared.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(setup))})
+    await expect(page.getByText('Imported and saved workspace setup.')).toBeVisible()
+    await page.reload()
+    await expect(page.getByLabel('min delta',{exact:true})).toHaveValue('0.25')
+    await expect(page.locator('aside .command-preview')).toContainText('train.early_stop.min_delta=0.25')
+    await page.getByRole('button',{name:'Reset to inherited'}).click()
+    await expect(page.locator('aside .command-preview')).not.toContainText('min_delta')
+    await page.getByRole('tab',{name:'Metrics',exact:true}).click()
+    await expect(page.getByText('Open the metric library to pin a plot.')).toBeVisible()
+    await page.getByRole('button',{name:/Metric library/}).click()
+    await expect(page.getByRole('dialog').getByRole('img')).toBeVisible()
+    await page.getByRole('button',{name:'Pin to wall'}).click()
+    await expect.poll(async () => (await (await page.request.get('/api/setup',{headers})).json()).plots)
+      .toEqual(['Train/mean_reward'])
+  } finally {
+    await page.request.post('/api/setup',{headers,data:original})
+  }
+})
+
 test('Studio runs in the browser and shuts down when off or hidden', async ({ page }) => {
   test.setTimeout(90000)
   const errors = []

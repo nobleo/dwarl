@@ -103,6 +103,12 @@ class Handler(BaseHTTPRequestHandler):
                                            for name, job in jobs.items()}})
             elif url.path == "/api/setup":
                 self.respond(200, setup_file.load(self.server.root))
+            elif url.path == "/api/settings":
+                from dwarl.web.settings import catalog
+
+                query = parse_qs(url.query)
+                self.respond(200, catalog(self.server.root, query.get("workflow", ["train"])[0],
+                                          query.get("preset", [""])[0]))
             elif url.path == "/api/run":
                 self.respond(200, evidence.details(self.server.root, parse_qs(url.query).get("name", [""])[0]))
             elif url.path == "/api/history":
