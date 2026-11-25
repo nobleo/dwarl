@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
+import Draggable from 'vuedraggable'
 import { Activity, BookOpen, Check, ChevronRight, GripVertical, Pin, Plus, Search, X } from 'lucide-vue-next'
 import Trace from './Trace.vue'
 import { signals, format } from './signals'
@@ -16,11 +17,7 @@ function browse(t) {
   search.value=''; dialog.value.showModal(); nextTick(()=>input.value.focus())
 }
 function toggle(t){if(pins.value.includes(t)) pins.value=pins.value.filter(v=>v!==t);else pins.value.push(t)}
-const dragging=ref(''), over=ref('')
-function start(e,t){if(e.button!==0)return;e.currentTarget.setPointerCapture(e.pointerId);dragging.value=t}
-function track(e){if(dragging.value)over.value=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-slot]')?.dataset.slot || ''}
 function move(t,to){const from=pins.value.indexOf(t);if(from>=0 && to>=0 && to<pins.value.length)pins.value.splice(to,0,pins.value.splice(from,1)[0])}
-function finish(e){track(e);move(dragging.value,pins.value.indexOf(over.value));dragging.value=over.value=''}
 const last=s=>format(s.raw.at(-1))
 </script>
 <template>
@@ -30,13 +27,14 @@ const last=s=>format(s.raw.at(-1))
         <h1>Training signals</h1><p>Navigation policy <span>·</span> 12,000 steps <span>·</span> Sample traces</p></div>
       <button class="library-button" @click="browse()"><BookOpen :size="16"/> Metric library <span>{{ tags.length }}</span></button>
     </header>
-    <div class="board-head"><h2>{{ {A:'Chart wall',B:'Signal ledger',C:'Inspection desk'}[variant] }}</h2><span>{{ pins.length }} pinned · saved locally</span></div>
+    <div class="board-head"><h2>{{ {A:'My plots',B:'Signal ledger',C:'Inspection desk'}[variant] }}</h2><span>{{ pins.length }} pinned · saved locally</span></div>
     <div v-if="!pins.length" class="empty">No pinned signals yet. <button class="link" @click="browse()">Open metric library</button></div>
     <div v-else class="layout" :class="'mode-'+variant">
-      <TransitionGroup tag="div" name="sort" class="collection">
-        <article v-for="(t,i) in pins" :key="t" :data-slot="t" class="signal" :class="{target:over===t && dragging!==t, grabbed:dragging===t, chosen:variant==='C' && active.tag===t}" :style="{'--ink':signals[t].color}">
+      <Draggable v-model="pins" :item-key="id => id" handle=".grip" ghost-class="grabbed" :animation="160" class="collection">
+        <template #item="{ element:t, index:i }">
+        <article :data-slot="t" class="signal" :class="{chosen:variant==='C' && active.tag===t}" :style="{'--ink':signals[t].color}">
           <div class="signal-head">
-            <button class="grip" :aria-label="`Reorder ${signals[t].name}, use up or down arrow`" @pointerdown="start($event,t)" @pointermove="track" @pointerup="finish" @pointercancel="dragging=over=''" @keydown.up.prevent="move(t,i-1)" @keydown.down.prevent="move(t,i+1)"><GripVertical :size="18"/></button>
+            <button class="grip" :aria-label="`Reorder ${signals[t].name}, use up or down arrow`" @keydown.up.prevent="move(t,i-1)" @keydown.down.prevent="move(t,i+1)"><GripVertical :size="18"/></button>
             <div class="identity"><small>{{ t.split('/')[0].replace('_',' ') }}</small>
               <button @click="variant==='C'?selected=t:browse(t)">{{ signals[t].name }}</button></div>
             <button v-if="variant==='A'" class="icon remove" :aria-label="`Unpin ${signals[t].name}`" @click="toggle(t)"><Pin :size="14"/></button>
@@ -45,7 +43,8 @@ const last=s=>format(s.raw.at(-1))
           <Trace v-if="variant!=='C'" :signal="signals[t]" :mini="variant==='B'"/>
           <button v-if="variant==='B'" class="icon" :aria-label="`Inspect ${signals[t].name}`" @click="browse(t)"><ChevronRight :size="18"/></button>
         </article>
-      </TransitionGroup>
+        </template>
+      </Draggable>
       <section v-if="variant==='C' && active" class="detail">
         <small class="kicker">SIGNAL INSPECTOR</small><h2>{{ active.name }}</h2><code>{{ active.tag }}</code>
         <div class="reading">{{ last(active) }} <small>{{ active.unit }}</small></div><Trace :signal="active"/>
