@@ -1,0 +1,12 @@
+repos:
+  - repo: https://github.com/nobleo/nobleo-pre-commit
+    rev: 26.11.1
+    hooks:
+      - id: launch-depends
+      - id: xml-schema
+      - id: check-json
+      - id: check-xml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: sort-package-xml
