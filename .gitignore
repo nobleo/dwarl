@@ -82,3 +82,4 @@ node_modules/
 dwarl/src/dwarl/web/static/
 web/test-results/
 web/playwright-report/
+/web/dashboard-setup.json

@@ -5,6 +5,7 @@ import logo from '../shared/assets/dwarl-logo.png'
 import logoDark from '../shared/assets/dwarl-logo-dark.png'
 import MujocoView from './MujocoView.vue'
 import MetricsView from './MetricsView.vue'
+import { dashboardSetup } from './dashboardSetup'
 import DocumentView from './DocumentView.vue'
 import CaseReplay from './CaseReplay.vue'
 import Comparison from './Comparison.vue'
@@ -41,7 +42,9 @@ const job = computed(() => state.value.jobs[lane.value])
 const running = computed(() => Boolean(job.value?.running))
 const commandLane = computed(() => command.value === 'train' ? 'training' : 'evaluation')
 const commandRunning = computed(() => Boolean(state.value.jobs[commandLane.value]?.running))
-const compatible = computed(() => state.value.api_version === 3)
+const compatible = computed(() => state.value.api_version === 4)
+const { setup, message: setupMessage, pending, load, save, update, importFile, download } = dashboardSetup(api)
+watch(compatible, value => { if (value) load() })
 const progress = computed(() => run.value?.progress || {})
 const argv = computed(() => {
   const args = [command.value]
@@ -180,6 +183,13 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
       <span v-else class="btn btn-sm btn-ghost btn-disabled" title="Build the documentation with pixi run web-build">
         <BookOpen :size="15" /> Documentation</span>
       <div class="flex flex-wrap items-center gap-3 lg:ml-auto text-xs">
+        <details v-if="compatible" class="relative"><summary class="btn btn-sm">Dashboard setup</summary>
+          <div class="panel absolute z-40 w-64 p-3 space-y-2 shadow-lg"><p>Workspace preferences · autosaved</p>
+            <div class="flex flex-wrap gap-2"><button class="btn btn-xs" :disabled="pending || !setup" @click="save">Save setup</button>
+              <button class="btn btn-xs" :disabled="pending" @click="load">Load setup</button>
+              <button class="btn btn-xs" :disabled="!setup" @click="download">Export JSON</button></div>
+            <label>Import setup<input type="file" accept=".json,application/json" class="file-input file-input-xs w-full" :disabled="pending" @change="importFile($event.target.files[0]); $event.target.value=''"></label>
+            <p role="status">{{ setupMessage }}</p></div></details>
         <select v-model="selected" class="select select-sm w-64 max-w-full text-xs" aria-label="Selected run" @change="loadDetail().catch(e => error = e.message)">
           <option value="">No run selected</option><option v-for="r in state.runs" :key="r.name" :value="r.name">{{ r.name }}</option>
         </select>
@@ -378,7 +388,7 @@ onUnmounted(() => { stopped = true; clearTimeout(timer) })
       </div>
     </main>
 
-    <MetricsView v-if="tab === 'metrics' && compatible" :run="selected" />
+    <MetricsView v-if="tab === 'metrics' && compatible && setup" :run="selected" :setup="setup" @update="update" />
     <footer class="py-6 text-xs muted flex justify-between">Local tools. Recorded evidence. <span>DWARL</span></footer>
   </div>
 </template>
