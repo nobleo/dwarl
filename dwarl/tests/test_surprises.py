@@ -67,6 +67,18 @@ def test_settings_are_validated():
         settings({"count": [2, 1]})
 
 
+def test_training_size_scales_automatically_but_explicit_sizes_are_metres():
+    md, path = _map(), np.asarray(_case()["reference_path"])
+
+    def sample(radius, options=None):
+        prims = sample_on_path(md, path, {"footprint_radius": radius}, np.random.default_rng(7), 1, options)
+        assert len(prims) == 1
+        return prims[0, 4]
+
+    assert sample(.18) / sample(.36) == pytest.approx(.5)
+    assert sample(.18, {"size": [.12, .12]}) == pytest.approx(.12)
+
+
 def _avoiding(train_cfg, **overrides):
     from dwarl.training.environment.nav_env import NavVecEnv
 

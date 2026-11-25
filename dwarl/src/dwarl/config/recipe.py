@@ -22,7 +22,7 @@ class SurpriseObstacles:
     probability: float = 0.               # public recipe opts into staged avoidance
     curriculum: bool = False
     count: list[int] = field(default_factory=lambda: [1, 3])
-    size: list[float] = field(default_factory=lambda: [.1, .4])
+    size: list[float] | None = None
     lateral: float = 1.
     keepout: float = 1.
     spacing: float = 1.2

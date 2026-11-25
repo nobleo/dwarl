@@ -5,6 +5,24 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByText('Local workspace connected', { exact: true })).toBeVisible()
 })
 
+test('run picker follows the newest run until a run is chosen manually', async ({ page }) => {
+  const names = ['new', 'old']
+  await page.route('**/api/state', route => route.fulfill({ json: {
+    runs: names.map(name => ({name, state:{state:'completed'}})), jobs: {}, live: {},
+    context: {robot:'diffbot', runs:{diffbot:{navigation:'runs/old'}}},
+  } }))
+  await page.route('**/api/run?*', route => route.fulfill({json:{evaluations:[], checkpoints:[]}}))
+  await page.reload()
+  const picker = page.getByLabel('Selected run', {exact:true})
+  await expect(picker).toHaveValue('new')
+  names.unshift('newer')
+  await expect(picker).toHaveValue('newer')
+  await picker.selectOption('old')
+  names.unshift('newest')
+  await expect(picker.locator('option[value="newest"]')).toHaveCount(1)
+  await expect(picker).toHaveValue('old')
+})
+
 test('prepare maps previews and runs datagen without starting training', async ({ page }) => {
   await page.getByLabel('Workflow', {exact:true}).selectOption('datagen')
   await page.getByLabel('Robot integration').fill('diffbot')

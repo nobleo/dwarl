@@ -61,7 +61,7 @@ onUnmounted(() => { generation++; clearTimeout(timer) })
     <dialog ref="library" class="modal" @click.self="library.close()"><div class="modal-box max-w-4xl">
       <header class="flex justify-between items-center"><h2 class="text-xl font-semibold">Metric library</h2><button class="btn btn-sm" @click="library.close()">Close</button></header>
       <input v-model="filter" class="input w-full my-3" placeholder="Search all metrics" aria-label="Search all metrics">
-      <div class="grid md:grid-cols-[1fr_2fr] gap-3"><div class="max-h-64 overflow-auto"><button v-for="s in matches" :key="s.tag" class="block text-left p-2 text-sm break-all" :class="{'font-bold':peek===s}" @click="selected=s.tag">{{ s.tag }}</button></div>
+      <div class="grid md:grid-cols-[1fr_2fr] gap-3"><div class="max-h-64 overflow-auto md:max-h-none md:[contain:size]"><button v-for="s in matches" :key="s.tag" class="block text-left p-2 text-sm break-all" :class="{'font-bold':peek===s}" @click="selected=s.tag">{{ s.tag }}</button></div>
         <div v-if="peek"><MetricChart :series="peek" :smoothing="setup.smoothing"/><button class="btn btn-sm mt-2" @click="toggle(peek.tag)">{{ pins.includes(peek.tag)?'Unpin':'Pin to wall' }}</button></div>
         <p v-else class="muted">No matching metrics in this run.</p></div>
     </div></dialog>

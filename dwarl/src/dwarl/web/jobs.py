@@ -27,8 +27,12 @@ def command_arguments(argv):
     if getattr(args, "detached", False):
         raise ValueError("dashboard jobs must remain attached")
     if args.command == "train":
-        if any(item.partition("=")[0] == "train.detached" for item in args.set):
+        overrides = {item.partition("=")[0] for item in args.set}
+        if "train.detached" in overrides:
             raise ValueError("dashboard manages train.detached")
+        # Resume restores the saved CLI viewer preference unless explicitly overridden.
+        if (args.resume or "train.resume" in overrides) and not args.show and "train.show" not in overrides:
+            argv = [*argv, "--set", "train.show=false"]
         argv = [*argv, "--set", "train.detached=false"]
     return [sys.executable, "-u", "-m", "dwarl", *argv,
             *([] if "--plain" in argv else ["--plain"])]

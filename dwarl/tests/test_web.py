@@ -100,6 +100,13 @@ def test_commands_are_allowlisted_and_stay_attached():
     assert "train.detached=false" in command
 
 
+def test_dashboard_resume_defaults_to_browser_viewer():
+    resume = ["train", "--resume", "runs/example"]
+    assert "train.show=false" in command_arguments(resume)
+    assert "train.show=false" not in command_arguments([*resume, "--show"])
+    assert "train.show=false" not in command_arguments([*resume, "--set", "train.show=true"])
+
+
 def test_training_and_evaluation_can_run_and_stop_independently(tmp_path, monkeypatch):
     # Real children: event file confirms the signal handler is installed before Stop.
     ready = tmp_path / "ready"
