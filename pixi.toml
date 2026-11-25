@@ -102,16 +102,16 @@ ros-jazzy-joint-state-publisher-gui = "*"
 ros-jazzy-joint-state-broadcaster = "*"
 
 [feature.ros.tasks]
-build = { cmd = "colcon build --symlink-install --base-paths ros/src --build-base ros/build --install-base ros/install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo", env = { ONNXRUNTIME_ROOT = "$CONDA_PREFIX" }, description = "Build DWARL ROS packages with colcon" }
+build = { cmd = "colcon --log-base ros/log build --symlink-install --base-paths ros/src --build-base ros/build --install-base ros/install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo", env = { ONNXRUNTIME_ROOT = "$CONDA_PREFIX" }, description = "Build DWARL ROS packages with colcon" }
 build-robot = { cmd = "bash ros/scripts/pixi_build_robot.sh", depends-on = ["build"], description = "Build the selected robot packages against DWARL" }
-ros-test = { cmd = "colcon test --base-paths ros/src --build-base ros/build --install-base ros/install --event-handlers console_direct+ && colcon test-result --test-result-base ros/build --verbose", depends-on = ["build"], description = "Build and test the ROS packages, then report colcon results" }
+ros-test = { cmd = "colcon --log-base ros/log test --base-paths ros/src --build-base ros/build --install-base ros/install --event-handlers console_direct+ && colcon --log-base ros/log test-result --test-result-base ros/build --verbose", depends-on = ["build"], description = "Build and test the ROS packages, then report colcon results" }
 # Workflow preparation builds ROS only when the requested operation needs it.
 
 [feature.runtime.dependencies]
 python = "3.12.*"
 
 [feature.runtime.tasks]
-runtime-build = { cmd = "colcon build --symlink-install --base-paths ros/src --build-base ros/build-runtime --install-base ros/install-runtime --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF", env = { ONNXRUNTIME_ROOT = "$CONDA_PREFIX" }, description = "Build the native Nav2 runtime without the training stack" }
+runtime-build = { cmd = "colcon --log-base ros/log build --symlink-install --base-paths ros/src --build-base ros/build-runtime --install-base ros/install-runtime --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF", env = { ONNXRUNTIME_ROOT = "$CONDA_PREFIX" }, description = "Build the native Nav2 runtime without the training stack" }
 runtime-launch = { cmd = "bash ros/scripts/pixi_runtime.sh", depends-on = ["runtime-build"], description = "Build and launch the native policy runtime" }
 
 [environments]

@@ -20,11 +20,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: documentation
-          path: site
+          path: web/site
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request' && vars.PAGES_ENABLED == 'true'
         with:
-          path: site
+          path: web/site
   deploy:
     if: github.event_name != 'pull_request' && vars.PAGES_ENABLED == 'true'
     needs: build

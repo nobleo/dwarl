@@ -61,7 +61,6 @@ data/
 /runs/
 outputs/
 .dwarl/
-log/
 
 # --- Editors / IDEs ---
 .vscode/
@@ -73,7 +72,7 @@ log/
 .DS_Store
 Thumbs.db
 .docs-venv/
-site/
+/web/site/
 .playwright-mcp/
 .pixi/
 /work/
