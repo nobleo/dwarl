@@ -48,6 +48,7 @@ nav:
     - Try the example: quickstart.md
     - Integrate your robot: integrate-robot.md
   - Workflow:
+    - Datagen: datagen.md
     - Train: train.md
     - Test and understand results: test.md
     - Deploy to Nav2: deploy.md

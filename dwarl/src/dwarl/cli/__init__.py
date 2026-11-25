@@ -21,7 +21,7 @@ def parser():
         prog="dwarl", description="Train, test and deploy a local planner for your robot.",
         formatter_class=RichHelpFormatter,
         epilog="Getting started:  setup · robot init\n"
-        "Daily workflow:   train · test · deploy\n"
+        "Daily workflow:   datagen · train · test · deploy\n"
          "Inspection:       web · status · next · runs · report · doctor\n\n"
         "Start: pixi run setup\nNext step: pixi run dwarl next\nDocs: https://nobleo.github.io/dwarl/"))
     root.set_defaults(plain=False, json=False, verbose=False)
@@ -34,32 +34,32 @@ def parser():
     p = command("setup", "Get started: try an example, integrate a robot or continue", "pixi run setup")
     p.add_argument("--robot-ws", help="robot repository containing src/")
     p.add_argument("--packages", nargs="+", help="integration packages to build")
-    p.add_argument("--robot", help="prepare maps directly for a standalone profile or builtin robot")
-    p.add_argument("--preset", choices=("smoke", "navigation"),
-                   help="prepare only this recipe's maps (default: normal and smoke datasets)")
-    p.add_argument("--config", help="training YAML configuration (replaces ./dwarl.yaml)")
-    p.add_argument("--set", action="append", default=[], metavar="PATH=VALUE", help="training configuration override")
+    p.add_argument("--robot", help="select a standalone profile or builtin robot")
     p.add_argument("--example", action="store_true", help="select the included diffbot")
     p.add_argument("--yes", action="store_true", help="use complete, unambiguous saved/detected inputs")
     p.add_argument("--no-build", action="store_true", help="save selection without building ROS")
     p = command("web", "Open the local training and testing dashboard", "pixi run dwarl web")
     p.add_argument("--port", type=int, default=8765, help="localhost port (0 chooses a free port)")
     p.add_argument("--no-open", action="store_true", help="print the URL without opening a browser")
-    for name in ("train", "test", "deploy"):
-        p = command(name, {"train": "Train a policy", "test": "Evaluate an exact checkpoint",
+    for name in ("datagen", "train", "test", "deploy"):
+        p = command(name, {"datagen": "Prepare robot-sized training, validation and test maps",
+                           "train": "Train a policy", "test": "Evaluate an exact checkpoint",
                            "deploy": "Install a compatible policy bundle"}[name], f"pixi run {name} --help")
         p.add_argument("--config", help="YAML configuration (replaces ./dwarl.yaml)")
         p.add_argument("--set", action="append", default=[], metavar="PATH=VALUE", help="advanced schema override")
         p.add_argument("--print-config", action="store_true", help="print resolved configuration and exit")
-        p.add_argument("--dry-run", action="store_true", help="inspect selected inputs without executing")
-        if name in ("train", "deploy"):
+        if name != "datagen":
+            p.add_argument("--dry-run", action="store_true", help="inspect selected inputs without executing")
+        if name in ("datagen", "train", "deploy"):
             p.add_argument("robot", nargs="?", help="integration/profile (default: setup selection)")
         if name in ("test", "deploy"):
             p.add_argument("--run", help="run directory (default: selected robot's navigation run, then smoke)")
             p.add_argument("--checkpoint", help="latest, best or iteration (default: latest)")
-        if name == "train":
+        if name in ("train", "datagen"):
             p.add_argument("--preset", choices=("smoke", "navigation"), help="explicit starter recipe")
-            for flag in ("num-envs", "seed", "max-iterations"):
+            p.add_argument("--seed", type=int)
+        if name == "train":
+            for flag in ("num-envs", "max-iterations"):
                 p.add_argument(f"--{flag}", type=int)
             for flag in ("device", "name", "resume"):
                 p.add_argument(f"--{flag}")
@@ -210,19 +210,20 @@ def dispatch(args):
     from dwarl.config import compose_config
     from dwarl.workflows import context
 
-    if args.command not in ("train", "test", "deploy"):
+    if args.command not in ("datagen", "train", "test", "deploy"):
         return utility(args)
     assignments = list(args.set)
     excluded = {"command", "config", "set", "print_config", "dry_run", "json", "plain", "verbose", "preset"}
     for name, value in vars(args).items():
         if name in excluded or value is None:
             continue
-        key = "robot" if name == "robot" else f"{args.command}.{name}"
+        section = "train" if args.command == "datagen" else args.command
+        key = "robot" if name == "robot" else f"{section}.{name}"
         assignments.append(f"{key}={json.dumps(value)}")
     keys = []
     preset = getattr(args, "preset", None)
     cfg = compose_config(args.config, assignments, explicit_keys=keys, preset=preset)
-    if preset and cfg.train.resume:
+    if args.command == "train" and preset and cfg.train.resume:
         raise ValueError("Resume restores the saved recipe; omit --preset when using --resume.")
     if cfg.robot is None and "robot" not in keys:
         cfg.robot = context.load().get("robot")
@@ -237,6 +238,12 @@ def dispatch(args):
             return 0, OmegaConf.to_container(cfg, resolve=True)
         print(OmegaConf.to_yaml(cfg, resolve=True))
         return 0, None
+    if args.command == "datagen":
+        from dwarl.datasets.cache import dataset
+        from dwarl.robot.profile import load_profile
+
+        path, digest = dataset(cfg, load_profile(selected_robot(cfg.robot)), create=True)
+        return 0, {"dataset": str(path), "index_sha256": digest}
     if args.dry_run:
         from dwarl.workflows.preflight import execute
 
@@ -286,8 +293,7 @@ def utility(args):
         from dwarl.workflows.setup import execute
 
         code = execute(args.robot_ws, args.packages, interactive=False if args.yes else None,
-                       build=not args.no_build, example=args.example, profile=args.robot,
-                       preset=args.preset, config=args.config, assignments=args.set)
+                       build=not args.no_build, example=args.example, profile=args.robot)
         return code, {"completed": code == 0}
     if args.command in ("status", "next", "runs"):
         from dwarl.workflows.guidance import execute

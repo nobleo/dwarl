@@ -208,7 +208,8 @@ def test_setup_example_selects_builtin_and_skips_ros_build(tmp_path, monkeypatch
     from dwarl.workflows import prepare, setup
 
     monkeypatch.setattr(prepare, "ros", lambda *a: pytest.fail("Example setup must not build ROS"))
-    assert setup.execute(interactive=False, example=True, preset="smoke") == 0
+    assert setup.execute(interactive=False, example=True) == 0
+    assert not (tmp_path / ".dwarl/datasets").exists()
     assert context.load()["robot"].endswith("robots/diffbot/dwarl_robot.yaml")
 
 

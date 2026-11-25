@@ -15,7 +15,7 @@ pixi run dwarl status                  # selected robot, run and evidence
 | Package or mesh not found | Select the correct workspace in setup; verify the profile URI. |
 | Joint/link not found | Rerun `robot init` and choose a name from the expanded URDF. |
 | Model falls or tips | Inspect inertials, wheel collisions and support/caster geometry in `robot view`. |
-| Setup takes time | The first setup generates robot-sized maps; matching later runs reuse the cache. |
+| First training run takes time | Training generates missing maps. Use [datagen](datagen.md) to prepare them ahead of time. |
 | `best` unavailable | Complete periodic validation. Use `latest` for pipeline checks; manual tests do not update best selection. |
 | Gazebo startup fails | Run the live doctor; inspect its printed `launch.log` for missing interfaces. |
 | Gazebo is slow | Check real-time factor, machine load and doctor findings; compare runs under matched conditions. |

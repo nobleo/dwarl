@@ -74,7 +74,7 @@ def execute(cfg, assignments=()):
                 ):
                     raise
                 source = resolve_checkpoint(origin)
-        data_path, dataset_id = dataset(cfg, profile)
+        data_path, dataset_id = dataset(cfg, profile, create=True, from_train=True)
         run = Path("runs") / f"{time.strftime('%Y%m%d-%H%M%S')}_{name}_{uuid4().hex[:6]}"
         run = run.resolve()
         run.mkdir(parents=True)
