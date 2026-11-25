@@ -1,6 +1,4 @@
 <!--
-  Copyright (C) 2026 Nobleo Autonomous Solutions B.V.
-
   NavigateToPose tree for the DWARL RL controller with the collision_monitor safety layer (safety:=true).
   Plan once per goal (including goal updates), not periodically while following the path.
   The outer recovery resets planning so a failed navigation attempt can get a fresh path.

@@ -13,6 +13,9 @@ The lockfile targets Linux x86-64. Select an environment with `pixi run -e <name
 Pixi activates the ROS overlays; do not source workspaces by hand. Commit `pixi.lock`
 with dependency changes.
 
+Declare external ROS dependencies in `pixi.toml`. Keep `package.xml` dependency
+entries for links between workspace packages and the ament build and test tools.
+
 Keep Python package tests in `dwarl/tests/` and workspace integration tests in
 `tests/integration/` (for example, Python policy export versus the native ROS
 controller). `pixi run pytest` runs both from the repository root.

@@ -1,5 +1,3 @@
-# Copyright (C) 2026 Nobleo Autonomous Solutions B.V.
-
 """Check that goal-triggered planning retains the collision safety recovery tree."""
 
 from pathlib import Path
